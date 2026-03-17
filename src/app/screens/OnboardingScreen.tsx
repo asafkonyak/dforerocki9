@@ -180,6 +180,7 @@ export function OnboardingScreen() {
         username: finalName,
         avatar_url: finalAvatarUrl,
         weight: parseInt(weight) || 0,
+        gauntlet_progress: 1,
         updated_at: new Date().toISOString()
       });
 
@@ -187,13 +188,26 @@ export function OnboardingScreen() {
 
       // 2. Link to profile if a real user is logged in
       if (user) {
-        const { error: profileError } = await supabase.from('profiles').upsert({
-          id: user.id,
-          player_id: playerId,
-          updated_at: new Date().toISOString()
-        });
-        if (profileError) throw profileError;
+        try {
+          const { error: profileError } = await supabase.from('profiles').upsert({
+            id: user.id,
+            player_id: playerId,
+            updated_at: new Date().toISOString()
+          });
+          if (profileError) {
+            // Log but don't throw - we want to allow navigation even if database linking fails
+            // This happens if the player_id column is missing in the profiles table
+            console.warn("Profile linking failed (this is expected if player_id column is missing):", profileError);
+          }
+        } catch (linkErr) {
+          console.warn("Error during profile linking:", linkErr);
+        }
       }
+
+      // Ensure playerId is in localStorage for fallback
+      localStorage.setItem('fighter_player_id', playerId);
+      // Reset Gauntlet progress for new player
+      localStorage.setItem('fighter_gauntlet_progress', '1');
 
       setIsSyncing(false);
       navigate('/menu');

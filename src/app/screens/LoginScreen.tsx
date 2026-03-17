@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Scan, Lock, Mail } from 'lucide-react';
@@ -13,6 +13,30 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isRegister, setIsRegister] = useState(true);
+  const [cooldown, setCooldown] = useState(0);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      timerRef.current = window.setInterval(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    };
+  }, [cooldown]);
+
+  const handleRateLimit = (message: string) => {
+    if (message.toLowerCase().includes('rate limit exceeded')) {
+      setError("Too many requests. Cyber-security active. Please wait 60 seconds.");
+      setCooldown(60);
+      return true;
+    }
+    return false;
+  };
 
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,13 +55,18 @@ export function LoginScreen() {
         });
 
     if (authError) {
-      setError(authError.message);
+      if (!handleRateLimit(authError.message)) {
+        setError(authError.message);
+      }
       setLoading(false);
       return;
     }
 
     if (isRegister) {
       setSuccessMessage("Account created! Check your email for verification.");
+      setTimeout(() => {
+        navigate('/login-transition');
+      }, 2000);
       setLoading(false);
     } else {
       navigate('/login-transition');
@@ -57,9 +86,12 @@ export function LoginScreen() {
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
 
     if (resetError) {
-      setError(resetError.message);
+      if (!handleRateLimit(resetError.message)) {
+        setError(resetError.message);
+      }
     } else {
       setSuccessMessage("Password reset link sent to your email.");
+      setCooldown(60);
     }
     setLoading(false);
   };
@@ -249,8 +281,8 @@ export function LoginScreen() {
                 {/* Login Button */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className={`w-full px-8 py-4 ${loading ? 'opacity-50' : ''} bg-[#00f0ff] text-black rounded-xl uppercase tracking-wider shadow-[0_0_30px_#00f0ff] hover:shadow-[0_0_50px_#00f0ff] transition-all duration-300 flex items-center justify-center gap-2`}
+                  disabled={loading || cooldown > 0}
+                  className={`w-full px-8 py-4 ${loading || cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''} bg-[#00f0ff] text-black rounded-xl uppercase tracking-wider shadow-[0_0_30px_#00f0ff] hover:shadow-[0_0_50px_#00f0ff] transition-all duration-300 flex items-center justify-center gap-2`}
                   style={{ fontFamily: 'Orbitron, sans-serif' }}
                 >
                   {loading ? (
@@ -262,6 +294,8 @@ export function LoginScreen() {
                       />
                       Processing...
                     </>
+                  ) : cooldown > 0 ? (
+                    `COOLDOWN: ${cooldown}s`
                   ) : (
                     isRegister ? 'Create Identity' : 'Access Mainframe'
                   )}
@@ -272,10 +306,11 @@ export function LoginScreen() {
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="w-full text-sm text-[#00f0ff]/60 hover:text-[#00f0ff] transition-colors uppercase tracking-wider"
+                    disabled={cooldown > 0}
+                    className={`w-full text-sm ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'text-[#00f0ff]/60 hover:text-[#00f0ff]'} transition-colors uppercase tracking-wider`}
                     style={{ fontFamily: 'Rajdhani, sans-serif' }}
                   >
-                    Forgot Password?
+                    {cooldown > 0 ? `Reset Available in ${cooldown}s` : 'Forgot Password?'}
                   </button>
                 )}
               </form>

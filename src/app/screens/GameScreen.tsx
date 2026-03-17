@@ -29,7 +29,7 @@ export function GameScreen() {
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number; rank: string } | null>(null);
-  
+
   // Round-based states
   const gameType = location.state?.gameType || '1_round';
   const [roundsWonPlayer, setRoundsWonPlayer] = useState(0);
@@ -49,7 +49,7 @@ export function GameScreen() {
     async function fetchProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       let playerId = localStorage.getItem('fighter_player_id');
-      
+
       if (user && user.id) {
         const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
         if (profile?.player_id) {
@@ -94,23 +94,29 @@ export function GameScreen() {
   const { play: playStart } = useAudio({ src: '/sounds/ready_go.mp3', volume: 0.8 });
 
   // Stage-specific robot intro sound
-  const stageAudioSrc = stageNumber 
-    ? `/assets/robots/stage${stageNumber}.mp3` 
-    : '/assets/robots/stage1.mp3';
-  
-  const { play: playRobotIntro } = useAudio({ 
-    src: stageAudioSrc, 
+  const getStageAudioSrc = () => {
+    if (!stageNumber) return '/assets/robots/stage1.mp3';
+    const num = Number(stageNumber);
+    if (num === 2) return '/assets/robots/stage2.ogg';
+    if (num === 3) return '/assets/robots/stage3.wav';
+    return `/assets/robots/stage${num}.mp3`;
+  };
+
+  const stageAudioSrc = getStageAudioSrc();
+
+  const { play: playRobotIntro } = useAudio({
+    src: stageAudioSrc,
     volume: 0.7,
-    autoplay: true 
+    autoplay: true
   });
 
   // Fight Countdown Logic
   useEffect(() => {
     let timer: NodeJS.Timeout;
     let count = 3;
-    
+
     setShowCountdown(true);
-    
+
     const runCountdown = () => {
       if (count > 0) {
         setCountdown(count);
@@ -150,11 +156,11 @@ export function GameScreen() {
   // Resolve Opponent Data
   const getRobotData = (stage: number) => {
     const robots = [
-      { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.png' },
+      { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.jpg' },
       { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png' },
       { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.png' },
       { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.png' },
-      { name: 'VOLCANO BOSS', avatar: '/assets/robots/stage5.png' }
+      { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png' }
     ];
     return robots[Math.min(stage - 1, 4)] || robots[0];
   };
@@ -163,10 +169,10 @@ export function GameScreen() {
   const matchId = location.state?.matchId;
   const rankedOpponent = location.state?.opponent;
 
-  const opponentInfo = isRanked 
+  const opponentInfo = isRanked
     ? { name: rankedOpponent.username, avatar: rankedOpponent.avatar }
-    : gameMode === 'gauntlet' 
-      ? getRobotData(stageNumber || 1) 
+    : gameMode === 'gauntlet'
+      ? getRobotData(stageNumber || 1)
       : { name: 'CYBER_QUEEN', avatar: '🤖' };
 
   const player2 = {
@@ -247,9 +253,9 @@ export function GameScreen() {
     if (!playerId) return;
 
     // 2. Record the match
-    const scoreObj = { 
-      p1_rounds: finalWinner === 'player1' ? roundsWonPlayer + 1 : roundsWonPlayer, 
-      p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent 
+    const scoreObj = {
+      p1_rounds: finalWinner === 'player1' ? roundsWonPlayer + 1 : roundsWonPlayer,
+      p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent
     };
 
     if (matchId) {
@@ -266,36 +272,50 @@ export function GameScreen() {
       });
     }
 
-    // 3. Add XP
+    // 3. Add XP and Update Progress
     const earnedXp = gameMode === 'gauntlet' ? 500 : isRanked ? 300 : 150;
-    if (finalWinner === 'player1') {
+    const isWin = finalWinner === 'player1';
+
+    if (isWin) {
       await supabase.rpc('increment_xp', { p_id: playerId, xp_amount: earnedXp });
       if (gameMode === 'gauntlet' && stageNumber) {
-        await supabase.rpc('update_gauntlet_progress', { p_id: playerId, new_stage: stageNumber + 1 });
+        // Fetch current progress to avoid demotion
+        const { data: playerData } = await supabase.from('players').select('gauntlet_progress').eq('id', playerId).maybeSingle();
+        const currentProgress = playerData?.gauntlet_progress || 1;
+        const nextStage = stageNumber + 1;
+
+        if (nextStage > currentProgress) {
+          await supabase.from('players').update({ gauntlet_progress: nextStage }).eq('id', playerId);
+          localStorage.setItem('fighter_gauntlet_progress', nextStage.toString());
+          console.log(`Gauntlet progress updated: ${currentProgress} -> ${nextStage}`);
+        } else {
+          console.log(`Gauntlet progress maintained: already at ${currentProgress}, win on stage ${stageNumber}`);
+        }
       }
     }
 
     // 4. Navigate
     setTimeout(() => {
       if (gameMode === 'gauntlet') {
-        navigate('/victory', { 
-          state: { 
-            peakForce: finalWinner === 'player1' ? 68 : 42,
-            enduranceTime: finalWinner === 'player1' ? 45 : 28,
-            xpEarned: finalWinner === 'player1' ? 500 : 0,
+        navigate('/victory', {
+          state: {
+            isWin,
+            peakForce: isWin ? 68 : 42,
+            enduranceTime: isWin ? 45 : 28,
+            xpEarned: isWin ? 500 : 0,
             stageName: stageName || 'CRUSHER X-9000',
-            stageNumber: stageNumber || 4,
-          } 
+            stageNumber: stageNumber || 1,
+          }
         });
       } else {
-        navigate('/leaderboard', { 
-          state: { 
-            result: finalWinner === 'player1' ? 'win' : 'loss', 
-            scoreChange: finalWinner === 'player1' ? 300 : -100,
-            rankChange: finalWinner === 'player1' ? 2 : -1,
+        navigate('/leaderboard', {
+          state: {
+            result: isWin ? 'win' : 'loss',
+            scoreChange: isWin ? 300 : -100,
+            rankChange: isWin ? 2 : -1,
             combo: comboRef.current,
             taps: tapCountRef.current,
-          } 
+          }
         });
       }
     }, 3000);
@@ -338,15 +358,15 @@ export function GameScreen() {
     <div className="min-h-screen bg-[#0a0515] relative overflow-hidden">
       {/* Dynamic Canvas Background Overlay */}
       <div className="absolute inset-0 pointer-events-none z-0 mix-blend-screen opacity-50">
-        <CanvasRenderer 
-          width={typeof window !== 'undefined' ? window.innerWidth : 1000} 
+        <CanvasRenderer
+          width={typeof window !== 'undefined' ? window.innerWidth : 1000}
           height={typeof window !== 'undefined' ? window.innerHeight : 1000}
           draw={(ctx: CanvasRenderingContext2D, frame: number) => {
             const width = ctx.canvas.width;
             const height = ctx.canvas.height;
             const cx = width / 2;
             const cy = height / 2;
-            
+
             // Draw floating tech particles
             const time = frame * 0.02;
             ctx.fillStyle = `rgba(0, 240, 255, ${Math.abs(Math.sin(time)) * 0.3})`;
@@ -358,7 +378,7 @@ export function GameScreen() {
               0, Math.PI * 2
             );
             ctx.fill();
-            
+
             ctx.fillStyle = `rgba(255, 0, 110, ${Math.abs(Math.cos(time * 1.2)) * 0.3})`;
             ctx.beginPath();
             ctx.arc(
@@ -368,49 +388,52 @@ export function GameScreen() {
               0, Math.PI * 2
             );
             ctx.fill();
-          }} 
+          }}
         />
       </div>
 
-      {/* Diagonal Split Background - Animated based on arm position */}
-      <div className="absolute inset-0 z-0">
+      {/* Dynamic Video Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <video
+          key={stageNumber}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover scale-105"
+          style={{ filter: 'brightness(0.4) contrast(1.2)' }}
+        >
+          <source
+            src={
+              Number(stageNumber) === 1 ? '/assets/robots/back_stage1.mp4' :
+                Number(stageNumber) === 2 ? '/assets/robots/stage2.mp4' :
+                  Number(stageNumber) === 5 ? '/assets/robots/bosRobot.mp4' :
+                    `/assets/robots/stage${stageNumber}.mp4`
+            }
+            type="video/mp4"
+            onError={(e) => {
+              // Emergency fallback if stage-specific video fails
+              const target = e.target as HTMLSourceElement;
+              target.src = '/assets/training.mp4';
+            }}
+          />
+        </video>
+
+        {/* Color Overlay - Animated based on arm position */}
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+
         <motion.div
-          className="absolute inset-0 bg-gradient-to-tr from-[#00f0ff]/30 via-transparent to-transparent"
-          style={{
-            clipPath: 'polygon(0 0, 0 100%, 100% 100%)',
-          }}
+          className="absolute inset-0 bg-gradient-to-tr from-[#00f0ff]/20 via-transparent to-transparent"
           animate={{
-            opacity: armPosition < 50 ? 0.5 : 0.2,
-          }}
-        />
-        
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-bl from-[#ff006e]/30 via-transparent to-transparent"
-          style={{
-            clipPath: 'polygon(0 0, 100% 0, 100% 100%)',
-          }}
-          animate={{
-            opacity: armPosition > 50 ? 0.5 : 0.2,
+            opacity: armPosition < 50 ? 0.6 : 0.2,
           }}
         />
 
-        {/* Dynamic energy blobs */}
         <motion.div
-          className="absolute w-96 h-96 bg-[#00f0ff] rounded-full blur-[120px]"
+          className="absolute inset-0 bg-gradient-to-bl from-[#ff006e]/20 via-transparent to-transparent"
           animate={{
-            opacity: armPosition < 50 ? 0.4 : 0.1,
-            scale: armPosition < 50 ? 1.2 : 1,
+            opacity: armPosition > 50 ? 0.6 : 0.2,
           }}
-          style={{ bottom: '10%', left: '10%' }}
-        />
-        
-        <motion.div
-          className="absolute w-96 h-96 bg-[#ff006e] rounded-full blur-[120px]"
-          animate={{
-            opacity: armPosition > 50 ? 0.4 : 0.1,
-            scale: armPosition > 50 ? 1.2 : 1,
-          }}
-          style={{ top: '10%', right: '10%' }}
         />
       </div>
 
@@ -436,7 +459,7 @@ export function GameScreen() {
       </div>
 
       {/* Grid overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-5"
         style={{
           backgroundImage: `
@@ -483,8 +506,8 @@ export function GameScreen() {
             <GlassCard className="p-4 border-2 border-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.5)]">
               <div className="flex items-center gap-3 mb-3">
                 <div className="relative">
-                  <AvatarDisplay 
-                    avatar={player1.avatar} 
+                  <AvatarDisplay
+                    avatar={player1.avatar}
                     className="border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.6)]"
                     size="lg"
                   />
@@ -521,7 +544,7 @@ export function GameScreen() {
                   <motion.div
                     className="h-full bg-gradient-to-r from-[#00f0ff] to-[#00ffff] shadow-[0_0_10px_#00f0ff]"
                     initial={{ width: '100%' }}
-                    animate={{ 
+                    animate={{
                       width: `${player1Power}%`,
                     }}
                     transition={{ duration: 0.3 }}
@@ -529,26 +552,26 @@ export function GameScreen() {
                 </div>
               </div>
 
-            {/* Stats */}
-            <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <p className="text-white/40 uppercase tracking-tighter">Round Wins</p>
-                <div className="flex gap-1 mt-1">
-                  {[...Array(requiredWins)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className={`h-2 flex-1 rounded-full ${i < roundsWonPlayer ? 'bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]' : 'bg-white/5'}`} 
-                    />
-                  ))}
+              {/* Stats */}
+              <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <p className="text-white/40 uppercase tracking-tighter">Round Wins</p>
+                  <div className="flex gap-1 mt-1">
+                    {[...Array(requiredWins)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-2 flex-1 rounded-full ${i < roundsWonPlayer ? 'bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]' : 'bg-white/5'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-white/40 uppercase tracking-tighter text-right">Taps</p>
+                  <p className="text-[#00f0ff] font-bold text-right">{tapCount}</p>
                 </div>
               </div>
-              <div>
-                <p className="text-white/40 uppercase tracking-tighter text-right">Taps</p>
-                <p className="text-[#00f0ff] font-bold text-right">{tapCount}</p>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
+            </GlassCard>
+          </motion.div>
 
           {/* Player 2 - Right */}
           <motion.div
@@ -560,8 +583,8 @@ export function GameScreen() {
             <GlassCard className="p-4 border-2 border-[#ff006e] shadow-[0_0_30px_rgba(255,0,110,0.5)]">
               <div className="flex items-center gap-3 mb-3">
                 <div className="relative">
-                  <AvatarDisplay 
-                    avatar={player2.avatar} 
+                  <AvatarDisplay
+                    avatar={player2.avatar}
                     className="border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.6)]"
                     size="lg"
                   />
@@ -598,7 +621,7 @@ export function GameScreen() {
                   <motion.div
                     className="h-full bg-gradient-to-r from-[#ff006e] to-[#ff0080] shadow-[0_0_10px_#ff006e]"
                     initial={{ width: '100%' }}
-                    animate={{ 
+                    animate={{
                       width: `${player2Power}%`,
                     }}
                     transition={{ duration: 0.3 }}
@@ -612,9 +635,9 @@ export function GameScreen() {
                   <p className="text-white/40 uppercase tracking-tighter">Round Wins</p>
                   <div className="flex gap-1 mt-1">
                     {[...Array(requiredWins)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`h-2 flex-1 rounded-full ${i < roundsWonOpponent ? 'bg-[#ff006e] shadow-[0_0_8px_#ff006e]' : 'bg-white/5'}`} 
+                      <div
+                        key={i}
+                        className={`h-2 flex-1 rounded-full ${i < roundsWonOpponent ? 'bg-[#ff006e] shadow-[0_0_8px_#ff006e]' : 'bg-white/5'}`}
                       />
                     ))}
                   </div>
@@ -628,50 +651,50 @@ export function GameScreen() {
           </motion.div>
         </div>
 
-      {/* Center - Round Info (Injected here) */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30">
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="px-6 py-2 bg-black/40 border border-white/10 backdrop-blur-md rounded-full flex flex-col items-center shadow-2xl"
-        >
-          <span className="text-[10px] text-[#00f0ff] font-bold tracking-[0.3em] uppercase mb-0.5">Round {currentRound}</span>
-          <div className="flex items-center gap-4">
-            <span className={`text-2xl font-bold ${roundsWonPlayer > roundsWonOpponent ? 'text-[#00f0ff]' : 'text-white/40'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-              {roundsWonPlayer}
-            </span>
-            <div className="w-px h-8 bg-white/10" />
-            <span className={`text-2xl font-bold ${roundsWonOpponent > roundsWonPlayer ? 'text-[#ff006e]' : 'text-white/40'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-              {roundsWonOpponent}
-            </span>
-          </div>
-          <div className="text-[8px] text-white/40 uppercase mt-1 tracking-widest">{gameType.replace('_', ' ')}</div>
-        </motion.div>
-      </div>
-
-      {/* Round Finished Overlay */}
-      <AnimatePresence>
-        {roundWinner && !winner && (
+        {/* Center - Round Info (Injected here) */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30">
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.2 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="px-6 py-2 bg-black/40 border border-white/10 backdrop-blur-md rounded-full flex flex-col items-center shadow-2xl"
           >
-            <div className="bg-black/80 backdrop-blur-xl border-y border-white/10 w-full py-20 flex flex-col items-center">
-              <motion.div
-                initial={{ y: 20 }}
-                animate={{ y: 0 }}
-                className={`text-6xl font-black italic tracking-tighter mb-4 ${roundWinner === 'player1' ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`}
-                style={{ fontFamily: "'Orbitron', sans-serif" }}
-              >
-                {roundWinner === 'player1' ? 'ROUND WON' : 'ROUND LOST'}
-              </motion.div>
-              <div className="text-white/40 tracking-[0.5em] uppercase text-xl">Preparing Next Round...</div>
+            <span className="text-[10px] text-[#00f0ff] font-bold tracking-[0.3em] uppercase mb-0.5">Round {currentRound}</span>
+            <div className="flex items-center gap-4">
+              <span className={`text-2xl font-bold ${roundsWonPlayer > roundsWonOpponent ? 'text-[#00f0ff]' : 'text-white/40'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                {roundsWonPlayer}
+              </span>
+              <div className="w-px h-8 bg-white/10" />
+              <span className={`text-2xl font-bold ${roundsWonOpponent > roundsWonPlayer ? 'text-[#ff006e]' : 'text-white/40'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                {roundsWonOpponent}
+              </span>
             </div>
+            <div className="text-[8px] text-white/40 uppercase mt-1 tracking-widest">{gameType.replace('_', ' ')}</div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+
+        {/* Round Finished Overlay */}
+        <AnimatePresence>
+          {roundWinner && !winner && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.2 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+            >
+              <div className="bg-black/80 backdrop-blur-xl border-y border-white/10 w-full py-20 flex flex-col items-center">
+                <motion.div
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                  className={`text-6xl font-black italic tracking-tighter mb-4 ${roundWinner === 'player1' ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`}
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  {roundWinner === 'player1' ? 'ROUND WON' : 'ROUND LOST'}
+                </motion.div>
+                <div className="text-white/40 tracking-[0.5em] uppercase text-xl">Preparing Next Round...</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Center - Arm Wrestling Battle Area */}
         <div className="flex-1 flex items-center justify-center px-6 min-h-0">
@@ -684,8 +707,8 @@ export function GameScreen() {
               transition={{ duration: 0.6 }}
             >
               <div className="relative w-full max-w-2xl aspect-square">
-                <svg 
-                  viewBox="0 0 400 300" 
+                <svg
+                  viewBox="0 0 400 300"
                   className="w-full h-full"
                   style={{ filter: 'drop-shadow(0 0 20px rgba(0, 240, 255, 0.3))' }}
                 >
@@ -696,7 +719,7 @@ export function GameScreen() {
                       <stop offset="0%" style={{ stopColor: '#ff006e', stopOpacity: 0.3 }} />
                       <stop offset="100%" style={{ stopColor: '#ff006e', stopOpacity: 0.6 }} />
                     </linearGradient>
-                    
+
                     {/* Gradient for right side (User - Cyan) */}
                     <linearGradient id="rightGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" style={{ stopColor: '#00f0ff', stopOpacity: 0.6 }} />
@@ -705,18 +728,18 @@ export function GameScreen() {
 
                     {/* Glow filter for the needle */}
                     <filter id="neonGlow">
-                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
                       <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
                       </feMerge>
                     </filter>
 
                     {/* Electric spark filter */}
                     <filter id="electricSpark">
-                      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" result="turbulence"/>
-                      <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="5" xChannelSelector="R" yChannelSelector="G"/>
-                      <feGaussianBlur stdDeviation="1"/>
+                      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" result="turbulence" />
+                      <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="5" xChannelSelector="R" yChannelSelector="G" />
+                      <feGaussianBlur stdDeviation="1" />
                     </filter>
                   </defs>
 
@@ -757,7 +780,7 @@ export function GameScreen() {
                     const y = 250 + 150 * Math.sin(radians);
                     const x2 = 200 + 165 * Math.cos(radians);
                     const y2 = 250 + 165 * Math.sin(radians);
-                    
+
                     return (
                       <line
                         key={angle}
@@ -777,21 +800,21 @@ export function GameScreen() {
                     // Calculate the angle: current position (based on armPosition mapped to -70 to +70)
                     // armPosition: 0 = user winning (70°), 50 = neutral (0°), 100 = opponent winning (-70°)
                     const currentAngle = 70 - (armPosition * 1.4); // Maps 0-100 to 70 to -70
-                    
+
                     // Ghost trail angles - spread backwards towards 0
                     const trailOffset = i * 3; // degrees behind
-                    const ghostAngle = currentAngle > 0 
-                      ? Math.max(0, currentAngle - trailOffset) 
+                    const ghostAngle = currentAngle > 0
+                      ? Math.max(0, currentAngle - trailOffset)
                       : Math.min(0, currentAngle + trailOffset);
-                    
+
                     const angleInRadians = ((ghostAngle - 90) * Math.PI) / 180;
                     const needleLength = 140;
                     const needleX = 200 + needleLength * Math.cos(angleInRadians);
                     const needleY = 250 + needleLength * Math.sin(angleInRadians);
-                    
+
                     const opacity = 0.6 - (i * 0.08); // Fade out
                     const color = currentAngle >= 0 ? '#00f0ff' : '#ff006e';
-                    
+
                     return (
                       <motion.line
                         key={`ghost-${i}`}
@@ -833,7 +856,7 @@ export function GameScreen() {
                       const needleX = 200 + needleLength * Math.cos(angleInRadians);
                       const needleY = 250 + needleLength * Math.sin(angleInRadians);
                       const needleColor = currentAngle >= 0 ? '#00f0ff' : '#ff006e';
-                      
+
                       return (
                         <>
                           {/* Main needle line */}
@@ -852,7 +875,7 @@ export function GameScreen() {
                             }}
                             transition={{ type: 'spring', stiffness: 100, damping: 15 }}
                           />
-                          
+
                           {/* Needle tip glow */}
                           <motion.circle
                             cx={needleX}
@@ -865,20 +888,20 @@ export function GameScreen() {
                               cy: needleY,
                               r: [12, 15, 12],
                             }}
-                            transition={{ 
+                            transition={{
                               r: { duration: 1, repeat: Infinity, ease: 'easeInOut', type: 'tween' },
                               cx: { type: 'spring', stiffness: 100, damping: 15 },
                               cy: { type: 'spring', stiffness: 100, damping: 15 }
                             }}
                           />
-                          
+
                           {/* Electric sparks around needle tip */}
                           {[...Array(6)].map((_, i) => {
                             const sparkAngle = (i * 60) * Math.PI / 180;
                             const sparkDist = 20 + Math.random() * 10;
                             const sparkX = needleX + sparkDist * Math.cos(sparkAngle);
                             const sparkY = needleY + sparkDist * Math.sin(sparkAngle);
-                            
+
                             return (
                               <motion.circle
                                 key={`spark-${i}`}
@@ -947,12 +970,12 @@ export function GameScreen() {
                           type: 'tween'
                         }}
                       />
-                      
+
                       <div className="relative">
                         <div className="text-[#00f0ff]/60 text-xs uppercase tracking-widest mb-1">
                           Current Angle
                         </div>
-                        <div 
+                        <div
                           className="text-3xl font-bold text-[#00f0ff]"
                           style={{
                             fontFamily: "'Orbitron', monospace",
@@ -994,12 +1017,12 @@ export function GameScreen() {
                           type: 'tween'
                         }}
                       />
-                      
+
                       <div className="relative">
                         <div className="text-[#ff006e]/60 text-xs uppercase tracking-widest mb-1">
                           Resistance
                         </div>
-                        <div 
+                        <div
                           className="text-3xl font-bold text-[#ff006e]"
                           style={{
                             fontFamily: "'Orbitron', monospace",
@@ -1034,13 +1057,13 @@ export function GameScreen() {
                 <div className="text-7xl filter drop-shadow-[0_0_20px_rgba(0,240,255,0.5)]">
                   💪
                 </div>
-                
+
                 {/* Power burst effects */}
                 {armPosition < 30 && (
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ scale: 0, opacity: 1 }}
-                    animate={{ 
+                    animate={{
                       scale: [1, 2],
                       opacity: [0.8, 0],
                     }}
@@ -1053,12 +1076,12 @@ export function GameScreen() {
                     <Zap className="w-16 h-16 text-[#00f0ff]" />
                   </motion.div>
                 )}
-                
+
                 {armPosition > 70 && (
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ scale: 0, opacity: 1 }}
-                    animate={{ 
+                    animate={{
                       scale: [1, 2],
                       opacity: [0.8, 0],
                     }}
@@ -1095,7 +1118,7 @@ export function GameScreen() {
                         <div key={i} className="border border-[#00f0ff]/50" />
                       ))}
                     </div>
-                    
+
                     {/* Live indicator */}
                     <div className="absolute top-3 left-3 z-10">
                       <div className="flex items-center gap-2 px-3 py-2 bg-[#00f0ff]/90 backdrop-blur-sm rounded-full">
@@ -1161,7 +1184,7 @@ export function GameScreen() {
                         type: 'tween',
                       }}
                     >
-                      <h2 
+                      <h2
                         className="text-4xl md:text-5xl font-bold text-[#00f0ff] mb-2"
                         style={{
                           fontFamily: "'Orbitron', sans-serif",
@@ -1205,7 +1228,7 @@ export function GameScreen() {
                         <div key={i} className="border border-[#ff006e]/50" />
                       ))}
                     </div>
-                    
+
                     {/* Live indicator */}
                     <div className="absolute top-3 left-3 z-10">
                       <div className="flex items-center gap-2 px-3 py-2 bg-[#ff006e]/90 backdrop-blur-sm rounded-full">
@@ -1224,13 +1247,26 @@ export function GameScreen() {
                       </div>
                     </div>
 
-                    {/* Opponent Avatar */}
-                    <div className="absolute inset-0">
-                      <AvatarDisplay 
-                        avatar={player2.avatar} 
-                        className="w-full h-full rounded-none"
-                        size="xl"
-                      />
+                    {/* Opponent Live Feed */}
+                    <div className="absolute inset-0 bg-black">
+                      <video
+                        key={stageNumber}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      >
+                        <source
+                          src={
+                            stageNumber === 1 ? '/assets/robots/stage1.mp4' :
+                              stageNumber === 2 ? '/assets/robots/stage2.mp4' :
+                                stageNumber === 5 ? '/assets/robots/bosRobot.mp4' :
+                                  `/assets/robots/stage${stageNumber}.mp4`
+                          }
+                          type="video/mp4"
+                        />
+                      </video>
                     </div>
 
                     {/* Scanning effect */}
@@ -1271,7 +1307,7 @@ export function GameScreen() {
               exit={{ scale: 0, opacity: 0, y: -50 }}
             >
               <div className="text-center">
-                <h3 
+                <h3
                   className="text-7xl font-bold bg-gradient-to-r from-[#ffff00] via-[#ff006e] to-[#00f0ff] bg-clip-text text-transparent"
                   style={{
                     fontFamily: "'Orbitron', sans-serif",
@@ -1305,8 +1341,8 @@ export function GameScreen() {
               >
                 <GlassCard className="p-12 border-4 border-[#ffff00] shadow-[0_0_80px_rgba(255,255,0,0.8)]">
                   <Trophy className="w-24 h-24 text-[#ffff00] mx-auto mb-6" />
-                  
-                  <h2 
+
+                  <h2
                     className="text-6xl font-bold mb-4"
                     style={{
                       fontFamily: "'Orbitron', sans-serif",
@@ -1318,11 +1354,11 @@ export function GameScreen() {
                   >
                     {winner === 'player1' ? 'VICTORY!' : 'DEFEAT!'}
                   </h2>
-                  
+
                   <p className="text-white text-xl mb-2">
                     {winner === 'player1' ? player1.name : player2.name} WINS!
                   </p>
-                  
+
                   <p className="text-white/60 text-sm uppercase tracking-wider">
                     Heading to leaderboard...
                   </p>
@@ -1349,18 +1385,18 @@ export function GameScreen() {
                 transition={{ duration: 0.5, type: 'spring', damping: 12 }}
                 className="relative"
               >
-                <h2 
+                <h2
                   className={`text-[12rem] font-black italic ${countdown === 'GO!' ? 'text-[#ffff00]' : 'text-white'}`}
                   style={{
                     fontFamily: "'Orbitron', sans-serif",
-                    textShadow: countdown === 'GO!' 
+                    textShadow: countdown === 'GO!'
                       ? '0 0 80px rgba(255, 255, 0, 0.8), 0 0 120px rgba(255, 255, 0, 0.4)'
                       : '0 0 40px rgba(255, 255, 255, 0.5)',
                   }}
                 >
                   {countdown}
                 </h2>
-                
+
                 {countdown === 'GO!' && (
                   <motion.div
                     className="absolute inset-x-0 -bottom-10 text-center"

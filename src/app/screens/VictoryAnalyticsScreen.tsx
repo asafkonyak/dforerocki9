@@ -3,15 +3,18 @@ import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
 import { Skull, Zap, Clock, TrendingUp, Award, ChevronRight, Sparkles } from 'lucide-react';
+import { useGlobalAudio } from '../../contexts/AudioContext';
 
 export function VictoryAnalyticsScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { playWinSound } = useGlobalAudio();
   const [animateMetrics, setAnimateMetrics] = useState(false);
   const [animateCharts, setAnimateCharts] = useState(false);
 
   // Get data from navigation state or use defaults
   const matchData = location.state || {
+    isWin: true,
     peakForce: 68,
     enduranceTime: 45,
     xpEarned: 500,
@@ -19,7 +22,13 @@ export function VictoryAnalyticsScreen() {
     stageNumber: 4,
   };
 
+  const isWin = matchData.isWin ?? true;
+
   useEffect(() => {
+    if (isWin) {
+      playWinSound();
+    }
+
     // Trigger animations sequentially
     const metricsTimer = setTimeout(() => setAnimateMetrics(true), 500);
     const chartsTimer = setTimeout(() => setAnimateCharts(true), 1000);
@@ -41,7 +50,7 @@ export function VictoryAnalyticsScreen() {
     { time: 30, force: 52 },
     { time: 35, force: 45 },
     { time: 40, force: 48 },
-    { time: 45, force: 60 }, // Victory moment
+    { time: 45, force: isWin ? 60 : 20 }, // Victory or Defeat moment
   ];
 
   const maxForce = Math.max(...forceData.map(d => d.force));
@@ -51,7 +60,7 @@ export function VictoryAnalyticsScreen() {
       {/* Animated Background */}
       <div className="absolute inset-0">
         <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-[#00f0ff]/20 via-[#0a0515] to-[#ffaa00]/20"
+          className={`absolute inset-0 bg-gradient-to-br ${isWin ? 'from-[#00f0ff]/20 via-[#0a0515] to-[#ffaa00]/20' : 'from-[#ff0033]/20 via-[#0a0515] to-[#770000]/20'}`}
           animate={{
             opacity: [0.5, 0.8, 0.5],
           }}
@@ -62,9 +71,9 @@ export function VictoryAnalyticsScreen() {
           }}
         />
 
-        {/* Victory energy blobs */}
+        {/* Energy blobs */}
         <motion.div
-          className="absolute w-96 h-96 bg-[#00f0ff] rounded-full blur-[120px]"
+          className={`absolute w-96 h-96 ${isWin ? 'bg-[#00f0ff]' : 'bg-[#ff0044]'} rounded-full blur-[120px]`}
           animate={{
             x: ['-20%', '20%', '-20%'],
             y: ['0%', '30%', '0%'],
@@ -80,7 +89,7 @@ export function VictoryAnalyticsScreen() {
         />
 
         <motion.div
-          className="absolute w-96 h-96 bg-[#ffaa00] rounded-full blur-[120px]"
+          className={`absolute w-96 h-96 ${isWin ? 'bg-[#ffaa00]' : 'bg-[#990000]'} rounded-full blur-[120px]`}
           animate={{
             x: ['20%', '-20%', '20%'],
             y: ['0%', '-30%', '0%'],
@@ -102,8 +111,8 @@ export function VictoryAnalyticsScreen() {
         className="absolute inset-0 opacity-5"
         style={{
           backgroundImage: `
-            linear-gradient(#00f0ff 1px, transparent 1px),
-            linear-gradient(90deg, #00f0ff 1px, transparent 1px)
+            linear-gradient(${isWin ? '#00f0ff' : '#ff0033'} 1px, transparent 1px),
+            linear-gradient(90deg, ${isWin ? '#00f0ff' : '#ff0033'} 1px, transparent 1px)
           `,
           backgroundSize: '50px 50px'
         }}
@@ -113,7 +122,7 @@ export function VictoryAnalyticsScreen() {
       {[...Array(20)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-1 h-1 bg-[#00f0ff] rounded-full"
+          className={`absolute w-1 h-1 ${isWin ? 'bg-[#00f0ff]' : 'bg-[#ff4444]'} rounded-full`}
           style={{
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,
@@ -139,7 +148,7 @@ export function VictoryAnalyticsScreen() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.8, type: 'spring', bounce: 0.4 }}
         >
-          {/* Victory Icon */}
+          {/* Status Icon */}
           <motion.div
             className="flex justify-center mb-6"
             initial={{ rotate: -180, scale: 0 }}
@@ -147,7 +156,11 @@ export function VictoryAnalyticsScreen() {
             transition={{ duration: 1, type: 'spring', bounce: 0.6 }}
           >
             <div className="relative">
-              <Award className="w-24 h-24 text-[#ffaa00]" strokeWidth={1.5} />
+              {isWin ? (
+                <Award className="w-24 h-24 text-[#ffaa00]" strokeWidth={1.5} />
+              ) : (
+                <Skull className="w-24 h-24 text-[#ff0033]" strokeWidth={1.5} />
+              )}
               
               {/* Radiating rings */}
               <motion.div
@@ -162,7 +175,7 @@ export function VictoryAnalyticsScreen() {
                   type: 'tween',
                 }}
               >
-                <div className="w-full h-full border-4 border-[#ffaa00] rounded-full" />
+                <div className={`w-full h-full border-4 ${isWin ? 'border-[#ffaa00]' : 'border-[#ff0033]'} rounded-full`} />
               </motion.div>
             </div>
           </motion.div>
@@ -171,15 +184,21 @@ export function VictoryAnalyticsScreen() {
             className="text-5xl md:text-6xl font-bold mb-2"
             style={{
               fontFamily: "'Orbitron', sans-serif",
-              background: 'linear-gradient(to right, #00f0ff, #00ffff)',
+              background: isWin 
+                ? 'linear-gradient(to right, #00f0ff, #00ffff)' 
+                : 'linear-gradient(to right, #ff0033, #ff4444)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}
             animate={{
-              textShadow: [
+              textShadow: isWin ? [
                 '0 0 40px rgba(0, 240, 255, 0.8)',
                 '0 0 80px rgba(0, 240, 255, 1)',
                 '0 0 40px rgba(0, 240, 255, 0.8)',
+              ] : [
+                '0 0 40px rgba(255, 0, 51, 0.8)',
+                '0 0 80px rgba(255, 0, 51, 1)',
+                '0 0 40px rgba(255, 0, 51, 0.8)',
               ],
             }}
             transition={{
@@ -188,7 +207,7 @@ export function VictoryAnalyticsScreen() {
               type: 'tween',
             }}
           >
-            TARGET DEFEATED
+            {isWin ? 'TARGET DEFEATED' : 'MISSION FAILED'}
           </motion.h1>
 
           <motion.p
@@ -215,86 +234,48 @@ export function VictoryAnalyticsScreen() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column - Metrics & Defeated Icon */}
               <div className="space-y-4">
-                {/* Shattered Holographic Skull */}
-                <motion.div
-                  className="flex justify-center mb-8"
-                  initial={{ scale: 1, rotate: 0 }}
-                  animate={animateMetrics ? {
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 10, -10, 0],
-                  } : {}}
-                  transition={{ duration: 0.6 }}
-                >
-                  <div className="relative">
-                    <Skull className="w-32 h-32 text-[#00f0ff]" strokeWidth={1.5} />
+                <div className="flex flex-col items-center">
+                  <div className={`w-full aspect-video rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_30px_#00f0ff]' : 'border-[#ff0033] shadow-[0_0_30px_#ff0033]'} bg-black relative mb-6`}>
+                    <video
+                      key={matchData.stageNumber}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      <source 
+                        src={
+                          matchData.stageNumber === 1 ? '/assets/robots/stage1_postfight.mp4' :
+                          matchData.stageNumber === 2 ? `/assets/robots/stage2.mp4` :
+                          matchData.stageNumber === 5 ? '/assets/robots/bosRobot.mp4' :
+                          `/assets/robots/stage${matchData.stageNumber}.mp4`
+                        } 
+                        type="video/mp4" 
+                      />
+                    </video>
                     
-                    {/* Shatter lines */}
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
-                      <motion.line
-                        x1="20" y1="10" x2="80" y2="90"
-                        stroke="#ffaa00"
-                        strokeWidth="2"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={animateMetrics ? { pathLength: 1, opacity: 0.6 } : {}}
-                        transition={{ duration: 0.4, delay: 0.2 }}
-                      />
-                      <motion.line
-                        x1="50" y1="0" x2="50" y2="100"
-                        stroke="#ffaa00"
-                        strokeWidth="2"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={animateMetrics ? { pathLength: 1, opacity: 0.6 } : {}}
-                        transition={{ duration: 0.4, delay: 0.3 }}
-                      />
-                      <motion.line
-                        x1="80" y1="10" x2="20" y2="90"
-                        stroke="#ffaa00"
-                        strokeWidth="2"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={animateMetrics ? { pathLength: 1, opacity: 0.6 } : {}}
-                        transition={{ duration: 0.4, delay: 0.4 }}
-                      />
-                    </svg>
-
-                    {/* Glass fragments */}
-                    {[...Array(6)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute top-1/2 left-1/2 w-3 h-3 bg-[#00f0ff]/40 rounded-sm"
-                        initial={{ x: 0, y: 0, opacity: 1 }}
-                        animate={animateMetrics ? {
-                          x: (Math.random() - 0.5) * 100,
-                          y: (Math.random() - 0.5) * 100,
-                          opacity: 0,
-                          rotate: Math.random() * 360,
-                        } : {}}
-                        transition={{ duration: 0.8, delay: 0.5 + i * 0.05 }}
-                      />
-                    ))}
-
-                    {/* Holographic scan lines */}
+                    {/* Scanning overlay */}
                     <motion.div
-                      className="absolute inset-0 opacity-30"
-                      style={{
-                        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00f0ff 2px, #00f0ff 4px)',
-                      }}
+                      className={`absolute inset-x-0 h-1 bg-${isWin ? '[#00f0ff]' : '[#ff0033]'}`}
                       animate={{
-                        opacity: [0.3, 0.6, 0.3],
+                        y: ['0%', '400%'],
+                        opacity: [0, 1, 0],
                       }}
                       transition={{
-                        duration: 1.5,
+                        duration: 3,
                         repeat: Infinity,
-                        type: 'tween',
+                        ease: "linear",
                       }}
                     />
                   </div>
-                </motion.div>
 
-                <div className="text-center">
-                  <h3 className="text-[#00f0ff]/60 text-sm uppercase tracking-widest mb-2">Target Status</h3>
-                  <p className="text-2xl font-bold text-[#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    ELIMINATED
-                  </p>
+                  <div className="text-center mb-4">
+                    <h3 className={`text-${isWin ? '[#00f0ff]' : '[#ff0033]'}/60 text-sm uppercase tracking-widest mb-2`}>Mission Status</h3>
+                    <p className={`text-4xl font-black italic text-${isWin ? '[#00f0ff]' : '[#ff0033]'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      {isWin ? 'TARGET ELIMINATED' : 'TARGET ESCAPED'}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Key Metrics */}
@@ -312,7 +293,7 @@ export function VictoryAnalyticsScreen() {
                           <span className="text-white/60 text-sm uppercase tracking-wider">Peak Force</span>
                         </div>
                         <motion.span 
-                          className="text-3xl font-bold text-[#ffaa00]"
+                          className={`text-3xl font-bold ${isWin ? 'text-[#ffaa00]' : 'text-[#ff4444]'}`}
                           style={{ fontFamily: "'Orbitron', monospace" }}
                           initial={{ scale: 0 }}
                           animate={animateMetrics ? { scale: 1 } : {}}
@@ -323,12 +304,12 @@ export function VictoryAnalyticsScreen() {
                       </div>
                       {/* Force bar */}
                       <div className="mt-3 h-2 bg-black/50 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-[#ffaa00] to-[#ff6600] shadow-[0_0_10px_#ffaa00]"
-                          initial={{ width: '0%' }}
-                          animate={animateMetrics ? { width: `${(matchData.peakForce / 100) * 100}%` } : {}}
-                          transition={{ delay: 0.9, duration: 1, ease: 'easeOut' }}
-                        />
+                          <motion.div
+                            className={`h-full bg-gradient-to-r ${isWin ? 'from-[#ffaa00] to-[#ff6600] shadow-[0_0_10px_#ffaa00]' : 'from-[#ff0033] to-[#ff4444] shadow-[0_0_10px_#ff0033]'}`}
+                            initial={{ width: '0%' }}
+                            animate={animateMetrics ? { width: `${(matchData.peakForce / 100) * 100}%` } : {}}
+                            transition={{ delay: 0.9, duration: 1, ease: 'easeOut' }}
+                          />
                       </div>
                     </GlassCard>
                   </motion.div>
@@ -346,7 +327,7 @@ export function VictoryAnalyticsScreen() {
                           <span className="text-white/60 text-sm uppercase tracking-wider">Endurance Time</span>
                         </div>
                         <motion.span 
-                          className="text-3xl font-bold text-[#00f0ff]"
+                          className={`text-3xl font-bold ${isWin ? 'text-[#00f0ff]' : 'text-[#ff4444]'}`}
                           style={{ fontFamily: "'Orbitron', monospace" }}
                           initial={{ scale: 0 }}
                           animate={animateMetrics ? { scale: 1 } : {}}
@@ -357,12 +338,12 @@ export function VictoryAnalyticsScreen() {
                       </div>
                       {/* Time bar */}
                       <div className="mt-3 h-2 bg-black/50 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-[#00f0ff] to-[#00ffff] shadow-[0_0_10px_#00f0ff]"
-                          initial={{ width: '0%' }}
-                          animate={animateMetrics ? { width: `${(matchData.enduranceTime / 60) * 100}%` } : {}}
-                          transition={{ delay: 1.1, duration: 1, ease: 'easeOut' }}
-                        />
+                          <motion.div
+                            className={`h-full bg-gradient-to-r ${isWin ? 'from-[#00f0ff] to-[#00ffff] shadow-[0_0_10px_#00f0ff]' : 'from-[#ff0033] to-[#ff4444] shadow-[0_0_10px_#ff4444]'}`}
+                            initial={{ width: '0%' }}
+                            animate={animateMetrics ? { width: `${(matchData.enduranceTime / 60) * 100}%` } : {}}
+                            transition={{ delay: 1.1, duration: 1, ease: 'easeOut' }}
+                          />
                       </div>
                     </GlassCard>
                   </motion.div>
@@ -386,12 +367,12 @@ export function VictoryAnalyticsScreen() {
                           transition={{ delay: 1.2, type: 'spring', bounce: 0.6 }}
                         >
                           <Sparkles className="w-6 h-6 text-[#ffaa00]" />
-                          <span 
-                            className="text-3xl font-bold text-[#ffaa00]"
-                            style={{ fontFamily: "'Orbitron', monospace" }}
-                          >
-                            +{matchData.xpEarned}
-                          </span>
+                            <span 
+                              className={`text-3xl font-bold ${isWin ? 'text-[#ffaa00]' : 'text-white/40'}`}
+                              style={{ fontFamily: "'Orbitron', monospace" }}
+                            >
+                              {isWin ? `+${matchData.xpEarned}` : '+0'}
+                            </span>
                         </motion.div>
                       </div>
                     </GlassCard>
@@ -433,14 +414,14 @@ export function VictoryAnalyticsScreen() {
                       <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
                         <defs>
                           <linearGradient id="forceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style={{ stopColor: '#00f0ff', stopOpacity: 0.8 }} />
-                            <stop offset="50%" style={{ stopColor: '#ffaa00', stopOpacity: 0.6 }} />
-                            <stop offset="100%" style={{ stopColor: '#00f0ff', stopOpacity: 0.4 }} />
+                            <stop offset="0%" style={{ stopColor: isWin ? '#00f0ff' : '#ff0033', stopOpacity: 0.8 }} />
+                            <stop offset="50%" style={{ stopColor: isWin ? '#ffaa00' : '#ff4444', stopOpacity: 0.6 }} />
+                            <stop offset="100%" style={{ stopColor: isWin ? '#00f0ff' : '#ff0033', stopOpacity: 0.4 }} />
                           </linearGradient>
 
                           <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style={{ stopColor: '#00f0ff', stopOpacity: 0.3 }} />
-                            <stop offset="100%" style={{ stopColor: '#00f0ff', stopOpacity: 0 }} />
+                            <stop offset="0%" style={{ stopColor: isWin ? '#00f0ff' : '#ff0033', stopOpacity: 0.3 }} />
+                            <stop offset="100%" style={{ stopColor: isWin ? '#00f0ff' : '#ff0033', stopOpacity: 0 }} />
                           </linearGradient>
                         </defs>
 
@@ -492,11 +473,11 @@ export function VictoryAnalyticsScreen() {
                               cx={`${x}%`}
                               cy={`${y}%`}
                               r={isPeak ? "5" : "3"}
-                              fill={isPeak ? '#ffaa00' : '#00f0ff'}
+                              fill={isPeak ? (isWin ? '#ffaa00' : '#ff0033') : (isWin ? '#00f0ff' : '#ff4444')}
                               initial={{ scale: 0, opacity: 0 }}
                               animate={animateCharts ? { scale: 1, opacity: 1 } : {}}
                               transition={{ delay: 0.3 + (i * 0.05), duration: 0.3 }}
-                              style={{ filter: isPeak ? 'drop-shadow(0 0 6px #ffaa00)' : 'none' }}
+                              style={{ filter: isPeak ? `drop-shadow(0 0 6px ${isWin ? '#ffaa00' : '#ff0033'})` : 'none' }}
                             />
                           );
                         })}
@@ -516,12 +497,12 @@ export function VictoryAnalyticsScreen() {
                 {/* Chart Legend */}
                 <div className="mt-4 flex items-center justify-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[#ffaa00] shadow-[0_0_8px_#ffaa00]" />
-                    <span className="text-white/60">Peak Force</span>
+                    <div className={`w-3 h-3 rounded-full ${isWin ? 'bg-[#ffaa00] shadow-[0_0_8px_#ffaa00]' : 'bg-[#ff0033] shadow-[0_0_8px_#ff0033]'}`} />
+                    <span className="text-white/60">Peak</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]" />
-                    <span className="text-white/60">Force Applied</span>
+                    <div className={`w-3 h-3 rounded-full ${isWin ? 'bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]' : 'bg-[#ff4444] shadow-[0_0_8px_#ff4444]'}`} />
+                    <span className="text-white/60">Current</span>
                   </div>
                 </div>
               </div>
@@ -561,16 +542,16 @@ export function VictoryAnalyticsScreen() {
               />
               
               <div className="relative flex items-center justify-center gap-4">
-                <span 
-                  className="text-2xl md:text-3xl font-bold text-[#00f0ff]"
-                  style={{
-                    fontFamily: "'Orbitron', sans-serif",
-                    textShadow: '0 0 20px rgba(0, 240, 255, 1)',
-                  }}
-                >
-                  CONTINUE TO MAP
-                </span>
-                <ChevronRight className="w-8 h-8 text-[#00f0ff]" />
+                  <span 
+                    className={`text-2xl md:text-3xl font-bold ${isWin ? 'text-[#00f0ff]' : 'text-[#ff4444]'}`}
+                    style={{
+                      fontFamily: "'Orbitron', sans-serif",
+                      textShadow: `0 0 20px ${isWin ? 'rgba(0, 240, 255, 1)' : 'rgba(255, 0, 51, 1)'}`,
+                    }}
+                  >
+                    {isWin ? 'CONTINUE TO MAP' : 'RETURN TO MAP'}
+                  </span>
+                  <ChevronRight className={`w-8 h-8 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff4444]'}`} />
               </div>
             </GlassCard>
 

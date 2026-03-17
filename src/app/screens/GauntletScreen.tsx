@@ -4,43 +4,85 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
 import { Lock, Skull, Zap, AlertTriangle, ChevronRight, Sparkles, ArrowLeft, Trophy } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useGlobalAudio } from '../../contexts/AudioContext';
 
 export function GauntletScreen() {
   const navigate = useNavigate();
+  const { playStageMusic, stopStageMusic, stopWinSound } = useGlobalAudio();
   const [showUnlockAnimation, setShowUnlockAnimation] = useState(false);
   const [pathProgress, setPathProgress] = useState(0);
   const [gauntletProgress, setGauntletProgress] = useState(1);
   const [loading, setLoading] = useState(true);
+
+  // Handle stage music and win sound
+  useEffect(() => {
+    stopWinSound();
+    if (!loading) {
+      playStageMusic(gauntletProgress);
+    }
+    return () => stopStageMusic();
+  }, [loading, gauntletProgress, playStageMusic, stopStageMusic, stopWinSound]);
 
   // Fetch progress on mount
   useEffect(() => {
     async function fetchProgress() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        let playerId: string | null = localStorage.getItem('fighter_player_id'); // Explicitly type playerId as string | null
-        
+        let playerId: string | null = localStorage.getItem('fighter_player_id');
+
         if (user) {
           const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
           if (profile?.player_id) {
             playerId = profile.player_id;
-            if (playerId) localStorage.setItem('fighter_player_id', playerId);
-          } else {
-            // If user exists but no player_id in profile, it means they haven't completed onboarding.
-            // In this case, we should ensure playerId is null to prevent fetching non-existent player data.
-            // Or, more robustly, redirect them to onboarding. For now, we'll just ensure playerId is null.
-            playerId = null; 
+            localStorage.setItem('fighter_player_id', playerId!);
+          } else if (playerId) {
+            // LINK REPAIR: We have a user and a local playerId, but no link in profiles.
+            // Attempt to link them now to fix the sync for future sessions.
+            try {
+              console.log('Gauntlet Progress Sync - Repairing broken profile link for player:', playerId);
+              await supabase.from('profiles').upsert({ 
+                id: user.id, 
+                player_id: playerId,
+                updated_at: new Date().toISOString()
+              });
+            } catch (linkErr) {
+              console.warn("Gauntlet Progress Sync - Profile link repair failed (likely missing column):", linkErr);
+            }
           }
         }
 
         let progress = 1;
+        const localProgress = localStorage.getItem('fighter_gauntlet_progress');
+        const currentLocal = localProgress ? parseInt(localProgress) : 1;
+        
+        console.log('Gauntlet Progress Sync Start - Local:', currentLocal);
+        
         if (playerId) {
-          const { data } = await supabase.from('players').select('gauntlet_progress').eq('id', playerId as string).maybeSingle();
-          if (data) progress = data.gauntlet_progress || 1;
+          // If we have a playerId (either from DB or preserved from Local), fetch from players table
+          const { data } = await supabase.from('players').select('gauntlet_progress').eq('id', playerId).maybeSingle();
+          const dbProgress = data?.gauntlet_progress || 1;
+          
+          console.log('Gauntlet Progress Sync - DB:', dbProgress);
+          
+          // Sync logic: Use the MOST ADVANCED progress known to handle win-to-map redirects
+          progress = Math.max(dbProgress, currentLocal);
+          
+          // If local is ahead (just won a match), sync it to the DB immediately
+          if (currentLocal > dbProgress && user) {
+            console.log('Gauntlet Progress Sync - Proactively updating DB with local win progress:', currentLocal);
+            await supabase.from('players').update({ gauntlet_progress: currentLocal }).eq('id', playerId);
+          }
+        } else {
+          // Pure guest with no playerId and no user - highly unlikely but possible for fresh start
+          progress = currentLocal;
         }
         
+        console.log('Gauntlet Progress Sync - Resolved:', progress);
+        localStorage.setItem('fighter_gauntlet_progress', progress.toString());
+
         setGauntletProgress(Math.min(progress, 6));
         setLoading(false);
-        
+
         if (progress > 1 && progress <= 5) {
           setShowUnlockAnimation(true);
         }
@@ -70,6 +112,7 @@ export function GauntletScreen() {
       id: 1,
       name: 'STAGE 01',
       robot: '🤖',
+      image: '/assets/robots/stage1.jpg',
       difficulty: 'Easy',
       description: 'TRAINING DROID',
     },
@@ -77,6 +120,7 @@ export function GauntletScreen() {
       id: 2,
       name: 'STAGE 02',
       robot: '🦾',
+      image: '/assets/robots/stage2.png',
       difficulty: 'Medium',
       description: 'MECH BRAWLER',
     },
@@ -84,6 +128,7 @@ export function GauntletScreen() {
       id: 3,
       name: 'STAGE 03',
       robot: '⚙️',
+      image: '/assets/robots/stage3.png',
       difficulty: 'Hard',
       description: 'STEEL ASSASSIN',
     },
@@ -91,6 +136,7 @@ export function GauntletScreen() {
       id: 4,
       name: 'STAGE 04',
       robot: '🔥',
+      image: '/assets/robots/stage4.png',
       difficulty: 'Extreme',
       description: 'CRUSHER X-9000',
     },
@@ -98,6 +144,7 @@ export function GauntletScreen() {
       id: 5,
       name: 'FINAL BOSS',
       robot: '💀',
+      image: '/assets/robots/stage5.png',
       difficulty: 'LETHAL',
       description: 'ANNIHILATOR PRIME',
     },
@@ -114,7 +161,7 @@ export function GauntletScreen() {
     }
     return { ...stage, status, cleared: status === 'cleared' };
   });
-  
+
   // Find current active stage for the bottom panel
   const activeStageIndex = Math.min(gauntletProgress - 1, 4);
   const activeStage = baseStages[activeStageIndex];
@@ -140,7 +187,7 @@ export function GauntletScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       let playerId = localStorage.getItem('fighter_player_id');
-      
+
       if (user) {
         const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
         if (profile?.player_id) playerId = profile.player_id;
@@ -151,7 +198,7 @@ export function GauntletScreen() {
           .from('players')
           .update({ gauntlet_progress: 1 })
           .eq('id', playerId);
-          
+
         if (error) throw error;
         setGauntletProgress(1);
         setShowUnlockAnimation(false);
@@ -187,13 +234,13 @@ export function GauntletScreen() {
                   <div className="w-20 h-20 rounded-full bg-[#ff006e]/20 flex items-center justify-center border-2 border-[#ff006e] shadow-[0_0_20px_#ff006e]">
                     <AlertTriangle className="w-10 h-10 text-[#ff006e]" />
                   </div>
-                  
+
                   <div>
                     <h2 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                       RESET PROGRESS?
                     </h2>
                     <p className="text-white/60">
-                      This will reset your Gauntlet progress to Stage 1. 
+                      This will reset your Gauntlet progress to Stage 1.
                       <br />
                       <span className="text-[#ff006e] font-bold">This action cannot be undone.</span>
                     </p>
@@ -236,7 +283,7 @@ export function GauntletScreen() {
             type: 'tween',
           }}
         />
-        
+
         {/* Dynamic energy blobs */}
         <motion.div
           className="absolute w-96 h-96 bg-[#00f0ff] rounded-full blur-[120px]"
@@ -252,7 +299,7 @@ export function GauntletScreen() {
           }}
           style={{ top: '20%', left: '10%' }}
         />
-        
+
         <motion.div
           className="absolute w-96 h-96 bg-[#ff006e] rounded-full blur-[120px]"
           animate={{
@@ -285,7 +332,7 @@ export function GauntletScreen() {
       </div>
 
       {/* Grid overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-5"
         style={{
           backgroundImage: `
@@ -321,7 +368,7 @@ export function GauntletScreen() {
               <span className="text-[#ff006e]/80 text-sm uppercase tracking-wider font-bold">Redo</span>
             </motion.button>
           </div>
-          
+
           {/* Center: Glowing Title */}
           <motion.div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
@@ -329,7 +376,7 @@ export function GauntletScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <motion.h1 
+            <motion.h1
               className="text-4xl font-bold"
               style={{
                 fontFamily: "'Orbitron', sans-serif",
@@ -357,7 +404,7 @@ export function GauntletScreen() {
               Defeat All Robots to Claim Victory
             </p>
           </motion.div>
-          
+
           {/* Spacer for right side symmetry */}
           <div className="w-32" />
         </div>
@@ -378,7 +425,7 @@ export function GauntletScreen() {
                     <div key={lineIndex} className="flex-1 h-1 bg-gradient-to-r from-[#00f0ff] to-[#00f0ff] shadow-[0_0_10px_#00f0ff] mx-4" />
                   );
                 }
-                
+
                 if (isAnimating) {
                   return (
                     <div key={lineIndex} className="flex-1 relative mx-4 h-1 bg-white/10">
@@ -453,18 +500,20 @@ export function GauntletScreen() {
                               repeat: Infinity,
                             }}
                           />
-                          
-                          {/* Robot Avatar (Lit) */}
-                          <div className="text-5xl drop-shadow-[0_0_10px_#00f0ff]">
-                            {stage.robot}
-                          </div>
-                          
+
+                          {/* Robot Image (Lit) */}
+                          <img
+                            src={stage.image}
+                            alt={stage.name}
+                            className="w-full h-full object-cover opacity-80 drop-shadow-[0_0_10px_#00f0ff]"
+                          />
+
                           {/* Checkmark badge */}
                           <div className="absolute top-2 right-2 w-6 h-6 bg-[#00f0ff] rounded-full flex items-center justify-center shadow-[0_0_15px_#00f0ff]">
                             <span className="text-black font-bold text-xs">✓</span>
                           </div>
                         </GlassCard>
-                        
+
                         {/* Label */}
                         <div className="text-center mt-3">
                           <p className="text-[#00f0ff] text-sm font-bold drop-shadow-[0_0_5px_#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
@@ -516,8 +565,8 @@ export function GauntletScreen() {
                           <motion.div
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
                             initial={{ opacity: 1, scale: 1 }}
-                            animate={{ 
-                              opacity: 0, 
+                            animate={{
+                              opacity: 0,
                               scale: 1.5,
                               rotate: [0, -10, 10, -10, 0],
                             }}
@@ -531,11 +580,11 @@ export function GauntletScreen() {
                         {/* Unlocking Card - Scales up and pops forward */}
                         <motion.div
                           initial={{ scale: 0.5, opacity: 0 }}
-                          animate={{ 
-                            scale: 1.1, 
+                          animate={{
+                            scale: 1.1,
                             opacity: 1,
                           }}
-                          transition={{ 
+                          transition={{
                             delay: 0.8,
                             duration: 0.6,
                             type: 'spring',
@@ -548,10 +597,10 @@ export function GauntletScreen() {
                             <motion.div
                               className="absolute inset-0 bg-gradient-to-br from-[#ffaa00] to-transparent"
                               initial={{ opacity: 0 }}
-                              animate={{ 
+                              animate={{
                                 opacity: [0, 1, 0],
                               }}
-                              transition={{ 
+                              transition={{
                                 duration: 0.8,
                                 delay: 0.8,
                                 type: 'tween',
@@ -572,22 +621,21 @@ export function GauntletScreen() {
                               }}
                             />
 
-                            {/* Robot Avatar */}
-                            <div className="relative z-10">
-                              <motion.div 
-                                className="text-7xl"
+                            {/* Robot Image */}
+                            <div className="relative z-10 w-full h-full">
+                              <motion.img
+                                src={stage.image}
+                                alt={stage.name}
+                                className="w-full h-full object-cover"
                                 animate={{
-                                  scale: [1, 1.1, 1],
-                                  rotate: [0, 5, -5, 0],
+                                  scale: [1, 1.05, 1],
                                 }}
                                 transition={{
-                                  duration: 2,
+                                  duration: 3,
                                   repeat: Infinity,
-                                  type: 'tween',
+                                  ease: "easeInOut"
                                 }}
-                              >
-                                {stage.robot}
-                              </motion.div>
+                              />
                             </div>
 
                             {/* "ACTIVE" badge */}
@@ -618,7 +666,7 @@ export function GauntletScreen() {
                             {stage.name}
                           </p>
                           <p className="text-white text-sm font-bold mt-1">{stage.description}</p>
-                          <motion.p 
+                          <motion.p
                             className="text-[#ffaa00] text-xs uppercase mt-1 font-bold"
                             animate={{
                               opacity: [0.6, 1, 0.6],
@@ -647,10 +695,12 @@ export function GauntletScreen() {
                             <Lock className="w-12 h-12 text-white/40" strokeWidth={1.5} />
                           </div>
 
-                          {/* Robot (dimmed) */}
-                          <div className="text-5xl">
-                            {stage.robot}
-                          </div>
+                          {/* Robot Image (dimmed) */}
+                          <img
+                            src={stage.image}
+                            alt={stage.name}
+                            className="w-full h-full object-cover"
+                          />
                         </GlassCard>
 
                         {/* Label */}
@@ -682,22 +732,22 @@ export function GauntletScreen() {
         >
           {gauntletProgress > 5 ? (
             <GlassCard className="p-8 border-4 border-[#ffaa00] bg-gradient-to-br from-[#ffaa00]/20 to-[#0a0515] shadow-[0_0_60px_rgba(255,170,0,0.6)] text-center relative overflow-hidden">
-               {/* Animated scanning lines */}
-               <motion.div 
-                 className="absolute inset-0 opacity-20 pointer-events-none"
-                 style={{
-                   backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #ffaa00 2px, #ffaa00 4px)',
-                   backgroundSize: '100% 4px'
-                 }}
-                 animate={{
-                   backgroundPositionY: ['0px', '40px']
-                 }}
-                 transition={{
-                   duration: 2,
-                   repeat: Infinity,
-                   ease: 'linear'
-                 }}
-               />
+              {/* Animated scanning lines */}
+              <motion.div
+                className="absolute inset-0 opacity-20 pointer-events-none"
+                style={{
+                  backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #ffaa00 2px, #ffaa00 4px)',
+                  backgroundSize: '100% 4px'
+                }}
+                animate={{
+                  backgroundPositionY: ['0px', '40px']
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: 'linear'
+                }}
+              />
 
               <motion.div
                 initial={{ scale: 0.9 }}
@@ -726,35 +776,51 @@ export function GauntletScreen() {
               <div className="flex items-center justify-between gap-6">
                 {/* Stage Info */}
                 <div className="flex items-center gap-6">
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl
-                    ${activeStage.id === 5 
-                      ? 'bg-gradient-to-br from-[#ff006e] to-black shadow-[0_0_30px_rgba(255,0,110,0.8)] border-2 border-[#ff006e]' 
+                  <div className={`w-32 h-32 rounded-xl flex items-center justify-center overflow-hidden
+                    ${activeStage.id === 5
+                      ? 'bg-gradient-to-br from-[#ff006e] to-black shadow-[0_0_30px_rgba(255,0,110,0.8)] border-2 border-[#ff006e]'
                       : 'bg-gradient-to-br from-[#ffaa00] to-[#ff006e] shadow-[0_0_20px_rgba(255,170,0,0.8)] border-2 border-[#ffaa00]'}`}
                   >
-                    <motion.span
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                    <video
+                      key={activeStage.id}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover scale-110"
                     >
-                      {activeStage.robot}
-                    </motion.span>
+                      <source
+                        src={
+                          activeStage.id === 1 ? '/assets/robots/stage1_prefight.mp4' :
+                            activeStage.id === 2 ? '/assets/robots/stage2_prefight.mp4' :
+                              activeStage.id === 3 ? '/assets/robots/stage3.mp4' :
+                                activeStage.id === 4 ? '/assets/robots/stage4.mp4' :
+                                  activeStage.id === 5 ? '/assets/robots/bosRobot.mp4' :
+                                    '/assets/training.mp4'
+                        }
+                        type="video/mp4"
+                      />
+                    </video>
                   </div>
-                  
-                  <div>
-                    <h3 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[#ffaa00] text-sm font-bold tracking-[0.2em] uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      {activeStage.name}
+                    </p>
+                    <h3 className="text-3xl font-black text-white italic tracking-tighter" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                       {activeStage.name}: {activeStage.description}
                     </h3>
-                    <div className="flex items-center gap-4 text-sm">
+
+                    <div className="flex flex-col gap-2 mt-2">
                       <div className="flex items-center gap-2">
-                        <Zap className={`w-4 h-4 ${activeStage.id === 5 ? 'text-[#ff006e]' : 'text-[#ffaa00]'}`} />
-                        <span className="text-white/60">Difficulty:</span>
-                        <span className={`${activeStage.id === 5 ? 'text-[#ff006e]' : 'text-[#ffaa00]'} font-bold uppercase tracking-wider`}>
+                        <span className="text-white/40 text-xs uppercase tracking-widest font-bold">Difficulty:</span>
+                        <span className={`${activeStage.id === 5 ? 'text-[#ff006e]' : 'text-[#ffaa00]'} font-bold uppercase text-sm tracking-wider`}>
                           {activeStage.difficulty}
                         </span>
                       </div>
-                      <div className="w-1 h-4 bg-white/20" />
                       <div className="flex items-center gap-2">
-                        <span className="text-white/60">Reward:</span>
-                        <span className="text-[#00f0ff] font-bold">+{activeStage.id * 200} XP</span>
+                        <span className="text-white/40 text-xs uppercase tracking-widest font-bold">Reward:</span>
+                        <span className="text-[#00f0ff] font-bold text-sm">+{activeStage.id * 200} XP</span>
                       </div>
                     </div>
                   </div>
@@ -765,60 +831,63 @@ export function GauntletScreen() {
                   className="group relative overflow-hidden shrink-0 transform-gpu"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate('/game', { 
-                    state: { 
-                      mode: 'gauntlet', 
-                      stageNumber: activeStage.id, 
-                      stageName: activeStage.description 
-                    } 
+                  onClick={() => navigate('/game', {
+                    state: {
+                      mode: 'gauntlet',
+                      stageNumber: activeStage.id,
+                      stageName: activeStage.description
+                    }
                   })}
                 >
-                <GlassCard className="px-10 py-6 border-4 border-[#00f0ff] bg-gradient-to-r from-[#00f0ff]/30 to-[#00f0ff]/10 shadow-[0_0_40px_rgba(0,240,255,0.8)]">
-                  {/* Animated background */}
+                  <GlassCard className="px-12 py-8 border-4 border-[#00f0ff] bg-gradient-to-r from-[#00f0ff]/30 to-[#00f0ff]/10 shadow-[0_0_40px_rgba(0,240,255,0.8)]">
+                    {/* Animated background sweep */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00f0ff]/40 to-transparent"
+                      animate={{
+                        x: ['-100%', '200%'],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: 'linear',
+                        type: 'tween',
+                      }}
+                    />
+
+                    <div className="relative flex flex-col items-center gap-1">
+                      <span
+                        className="text-3xl font-black text-white italic"
+                        style={{
+                          fontFamily: "'Orbitron', sans-serif",
+                          textShadow: '0 0 20px rgba(0, 240, 255, 1)',
+                        }}
+                      >
+                        ENGAGE TARGET
+                      </span>
+                      <div className="flex items-center gap-2 text-[#00f0ff]">
+                        <span className="text-[10px] font-bold tracking-[0.5em] uppercase">Initialize Battle</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </GlassCard>
+
+                  {/* Pulsing outer ring */}
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-[#00f0ff]/40 to-transparent"
+                    className="absolute inset-0 border-4 border-[#00f0ff] rounded-2xl"
                     animate={{
-                      x: ['-100%', '100%'],
+                      scale: [1, 1.1, 1],
+                      opacity: [0.5, 0, 0.5],
                     }}
                     transition={{
-                      duration: 1.5,
+                      duration: 2,
                       repeat: Infinity,
-                      ease: 'linear',
                       type: 'tween',
                     }}
                   />
-                  
-                  <div className="relative flex items-center gap-3">
-                    <span 
-                      className="text-2xl font-bold text-[#00f0ff]"
-                      style={{
-                        fontFamily: "'Orbitron', sans-serif",
-                        textShadow: '0 0 20px rgba(0, 240, 255, 0.8)',
-                      }}
-                    >
-                      ENGAGE TARGET
-                    </span>
-                    <ChevronRight className="w-6 h-6 text-[#00f0ff]" />
-                  </div>
-                </GlassCard>
-
-                {/* Pulsing outer ring */}
-                <motion.div
-                  className="absolute inset-0 border-4 border-[#00f0ff] rounded-2xl"
-                  animate={{
-                    scale: [1, 1.1, 1],
-                    opacity: [0.5, 0, 0.5],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    type: 'tween',
-                  }}
-                />
-              </motion.button>
-            </div>
-          </GlassCard>
-        )}
+                </motion.button>
+              </div>
+            </GlassCard>
+          )}
         </motion.div>
       </div>
     </div>
