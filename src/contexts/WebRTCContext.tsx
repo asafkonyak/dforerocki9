@@ -1,12 +1,10 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
+import { useSocket } from './SocketContext';
 
 interface WebRTCContextType {
-  socket: Socket | null;
+  socket: WebSocket | null;
   isConnected: boolean;
   peers: Map<string, RTCPeerConnection>;
-  connect: () => void;
-  disconnect: () => void;
 }
 
 const WebRTCContext = createContext<WebRTCContextType | null>(null);
@@ -21,67 +19,58 @@ export const useWebRTC = () => {
 
 interface WebRTCProviderProps {
   children: React.ReactNode;
-  socketUrl?: string; // e.g. 'http://localhost:3000' or deployed signaling server URL
 }
 
-export const WebRTCProvider: React.FC<WebRTCProviderProps> = ({ children, socketUrl }) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+export const WebRTCProvider: React.FC<WebRTCProviderProps> = ({ children }) => {
+  const { socket, isConnected } = useSocket();
   
   // Refs to hold active RTCPeerConnections
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 
-  const connect = () => {
-    if (socket) return;
-    
-    const newSocket = io(socketUrl || window.location.origin, {
-      autoConnect: true,
-    });
-    
-    newSocket.on('connect', () => {
-      setIsConnected(true);
-      console.log('Socket connected:', newSocket.id);
-    });
-    
-    newSocket.on('disconnect', () => {
-      setIsConnected(false);
-      console.log('Socket disconnected');
-      
-      // Close all peer connections on disconnect
-      peersRef.current.forEach((peer) => peer.close());
-      peersRef.current.clear();
-    });
-    
-    setSocket(newSocket);
-  };
-  
-  const disconnect = () => {
-    if (socket) {
-      socket.disconnect();
-      setSocket(null);
-    }
-  };
-  
-  // Example WebRTC Signaling Handlers (placeholder for real implementation)
+  // Example WebRTC Signaling Handlers
   useEffect(() => {
     if (!socket) return;
     
-    // We would handle WebRTC 'offer', 'answer', 'ice-candidate' events here
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Dispatch based on data.type (e.g. 'offer', 'answer', 'ice-candidate')
+        switch (data.type) {
+          case 'offer':
+            console.log('Received WebRTC offer:', data.payload);
+            break;
+          case 'answer':
+            console.log('Received WebRTC answer:', data.payload);
+            break;
+          case 'ice-candidate':
+            console.log('Received ICE candidate:', data.payload);
+            break;
+        }
+      } catch (e) {
+        // Not a JSON message or not a WebRTC event
+      }
+    };
+
+    socket.addEventListener('message', handleMessage);
     
     return () => {
-      socket.off('offer');
-      socket.off('answer');
-      socket.off('ice-candidate');
+      socket.removeEventListener('message', handleMessage);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      // Close all peer connections on disconnect
+      peersRef.current.forEach((peer) => peer.close());
+      peersRef.current.clear();
+    }
+  }, [isConnected]);
 
   return (
     <WebRTCContext.Provider value={{
       socket,
       isConnected,
-      peers: peersRef.current,
-      connect,
-      disconnect
+      peers: peersRef.current
     }}>
       {children}
     </WebRTCContext.Provider>
