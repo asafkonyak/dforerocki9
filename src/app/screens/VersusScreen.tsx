@@ -94,7 +94,7 @@ export function VersusScreen() {
         navigate('/game', { state: { matchId, mode: 'ranked', opponent: player2, gameType } });
       }, 500);
     }
-  }, [countdown, navigate, matchId, player2]);
+  }, [countdown, isVideoFinished, navigate, matchId, player2]);
 
   if (!player1 || !player2) {
     return (
@@ -404,83 +404,38 @@ export function VersusScreen() {
                 PREPARE FOR BATTLE
               </motion.h2>
 
-              {/* Video Placeholder or Referee Video */}
-              <div className="relative mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-[#1a0a2e] to-[#0a0515] border-2 border-white/20 aspect-video">
-                {!isVideoFinished ? (
-                  <video 
-                    ref={videoRef}
-                    src="/assets/Referee.mp4" 
-                    autoPlay 
-                    playsInline
-                    onEnded={() => setIsVideoFinished(true)}
-                    onError={(e) => {
-                      console.error("Video failed to play", e);
-                      setIsVideoFinished(true); // Fallback to start countdown
-                    }}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-4 p-8 h-full bg-black/40">
-                    <motion.div
-                      className="text-center"
-                      animate={{
-                        y: [0, -10, 0],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        type: "tween"
-                      }}
-                    >
-                      <div className="text-6xl mb-4">📱</div>
-                      <div className="text-7xl">👊</div>
-                    </motion.div>
-
-                    <div className="text-center">
-                      <p className="text-white/80 text-sm mb-2">Grip your phone firmly</p>
-                      <p className="text-[#00f0ff] text-xs uppercase tracking-wider">Arm Wrestling Tutorial</p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {[0, 1, 2].map((i) => (
-                        <motion.div
-                          key={i}
-                          className="w-2 h-2 rounded-full bg-[#00f0ff]"
-                          animate={{
-                            scale: [1, 1.5, 1],
-                            opacity: [0.5, 1, 0.5],
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            delay: i * 0.2,
-                            type: "tween"
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Video status indicator */}
-                <div className="absolute top-4 right-4 px-3 py-1 bg-red-600 rounded-full flex items-center gap-2">
+              {/* Referee Video - fully removed after playback */}
+              <AnimatePresence>
+                {!isVideoFinished && (
                   <motion.div
-                    className="w-2 h-2 bg-white rounded-full"
-                    animate={{
-                      opacity: [1, 0.3, 1],
-                    }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      type: "tween"
-                    }}
-                  />
-                  <span className="text-white text-xs uppercase font-bold">
-                    {!isVideoFinished ? 'Referee' : 'Tutorial'}
-                  </span>
-                </div>
-              </div>
+                    className="relative mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-[#1a0a2e] to-[#0a0515] border-2 border-white/20 aspect-video"
+                    exit={{ opacity: 0, scale: 0.9, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <video 
+                      ref={videoRef}
+                      src="/assets/Referee.mp4" 
+                      autoPlay 
+                      playsInline
+                      onEnded={() => setIsVideoFinished(true)}
+                      onError={(e) => {
+                        console.error("Video failed to play", e);
+                        setIsVideoFinished(true);
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Video status indicator */}
+                    <div className="absolute top-4 right-4 px-3 py-1 bg-red-600 rounded-full flex items-center gap-2">
+                      <motion.div
+                        className="w-2 h-2 bg-white rounded-full"
+                        animate={{ opacity: [1, 0.3, 1] }}
+                        transition={{ duration: 1, repeat: Infinity, type: "tween" }}
+                      />
+                      <span className="text-white text-xs uppercase font-bold">Referee</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Massive Countdown */}
               <div className="text-center">

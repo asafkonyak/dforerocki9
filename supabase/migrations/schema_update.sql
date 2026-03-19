@@ -64,3 +64,25 @@ END $$;
 
 -- 8. Drop the obsolete matchmaking_queue table as we now use pure DB matching
 DROP TABLE IF EXISTS public.matchmaking_queue CASCADE;
+
+-- 9. Enable RLS on matches and add policies for matchmaking
+ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    -- Anyone can read matches (needed for matchmaking search)
+    DROP POLICY IF EXISTS "Matches are viewable by everyone" ON public.matches;
+    CREATE POLICY "Matches are viewable by everyone" ON public.matches FOR SELECT USING (true);
+
+    -- Any authenticated user can create a match (Player 1 creates pending)
+    DROP POLICY IF EXISTS "Authenticated users can create matches" ON public.matches;
+    CREATE POLICY "Authenticated users can create matches" ON public.matches FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+    -- Any authenticated user can update a match (Player 2 joins, status changes)
+    DROP POLICY IF EXISTS "Authenticated users can update matches" ON public.matches;
+    CREATE POLICY "Authenticated users can update matches" ON public.matches FOR UPDATE USING (auth.role() = 'authenticated');
+END $$;
+
+-- 10. Enable Supabase Realtime on the matches table (REQUIRED for postgres_changes subscriptions)
+-- Without this, Player 1 will never receive updates when Player 2 joins.
+ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;

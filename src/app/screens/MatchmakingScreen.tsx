@@ -23,6 +23,8 @@ export function MatchmakingScreen() {
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
   const subscriptionRef = useRef<any>(null);
 
+  const startMatchRef = useRef<(id: string, opponent: any) => void>(() => {});
+
   const startMatch = (id: string, opponent: any) => {
     setMatchId(id);
     setOpponentData({
@@ -48,11 +50,14 @@ export function MatchmakingScreen() {
     }, 2000);
   };
 
+  // Keep the ref updated so the realtime callback always calls the latest version
+  startMatchRef.current = startMatch;
+
   useEffect(() => {
     async function initMatchmaking() {
       if (playerId) return;
 
-      console.log('Matchmaking [v8] - Initializing Pure DB Logic...');
+      console.log('Matchmaking [v9] - Initializing Pure DB Logic...');
       const { data: { user } } = await supabase.auth.getUser();
       let currentId = localStorage.getItem('fighter_player_id');
 
@@ -96,21 +101,29 @@ export function MatchmakingScreen() {
 
       if (pendingMatches && pendingMatches.length > 0) {
         const joinMatch = pendingMatches[0];
-        console.log('Matchmaking [v8] - Joining existing pending match:', joinMatch.id);
-        const { error: updateError } = await supabase
+        console.log('Matchmaking [v9] - Joining existing pending match:', joinMatch.id);
+        
+        // Update the match: set player2_id and status to in_progress
+        const { data: updatedMatch, error: updateError } = await supabase
           .from('matches')
           .update({ player2_id: currentId, status: 'in_progress' })
-          .eq('id', joinMatch.id);
+          .eq('id', joinMatch.id)
+          .select()
+          .single();
 
-        if (!updateError) {
-           const { data: opp } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).single();
-           if (opp) startMatch(joinMatch.id, opp);
-           return;
+        if (updateError) {
+          console.error('Matchmaking [v9] - ERROR updating match with player2_id:', updateError);
+          // Fall through to create a new pending match instead
+        } else {
+          console.log('Matchmaking [v9] - Match updated successfully. player2_id:', updatedMatch?.player2_id, 'status:', updatedMatch?.status);
+          const { data: opp } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).single();
+          if (opp) startMatchRef.current(joinMatch.id, opp);
+          return;
         }
       }
 
       // 2. No match found, create a new pending match
-      console.log('Matchmaking [v8] - No matches found. Creating pending match.');
+      console.log('Matchmaking [v9] - No matches found. Creating pending match.');
       const { data: newMatch, error: insertError } = await supabase
         .from('matches')
         .insert({
@@ -131,20 +144,26 @@ export function MatchmakingScreen() {
       setPendingMatchId(newMatch.id);
 
       // 3. Subscribe to changes for this match waiting for player 2
+      console.log('Matchmaking [v9] - Subscribing to realtime for match:', newMatch.id);
       const channel = supabase
-        .channel(`match:${newMatch.id}`)
+        .channel(`match-updates-${newMatch.id}`)
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${newMatch.id}` },
           async (payload: any) => {
-            console.log('Matchmaking [v8] - Update received:', payload);
+            console.log('Matchmaking [v9] - Realtime UPDATE received:', payload);
             if (payload.new.status === 'in_progress' && payload.new.player2_id) {
               const { data: opp } = await supabase.from('players').select('*').eq('id', payload.new.player2_id).single();
-              if (opp) startMatch(payload.new.id, opp);
+              if (opp) {
+                console.log('Matchmaking [v9] - Player 2 joined! Opponent:', opp.username);
+                startMatchRef.current(payload.new.id, opp);
+              }
             }
           }
         )
-        .subscribe();
+        .subscribe((status: string) => {
+          console.log('Matchmaking [v9] - Subscription status:', status);
+        });
 
       subscriptionRef.current = channel;
     }
