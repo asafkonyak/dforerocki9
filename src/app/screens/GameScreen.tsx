@@ -28,6 +28,8 @@ export function GameScreen() {
   const [showCountdown, setShowCountdown] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [angleValue, setAngleValue] = useState(0);
+  const [resistanceValue, setResistanceValue] = useState(60); // Default KG
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string } | null>(null);
@@ -308,21 +310,48 @@ export function GameScreen() {
 
   // Handle Socket Messages for Real-time Game Data
   useEffect(() => {
-    if (!socket || !isGameActive || winner) return;
+    if (!socket || winner) return;
 
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
         const serverData = data.data || data;
 
-        // Map server position to armPosition (0-100)
+        // Diagnostic Log - FULL DATA
+        console.log('[Game v17] - FULL SOCKET DATA:', serverData);
+
+        // Map server position to angle and result to resistance
         if (serverData.position !== undefined) {
-          // Hardware sends 0-100 where 0 is P1 win, 100 is P2 win
-          setArmPosition(serverData.position);
-          console.log('[Game v15] - Socket Position Update:', serverData.position);
+          // Mapping according to user: current angle = position
+          setAngleValue(Number(serverData.position));
+          
+          // ArmPosition (0-100) derived for visual elements (Needle, Arms)
+          // assuming -70 to 70 range for angle
+          const derivedArmPos = 50 - (Number(serverData.position) / 1.4);
+          setArmPosition(Math.max(0, Math.min(100, derivedArmPos)));
         }
 
-        // Map force/power if available
+        if (serverData.result !== undefined) {
+          // Mapping according to user: resistance = result
+          setResistanceValue(Number(serverData.result));
+        }
+
+        // Handle Win/Loss by computer_state
+        if (serverData.computer_state === 'MAIN_SM_GAMEOVER_WIN') {
+          console.log('[Game v18] - WIN condition detected via computer_state');
+          setIsGameActive(false);
+          setWinner('player1');
+          playWin();
+          saveMatchResult('player1');
+        } else if (serverData.computer_state === 'MAIN_SM_GAMEOVER_LOSE') {
+          console.log('[Game v18] - LOSS condition detected via computer_state');
+          setIsGameActive(false);
+          setWinner('player2');
+          playLose();
+          saveMatchResult('player2');
+        }
+
+        // Optionally map force/power if available in this message
         if (serverData.force_p1 !== undefined) setPlayer1Power(serverData.force_p1);
         if (serverData.force_p2 !== undefined) setPlayer2Power(serverData.force_p2);
 
@@ -990,7 +1019,7 @@ export function GameScreen() {
                             textShadow: '0 0 10px rgba(0, 240, 255, 0.8)',
                           }}
                         >
-                          {Math.round(70 - (armPosition * 1.4))}°
+                          {Math.round(angleValue)}°
                         </div>
                       </div>
                     </GlassCard>
@@ -1037,7 +1066,7 @@ export function GameScreen() {
                             textShadow: '0 0 10px rgba(255, 0, 110, 0.8)',
                           }}
                         >
-                          {Math.round(40 + Math.abs(50 - armPosition) * 0.4)} KG
+                          {Math.round(resistanceValue)} KG
                         </div>
                       </div>
                     </GlassCard>
