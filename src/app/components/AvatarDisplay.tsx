@@ -7,7 +7,8 @@ interface AvatarDisplayProps {
 }
 
 export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDisplayProps) {
-  const isUrl = avatar.startsWith('http') || avatar.startsWith('/') || avatar.startsWith('data:');
+  const safeAvatar = avatar || '👤';
+  const isUrl = typeof safeAvatar === 'string' && (safeAvatar.startsWith('http') || safeAvatar.startsWith('/') || safeAvatar.startsWith('data:'));
   
   const sizeClasses = {
     sm: 'w-8 h-8 text-xl',
@@ -20,7 +21,7 @@ export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDis
     <div className={`rounded-full flex items-center justify-center overflow-hidden bg-black/20 ${sizeClasses[size]} ${className}`}>
       {isUrl ? (
         <img 
-          src={avatar} 
+          src={safeAvatar as string} 
           alt="Avatar" 
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -30,7 +31,7 @@ export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDis
           }}
         />
       ) : (
-        <span>{avatar || '👤'}</span>
+        <span>{safeAvatar || '👤'}</span>
       )}
     </div>
   );

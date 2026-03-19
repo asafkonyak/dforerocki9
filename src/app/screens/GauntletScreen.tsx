@@ -31,22 +31,21 @@ export function GauntletScreen() {
         let playerId: string | null = localStorage.getItem('fighter_player_id');
 
         if (user) {
-          const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
-          if (profile?.player_id) {
-            playerId = profile.player_id;
+          const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+          if (player?.id) {
+            playerId = player.id;
             localStorage.setItem('fighter_player_id', playerId!);
           } else if (playerId) {
-            // LINK REPAIR: We have a user and a local playerId, but no link in profiles.
+            // LINK REPAIR: We have a user and a local playerId, but no user_id link in players table.
             // Attempt to link them now to fix the sync for future sessions.
             try {
-              console.log('Gauntlet Progress Sync - Repairing broken profile link for player:', playerId);
-              await supabase.from('profiles').upsert({ 
-                id: user.id, 
-                player_id: playerId,
+              console.log('Gauntlet Progress Sync - Repairing broken user_id link for player:', playerId);
+              await supabase.from('players').update({ 
+                user_id: user.id,
                 updated_at: new Date().toISOString()
-              });
+              }).eq('id', playerId);
             } catch (linkErr) {
-              console.warn("Gauntlet Progress Sync - Profile link repair failed (likely missing column):", linkErr);
+              console.warn("Gauntlet Progress Sync - User link repair failed:", linkErr);
             }
           }
         }
@@ -189,8 +188,8 @@ export function GauntletScreen() {
       let playerId = localStorage.getItem('fighter_player_id');
 
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
-        if (profile?.player_id) playerId = profile.player_id;
+        const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+        if (player?.id) playerId = player.id;
       }
 
       if (playerId) {

@@ -177,8 +177,8 @@ export function MatchmakingScreen() {
       let currentId = localStorage.getItem('fighter_player_id');
 
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
-        if (profile?.player_id) currentId = profile.player_id;
+        const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+        if (player?.id) currentId = player.id;
       }
 
       if (!currentId) {

@@ -51,9 +51,9 @@ export function GameScreen() {
       let playerId = localStorage.getItem('fighter_player_id');
 
       if (user && user.id) {
-        const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
-        if (profile?.player_id) {
-          playerId = profile.player_id;
+        const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+        if (player?.id) {
+          playerId = player.id;
           if (playerId) localStorage.setItem('fighter_player_id', playerId);
         }
       }
@@ -246,8 +246,8 @@ export function GameScreen() {
     let playerId = localStorage.getItem('fighter_player_id');
 
     if (user) {
-      const { data: profile } = await supabase.from('profiles').select('player_id').eq('id', user.id).maybeSingle();
-      if (profile?.player_id) playerId = profile.player_id;
+      const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+      if (player?.id) playerId = player.id;
     }
 
     if (!playerId) return;

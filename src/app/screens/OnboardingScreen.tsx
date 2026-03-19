@@ -177,6 +177,7 @@ export function OnboardingScreen() {
       // 1. Upsert to players table
       const { error: playerError } = await supabase.from('players').upsert({
         id: playerId,
+        user_id: user?.id || null,
         username: finalName,
         avatar_url: finalAvatarUrl,
         weight: parseInt(weight) || 0,
@@ -185,24 +186,6 @@ export function OnboardingScreen() {
       });
 
       if (playerError) throw playerError;
-
-      // 2. Link to profile if a real user is logged in
-      if (user) {
-        try {
-          const { error: profileError } = await supabase.from('profiles').upsert({
-            id: user.id,
-            player_id: playerId,
-            updated_at: new Date().toISOString()
-          });
-          if (profileError) {
-            // Log but don't throw - we want to allow navigation even if database linking fails
-            // This happens if the player_id column is missing in the profiles table
-            console.warn("Profile linking failed (this is expected if player_id column is missing):", profileError);
-          }
-        } catch (linkErr) {
-          console.warn("Error during profile linking:", linkErr);
-        }
-      }
 
       // Ensure playerId is in localStorage for fallback
       localStorage.setItem('fighter_player_id', playerId);
