@@ -84,5 +84,8 @@ BEGIN
 END $$;
 
 -- 10. Enable Supabase Realtime on the matches table (REQUIRED for postgres_changes subscriptions)
--- Without this, Player 1 will never receive updates when Player 2 joins.
-ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;
+EXCEPTION WHEN duplicate_object THEN
+  RAISE NOTICE 'matches already in supabase_realtime publication';
+END $$;

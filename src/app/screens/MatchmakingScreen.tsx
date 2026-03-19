@@ -101,45 +101,57 @@ export function MatchmakingScreen() {
 
       if (pendingMatches && pendingMatches.length > 0) {
         const joinMatch = pendingMatches[0];
-        console.log('Matchmaking [v10] - Found pending match. Subscribing as Player 2:', joinMatch.id);
+        console.log('Matchmaking [v11] - Found pending match. Joining as Player 2:', joinMatch.id);
         
-        // Player 2 ALSO subscribes to the match realtime channel
+        // Player 2 subscribes with a UNIQUE channel name (different from Player 1's channel)
         const p2Channel = supabase
-          .channel(`match-updates-${joinMatch.id}`)
+          .channel(`p2-match-${joinMatch.id}`)
           .on(
             'postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${joinMatch.id}` },
             async (payload: any) => {
-              console.log('Matchmaking [v10] - Player 2 realtime UPDATE received:', payload);
-              // Player 2 can see match state changes here (e.g. cancellation by Player 1)
+              console.log('Matchmaking [v11] - Player 2 realtime UPDATE received:', payload);
             }
           )
           .subscribe((status: string) => {
-            console.log('Matchmaking [v10] - Player 2 subscription status:', status);
+            console.log('Matchmaking [v11] - Player 2 subscription status:', status);
           });
 
         subscriptionRef.current = p2Channel;
 
-        // Now update the match: set player2_id and status to in_progress
-        const { data: updatedMatch, error: updateError } = await supabase
+        // Update the match — DO NOT use .select().single() as it crashes when RLS blocks
+        const { error: updateError } = await supabase
           .from('matches')
           .update({ player2_id: currentId, status: 'in_progress' })
-          .eq('id', joinMatch.id)
-          .select()
-          .single();
+          .eq('id', joinMatch.id);
 
         if (updateError) {
-          console.error('Matchmaking [v10] - ERROR updating match with player2_id:', updateError);
+          console.error('Matchmaking [v11] - ERROR updating match with player2_id:', updateError);
           supabase.removeChannel(p2Channel);
           subscriptionRef.current = null;
           // Fall through to create a new pending match instead
         } else {
-          console.log('Matchmaking [v10] - Match updated successfully. player2_id:', updatedMatch?.player2_id, 'status:', updatedMatch?.status);
-          // Player 1's ID comes from the match row we already fetched
-          console.log('Matchmaking [v10] - Player 1 ID from match:', joinMatch.player1_id);
-          const { data: opp } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).single();
-          if (opp) startMatchRef.current(joinMatch.id, opp);
-          return;
+          // Verify the update actually took effect by re-reading the row
+          const { data: verifyMatch } = await supabase
+            .from('matches')
+            .select('id, player1_id, player2_id, status')
+            .eq('id', joinMatch.id)
+            .single();
+          
+          console.log('Matchmaking [v11] - Verification read:', verifyMatch);
+
+          if (verifyMatch?.player2_id === currentId) {
+            console.log('Matchmaking [v11] - ✅ player2_id confirmed in DB. Getting Player 1 profile...');
+            const { data: opp } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).single();
+            if (opp) startMatchRef.current(joinMatch.id, opp);
+            return;
+          } else {
+            console.warn('Matchmaking [v11] - ⚠️ player2_id NOT written! RLS may be blocking. Verify matches table RLS policies.');
+            console.warn('Matchmaking [v11] - Expected player2_id:', currentId, 'Got:', verifyMatch?.player2_id);
+            supabase.removeChannel(p2Channel);
+            subscriptionRef.current = null;
+            // Fall through to create a new pending match
+          }
         }
       }
 
