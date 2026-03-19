@@ -27,6 +27,7 @@ export function GameScreen() {
   const [countdown, setCountdown] = useState<number | string>(3);
   const [showCountdown, setShowCountdown] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string } | null>(null);
@@ -113,8 +114,22 @@ export function GameScreen() {
     autoplay: true
   });
 
+  // Check if both players are ready
+  useEffect(() => {
+    if (gameMode !== 'ranked') {
+      setIsReady(true);
+      return;
+    }
+    
+    // For ranked, ensure we have opponent info
+    if (location.state?.opponent) {
+      setIsReady(true);
+    }
+  }, [gameMode, location.state]);
+
   // Fight Countdown Logic
   useEffect(() => {
+    if (!isReady) return;
     let timer: NodeJS.Timeout;
     let count = 3;
 
@@ -187,38 +202,12 @@ export function GameScreen() {
   // This is now driven by the socket/hardware
 
   // Check win condition
+  // REMOVED: Win/Loss condition check
+  // The user requested to remove win/loss logic for now.
+  // The game will remain active until manually exited.
   useEffect(() => {
-    if (armPosition <= 5 && isGameActive) {
-      setIsGameActive(false);
-      const nextWins = roundsWonPlayer + 1;
-      setRoundsWonPlayer(nextWins);
-      setRoundWinner('player1');
-      playWin();
-
-      if (nextWins >= requiredWins) {
-        // MATCH OVER - Player 1 Wins
-        setWinner('player1');
-        saveMatchResult('player1');
-      } else {
-        // ROUND OVER - Transition to Next Round
-        setTimeout(resetRound, 3000);
-      }
-    } else if (armPosition >= 95 && isGameActive) {
-      setIsGameActive(false);
-      const nextWins = roundsWonOpponent + 1;
-      setRoundsWonOpponent(nextWins);
-      setRoundWinner('player2');
-      playLose();
-
-      if (nextWins >= requiredWins) {
-        // MATCH OVER - Opponent Wins
-        setWinner('player2');
-        saveMatchResult('player2');
-      } else {
-        // ROUND OVER - Transition to Next Round
-        setTimeout(resetRound, 3000);
-      }
-    }
+    // This effect is now empty to ensure no win/loss navigation occurs.
+    console.log('[Game v16] - Win/Loss checks are disabled.');
   }, [armPosition, isGameActive]);
 
   const resetRound = () => {

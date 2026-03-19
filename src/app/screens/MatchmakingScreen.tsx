@@ -36,20 +36,7 @@ export function MatchmakingScreen() {
     });
     setMatchFound(true);
     playMatchFound();
-
-    setTimeout(() => {
-      navigate('/versus', {
-        state: {
-          matchId: id,
-          mode: 'ranked',
-          opponent: {
-            username: opponent.username,
-            avatar: opponent.avatar_url
-          },
-          gameType: gameType
-        }
-      });
-    }, 2000);
+    // Replaced: navigation is now driven by DB status 'in_progress'
   };
 
   // Keep the ref updated so the realtime callback always calls the latest version
@@ -168,7 +155,7 @@ export function MatchmakingScreen() {
 
         const { error: updateError } = await supabase
           .from('matches')
-          .update({ player2_id: currentId, status: 'in_progress' })
+          .update({ player2_id: currentId, status: 'matched' })
           .eq('id', joinMatch.id);
 
         if (updateError) {
@@ -207,8 +194,57 @@ export function MatchmakingScreen() {
       }
 
       setMatchId(newMatch.id);
-      console.log('Matchmaking [v15] - Waiting for Player 2 via Socket...');
+      console.log('Matchmaking [v16] - Waiting for Player 2 via Realtime/Socket...');
 
+      // Subscribe to changes for this match
+      const channel = supabase
+        .channel(`match-sync-${newMatch.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${newMatch.id}` },
+          async (payload: any) => {
+            console.log('Matchmaking [v16] - Sync UPDATE:', payload.new.status, payload.new.player2_id);
+            
+            // 1. When matched (P2 joined)
+            if (payload.new.status === 'matched' && payload.new.player2_id && !matchFound) {
+              const { data: opp } = await supabase.from('players').select('*').eq('id', 
+                currentId === payload.new.player1_id ? payload.new.player2_id : payload.new.player1_id
+              ).maybeSingle();
+              
+              if (opp) {
+                console.log('Matchmaking [v17] - Match detected. Waiting 3s...');
+                startMatchRef.current(payload.new.id, opp);
+                
+                // After 3 seconds, Player 2 (the joining player) updates the status to in_progress
+                if (currentId === payload.new.player2_id) {
+                  setTimeout(async () => {
+                    console.log('Matchmaking [v17] - 3s passed (P2 side). Updating status to in_progress.');
+                    await supabase.from('matches').update({ status: 'in_progress' }).eq('id', payload.new.id);
+                  }, 3000);
+                }
+              }
+            }
+
+            // 2. When in_progress (Final transition)
+            if (payload.new.status === 'in_progress') {
+              console.log('Matchmaking [v16] - Status is in_progress. Navigating to Versus...');
+              navigate('/versus', {
+                state: {
+                  matchId: payload.new.id,
+                  mode: 'ranked',
+                  opponent: {
+                    username: opponentDataRef.current?.username,
+                    avatar: opponentDataRef.current?.avatar_url
+                  },
+                  gameType: gameType
+                }
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      subscriptionRef.current = channel;
     }
 
     initMatchmaking();
