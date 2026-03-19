@@ -18,7 +18,7 @@ export function MatchmakingScreen() {
   const [userData, setUserData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
   const [opponentData, setOpponentData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
-  const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
+  const [isPlayer1, setIsPlayer1] = useState<boolean | null>(null);
   const [onlineCount, setOnlineCount] = useState(Math.floor(Math.random() * 100) + 40);
 
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
@@ -70,12 +70,46 @@ export function MatchmakingScreen() {
           player_id: playerId 
         } 
       });
-      console.log('Matchmaking [v14] - SENDING COMMAND TO SOCKET:', initMsg);
+      console.log('Matchmaking [v15] - SENDING COMMAND TO SOCKET:', initMsg);
       socket.send(initMsg);
     } else {
-      console.log('Matchmaking [v14] - Socket not ready or playerId missing. Skipping init.');
+      console.log('Matchmaking [v15] - Socket not ready or playerId missing. Skipping init.');
     }
   }, [playerId, socket, isConnected]);
+
+  // Handle Socket Messages for Matchmaking (Player 1 waits for Player 2)
+  useEffect(() => {
+    if (!socket || !isPlayer1 || matchFound) return;
+
+    const handleMessage = async (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        const serverData = data.data || data; // Handle both direct and nested data
+        
+        // If message has a player_id and it's NOT mine, it's the opponent
+        if (serverData.player_id && serverData.player_id !== playerId) {
+          console.log('Matchmaking [v15] - Socket detected Opponent:', serverData.player_id);
+          
+          // Fetch opponent profile from DB
+          const { data: oppProfile } = await supabase
+            .from('players')
+            .select('*')
+            .eq('id', serverData.player_id)
+            .maybeSingle();
+            
+          if (oppProfile) {
+            console.log('Matchmaking [v15] - ✅ Player 2 identified via socket! Starting match...');
+            startMatchRef.current(matchId!, oppProfile);
+          }
+        }
+      } catch (e) {
+        // Skip non-JSON or other messages
+      }
+    };
+
+    socket.addEventListener('message', handleMessage);
+    return () => socket.removeEventListener('message', handleMessage);
+  }, [socket, isPlayer1, playerId, matchFound, matchId]);
 
   useEffect(() => {
     async function initMatchmaking() {
@@ -109,7 +143,7 @@ export function MatchmakingScreen() {
       await supabase.from('matches').update({ status: 'canceled' }).eq('player1_id', currentId).eq('status', 'pending');
 
       // 1. Search for a pending match to join
-      console.log('Matchmaking [v14] - Searching for pending matches. GameType:', gameType, 'ReferenceId:', referenceMatchId, 'Self:', currentId);
+      console.log('Matchmaking [v15] - Searching for pending matches. GameType:', gameType, 'ReferenceId:', referenceMatchId, 'Self:', currentId);
       let pendingMatchQuery = supabase
         .from('matches')
         .select('*')
@@ -124,27 +158,13 @@ export function MatchmakingScreen() {
       const { data: pendingMatches, error: searchError } = await pendingMatchQuery.limit(1);
 
       if (searchError) {
-        console.error('Matchmaking [v14] - ERROR searching for matches:', searchError);
+        console.error('Matchmaking [v15] - ERROR searching for matches:', searchError);
       }
 
       if (pendingMatches && pendingMatches.length > 0) {
         const joinMatch = pendingMatches[0];
-        console.log('Matchmaking [v14] - Found pending match. Joining as Player 2:', joinMatch.id);
-
-        const p2Channel = supabase
-          .channel(`p2-match-${joinMatch.id}`)
-          .on(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${joinMatch.id}` },
-            async (payload: any) => {
-              console.log('Matchmaking [v14] - Player 2 realtime UPDATE received:', payload);
-            }
-          )
-          .subscribe((status: string) => {
-            console.log('Matchmaking [v14] - Player 2 subscription status:', status);
-          });
-
-        subscriptionRef.current = p2Channel;
+        console.log('Matchmaking [v15] - Found pending match. Joining as Player 2:', joinMatch.id);
+        setIsPlayer1(false);
 
         const { error: updateError } = await supabase
           .from('matches')
@@ -152,35 +172,23 @@ export function MatchmakingScreen() {
           .eq('id', joinMatch.id);
 
         if (updateError) {
-          console.error('Matchmaking [v14] - ERROR updating match with player2_id:', updateError);
-          supabase.removeChannel(p2Channel);
-          subscriptionRef.current = null;
-        } else {
-          const { data: verifyMatch } = await supabase
-            .from('matches')
-            .select('id, player1_id, player2_id, status')
-            .eq('id', joinMatch.id)
-            .maybeSingle();
+          console.error('Matchmaking [v15] - ERROR updating match with player2_id:', updateError);
+          navigate('/menu');
+          return;
+        }
 
-          console.log('Matchmaking [v14] - Verification read:', verifyMatch);
-
-          if (verifyMatch?.player2_id === currentId) {
-            console.log('Matchmaking [v14] - ✅ player2_id confirmed. Getting Player 1 profile...');
-            const { data: opp } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).maybeSingle();
-            if (opp) {
-              startMatchRef.current(joinMatch.id, opp);
-              return;
-            }
-          } else {
-            console.warn('Matchmaking [v14] - ⚠️ player2_id NOT written! RLS might be blocking.');
-            supabase.removeChannel(p2Channel);
-            subscriptionRef.current = null;
-          }
+        // Get Player 1 profile to show VS
+        const { data: p1Profile } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).maybeSingle();
+        if (p1Profile) {
+          console.log('Matchmaking [v15] - ✅ Joined as P2. Starting match vs P1:', p1Profile.username);
+          startMatchRef.current(joinMatch.id, p1Profile);
+          return;
         }
       }
 
       // 2. No match found, create a new pending match
-      console.log('Matchmaking [v14] - No matches found. Creating pending match.');
+      console.log('Matchmaking [v15] - No matches found. Creating pending match as Player 1.');
+      setIsPlayer1(true);
       const { data: newMatch, error: insertError } = await supabase
         .from('matches')
         .insert({
@@ -198,31 +206,9 @@ export function MatchmakingScreen() {
         return;
       }
 
-      setPendingMatchId(newMatch.id);
+      setMatchId(newMatch.id);
+      console.log('Matchmaking [v15] - Waiting for Player 2 via Socket...');
 
-      // 3. Subscribe to changes for this match waiting for player 2
-      console.log('Matchmaking [v14] - Subscribing to realtime for match:', newMatch.id);
-      const channel = supabase
-        .channel(`match-updates-${newMatch.id}`)
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${newMatch.id}` },
-          async (payload: any) => {
-            console.log('Matchmaking [v14] - Realtime UPDATE received:', payload);
-            if (payload.new.status === 'in_progress' && payload.new.player2_id) {
-              const { data: opp } = await supabase.from('players').select('*').eq('id', payload.new.player2_id).single();
-              if (opp) {
-                console.log('Matchmaking [v14] - Player 2 joined! Opponent:', opp.username);
-                startMatchRef.current(payload.new.id, opp);
-              }
-            }
-          }
-        )
-        .subscribe((status: string) => {
-          console.log('Matchmaking [v14] - Subscription status:', status);
-        });
-
-      subscriptionRef.current = channel;
     }
 
     initMatchmaking();
@@ -231,12 +217,9 @@ export function MatchmakingScreen() {
       // Unmount cleanup
       if (subscriptionRef.current) supabase.removeChannel(subscriptionRef.current);
 
-      setPendingMatchId(prev => {
-        if (prev) {
-          supabase.from('matches').update({ status: 'canceled' }).eq('id', prev).then();
-        }
-        return null;
-      });
+      if (matchId && !matchFound) {
+        supabase.from('matches').update({ status: 'canceled' }).eq('id', matchId).then();
+      }
     };
   }, [navigate, playerId, gameType, socket, isConnected]);
 
@@ -252,9 +235,9 @@ export function MatchmakingScreen() {
   };
 
   const handleCancel = async () => {
-    if (pendingMatchId) {
-      await supabase.from('matches').update({ status: 'canceled' }).eq('id', pendingMatchId);
-      setPendingMatchId(null);
+    if (matchId && !matchFound) {
+      await supabase.from('matches').update({ status: 'canceled' }).eq('id', matchId);
+      setMatchId(null);
     }
     navigate('/menu');
   };
