@@ -41,3 +41,26 @@ BEGIN
     DROP POLICY IF EXISTS "Users can insert own player record" ON public.players;
     CREATE POLICY "Users can insert own player record" ON public.players FOR INSERT WITH CHECK (auth.uid() = user_id);
 END $$;
+
+-- 6. Update matches table for new Matchmaking Logic
+DO $$
+BEGIN
+    -- Add reference_match_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'matches' AND column_name = 'reference_match_id') THEN
+        ALTER TABLE public.matches ADD COLUMN reference_match_id UUID REFERENCES public.matches(id);
+        COMMENT ON COLUMN public.matches.reference_match_id IS 'Points to a previous match for Rematch logic';
+    END IF;
+END $$;
+
+-- 7. Ensure status column can accept our values ('pending', 'in_progress', 'finished', 'canceled')
+-- Assuming it's already a text column. We just remove any restrictive constraints if they existed, or ensure it's text.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'matches' AND column_name = 'status' AND data_type != 'text') THEN
+       -- If it's an ENUM, altering it can be tricky without knowing its name. Assuming it's text based on JS insert patterns.
+       RAISE NOTICE 'Please ensure matches.status is a TEXT column to accept pending, in_progress, finished, canceled.';
+    END IF;
+END $$;
+
+-- 8. Drop the obsolete matchmaking_queue table as we now use pure DB matching
+DROP TABLE IF EXISTS public.matchmaking_queue CASCADE;

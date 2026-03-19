@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
@@ -17,6 +17,17 @@ export function VersusScreen() {
   const matchId = location.state?.matchId;
   const opponentData = location.state?.opponent;
   const gameType = location.state?.gameType || '1_round';
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    // Attempt to force play if autoplay is blocked
+    if (!isVideoFinished && videoRef.current) {
+      videoRef.current.play().catch(err => {
+        console.warn("Video autoplay blocked:", err);
+        setIsVideoFinished(true); // Skip video and just do countdown
+      });
+    }
+  }, [isVideoFinished]);
 
   useEffect(() => {
     async function loadPlayers() {
@@ -397,10 +408,15 @@ export function VersusScreen() {
               <div className="relative mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-[#1a0a2e] to-[#0a0515] border-2 border-white/20 aspect-video">
                 {!isVideoFinished ? (
                   <video 
+                    ref={videoRef}
                     src="/assets/Referee.mp4" 
                     autoPlay 
                     playsInline
                     onEnded={() => setIsVideoFinished(true)}
+                    onError={(e) => {
+                      console.error("Video failed to play", e);
+                      setIsVideoFinished(true); // Fallback to start countdown
+                    }}
                     className="w-full h-full object-cover"
                   />
                 ) : (

@@ -340,7 +340,7 @@ function MatchResultBanner({ fightResult }: { fightResult: FightResult }) {
 export function LeaderboardScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const fightResult = location.state as FightResult | null;
+  const fightResult = location.state as any | null;
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [userPlayer, setUserPlayer] = useState<Player | null>(null);

@@ -315,6 +315,9 @@ export function GameScreen() {
             rankChange: isWin ? 2 : -1,
             combo: comboRef.current,
             taps: tapCountRef.current,
+            matchId: location.state?.matchId,
+            gameMode: gameMode,
+            gameType: gameType
           }
         });
       }

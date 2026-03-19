@@ -142,7 +142,18 @@ export function OnboardingScreen() {
     }
 
     // Unified Player Handling
-    const playerId = localStorage.getItem('fighter_player_id') || crypto.randomUUID();
+    let playerId = localStorage.getItem('fighter_player_id');
+    
+    if (user) {
+      const { data: existingUserPlayer } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+      if (existingUserPlayer?.id) {
+        playerId = existingUserPlayer.id;
+      }
+    }
+    
+    if (!playerId) {
+      playerId = crypto.randomUUID();
+    }
     localStorage.setItem('fighter_player_id', playerId);
 
     try {

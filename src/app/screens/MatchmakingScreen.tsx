@@ -6,174 +6,54 @@ import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useAudio } from '../../hooks/useAudio';
 import { Swords, Zap, Globe, Wifi } from 'lucide-react';
-import { useSocket } from '../../contexts/SocketContext';
 
 export function MatchmakingScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { socket, isConnected } = useSocket();
   const gameType = location.state?.gameType || '1_round';
+  const referenceMatchId = location.state?.referenceMatchId || null;
   const [matchFound, setMatchFound] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [userData, setUserData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
   const [opponentData, setOpponentData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
+  const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
   const [onlineCount, setOnlineCount] = useState(Math.floor(Math.random() * 100) + 40);
 
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
   const subscriptionRef = useRef<any>(null);
 
-  // handleMatchFound from Supabase REALTIME (Match already exists)
-  const handleMatchFound = async (id: string, selfId: string) => {
+  const startMatch = (id: string, opponent: any) => {
     setMatchId(id);
+    setOpponentData({
+      username: opponent.username || 'OPPONENT',
+      avatar_url: opponent.avatar_url || '👤',
+      rank: opponent.rank || 'Bronze'
+    });
+    setMatchFound(true);
+    playMatchFound();
 
-    // Fetch match details to find opponent
-    const { data: match } = await supabase
-      .from('matches')
-      .select('player1_id, player2_id')
-      .eq('id', id)
-      .single();
-
-    if (match) {
-      const oppId = match.player1_id === selfId ? match.player2_id : match.player1_id;
-      const { data: opponent } = await supabase
-        .from('players')
-        .select('username, avatar_url, rank')
-        .eq('id', oppId)
-        .single();
-
-      if (opponent) {
-        setOpponentData({
-          username: opponent.username || 'OPPONENT',
-          avatar_url: opponent.avatar_url || '👤',
-          rank: opponent.rank || 'Bronze'
-        });
-        setMatchFound(true);
-        playMatchFound();
-
-        // Auto-navigate after a short delay
-        setTimeout(() => {
-          navigate('/versus', {
-            state: {
-              matchId: id,
-              mode: 'ranked',
-              opponent: {
-                username: opponent.username,
-                avatar: opponent.avatar_url
-              },
-              gameType: gameType
-            }
-          });
-        }, 2000);
-      }
-    }
-  };
-
-  // handleMatchFound from SOCKET (We need to CREATE the match)
-  const handleMatchFoundFromSocket = async (oppId: string) => {
-    console.log('Matchmaking SOCKET [v7] - Handling match found with opponent:', oppId);
-    if (!playerId) {
-      console.warn('Matchmaking SOCKET - Cannot create match: playerId is missing');
-      return;
-    }
-
-    // 1. Fetch Opponent Data
-    const { data: opponent } = await supabase
-      .from('players')
-      .select('username, avatar_url, rank')
-      .eq('id', oppId)
-      .single();
-
-    if (opponent) {
-      setOpponentData({
-        username: opponent.username || 'OPPONENT',
-        avatar_url: opponent.avatar_url || '👤',
-        rank: opponent.rank || 'Bronze'
-      });
-
-      // 2. Create Match in DB
-      // Based on user feedback: "the id sould be from players table"
-      const { data: match, error: matchError } = await supabase
-        .from('matches')
-        .insert({
-          player1_id: playerId,
-          player2_id: oppId,
-          status: 'in_progress',
-          game_type: gameType
-        })
-        .select()
-        .single();
-
-      if (matchError) {
-        console.error('Matchmaking [v7] - Error creating match in DB:', matchError);
-      }
-
-      if (match) {
-        setMatchId(match.id);
-        setMatchFound(true);
-        playMatchFound();
-        
-        // Auto-navigate to the fight after a short delay to show the opponent
-        console.log('Matchmaking SOCKET [v7] - Auto-navigating to versus in 2s...');
-        setTimeout(() => {
-          navigate('/versus', {
-            state: {
-              matchId: match.id,
-              mode: 'ranked',
-              opponent: {
-                username: opponent.username,
-                avatar: opponent.avatar_url
-              },
-              gameType: gameType
-            }
-          });
-        }, 2000);
-      }
-    }
-  };
-
-  // Send INIT command once socket and player are ready
-  // Using the playerid from the 'players' table as requested
-  useEffect(() => {
-    if (socket && isConnected) {
-      // Handle incoming messages
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('[Matchmaking SOCKET]:', data);
-
-          if (data.player_id && data.player_id !== playerId) {
-            handleMatchFoundFromSocket(data.player_id);
-          }
-        } catch (e) {
-          console.log('[Matchmaking SOCKET Raw]:', event.data);
+    setTimeout(() => {
+      navigate('/versus', {
+        state: {
+          matchId: id,
+          mode: 'ranked',
+          opponent: {
+            username: opponent.username,
+            avatar: opponent.avatar_url
+          },
+          gameType: gameType
         }
-      };
-
-      if (playerId) {
-        const initPayload = {
-          cmd: {
-            "INIT": 1,
-            "player_id": playerId
-          }
-        };
-        console.log('Matchmaking SOCKET [v7] - Sending message:', initPayload);
-        socket.send(JSON.stringify(initPayload));
-      }
-    }
-    return () => {
-      if (socket) socket.onmessage = null;
-    };
-  }, [socket, isConnected, playerId]);
+      });
+    }, 2000);
+  };
 
   useEffect(() => {
     async function initMatchmaking() {
-      if (playerId) return; // Avoid re-init if already have playerId
+      if (playerId) return;
 
-      console.log('Matchmaking [v4] - Initializing...');
-      // 1. Get Player ID
+      console.log('Matchmaking [v8] - Initializing Pure DB Logic...');
       const { data: { user } } = await supabase.auth.getUser();
-
       let currentId = localStorage.getItem('fighter_player_id');
 
       if (user) {
@@ -187,7 +67,6 @@ export function MatchmakingScreen() {
       }
       setPlayerId(currentId);
 
-      // 2. Fetch User Data for display
       const { data: player } = await supabase.from('players').select('username, avatar_url, rank').eq('id', currentId).single();
       if (player) {
         setUserData({
@@ -197,69 +76,94 @@ export function MatchmakingScreen() {
         });
       }
 
-      // 3. Clear existing queue entry (if any) and join queue
-      await supabase.from('matchmaking_queue').delete().eq('player_id', currentId);
+      // Cleanup dangling matches from this device
+      await supabase.from('matches').update({ status: 'canceled' }).eq('player1_id', currentId).eq('status', 'pending');
 
-      const payload = {
-        player_id: currentId,
-        game_type: gameType
-      };
-      console.log('Matchmaking [v4] - Attempting insert with payload:', payload);
+      // 1. Search for a pending match to join
+      let pendingMatchQuery = supabase
+        .from('matches')
+        .select('*')
+        .eq('status', 'pending')
+        .eq('game_type', gameType)
+        .neq('player1_id', currentId);
 
-      const { error: joinError } = await supabase.from('matchmaking_queue').insert(payload);
-
-      if (joinError) {
-        console.error("Error joining queue:", joinError);
-        return;
+      // If this is a rematch, ensure we only join the exact rematch created by the opponent
+      if (referenceMatchId) {
+        pendingMatchQuery = pendingMatchQuery.eq('reference_match_id', referenceMatchId);
       }
 
-      // 4. Subscribe to Realtime changes on matchmaking_queue for our player_id
+      const { data: pendingMatches, error: searchError } = await pendingMatchQuery.limit(1);
+
+      if (pendingMatches && pendingMatches.length > 0) {
+        const joinMatch = pendingMatches[0];
+        console.log('Matchmaking [v8] - Joining existing pending match:', joinMatch.id);
+        const { error: updateError } = await supabase
+          .from('matches')
+          .update({ player2_id: currentId, status: 'in_progress' })
+          .eq('id', joinMatch.id);
+
+        if (!updateError) {
+           const { data: opp } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).single();
+           if (opp) startMatch(joinMatch.id, opp);
+           return;
+        }
+      }
+
+      // 2. No match found, create a new pending match
+      console.log('Matchmaking [v8] - No matches found. Creating pending match.');
+      const { data: newMatch, error: insertError } = await supabase
+        .from('matches')
+        .insert({
+          player1_id: currentId,
+          game_type: gameType,
+          status: 'pending',
+          reference_match_id: referenceMatchId
+        })
+        .select()
+        .single();
+
+      if (insertError || !newMatch) {
+         console.error('Error creating pending match:', insertError);
+         navigate('/menu');
+         return;
+      }
+
+      setPendingMatchId(newMatch.id);
+
+      // 3. Subscribe to changes for this match waiting for player 2
       const channel = supabase
-        .channel(`matchmaking:${currentId}`)
+        .channel(`match:${newMatch.id}`)
         .on(
           'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'matchmaking_queue',
-            filter: `player_id=eq.${currentId}`,
-          },
+          { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${newMatch.id}` },
           async (payload: any) => {
-            if (payload.new.match_id) {
-              handleMatchFound(payload.new.match_id, currentId as string);
+            console.log('Matchmaking [v8] - Update received:', payload);
+            if (payload.new.status === 'in_progress' && payload.new.player2_id) {
+              const { data: opp } = await supabase.from('players').select('*').eq('id', payload.new.player2_id).single();
+              if (opp) startMatch(payload.new.id, opp);
             }
           }
         )
         .subscribe();
 
       subscriptionRef.current = channel;
-
-      // Also check if we were immediately matched
-      const { data: queueEntry } = await supabase
-        .from('matchmaking_queue')
-        .select('match_id')
-        .eq('player_id', currentId)
-        .maybeSingle();
-
-      if (queueEntry?.match_id) {
-        handleMatchFound(queueEntry.match_id, currentId);
-      }
     }
 
     initMatchmaking();
 
     return () => {
-      // Ensure we leave the queue on unmount
-      if (playerId) {
-        supabase.from('matchmaking_queue').delete().eq('player_id', playerId).then(() => {
-          if (subscriptionRef.current) {
-            supabase.removeChannel(subscriptionRef.current);
-          }
-        });
-      }
+      // Unmount cleanup
+      if (subscriptionRef.current) supabase.removeChannel(subscriptionRef.current);
+      
+      setPendingMatchId(prev => {
+        if (prev) {
+          // Fire-and-forget update to cancel
+          supabase.from('matches').update({ status: 'canceled' }).eq('id', prev);
+        }
+        return null;
+      });
     };
-  }, [navigate, playerId]);
-
+  }, [navigate, playerId, gameType]);
 
 const handleStartMatch = () => {
   navigate('/versus', {
@@ -273,8 +177,9 @@ const handleStartMatch = () => {
 };
 
 const handleCancel = async () => {
-  if (playerId) {
-    await supabase.from('matchmaking_queue').delete().eq('player_id', playerId);
+  if (pendingMatchId) {
+    await supabase.from('matches').update({ status: 'canceled' }).eq('id', pendingMatchId);
+    setPendingMatchId(null);
   }
   navigate('/menu');
 };
