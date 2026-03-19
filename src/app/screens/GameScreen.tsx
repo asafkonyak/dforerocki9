@@ -8,6 +8,7 @@ import { CanvasRenderer } from '../../components/CanvasRenderer';
 import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { CameraFeed } from '../components/CameraFeed';
+import { useSocket } from '../../contexts/SocketContext';
 
 export function GameScreen() {
   const navigate = useNavigate();
@@ -28,7 +29,8 @@ export function GameScreen() {
   const [winner, setWinner] = useState<string | null>(null);
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
-  const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number; rank: string } | null>(null);
+  const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string } | null>(null);
+  const { socket, isConnected } = useSocket();
 
   // Round-based states
   const gameType = location.state?.gameType || '1_round';
@@ -67,6 +69,7 @@ export function GameScreen() {
 
         if (data && !error) {
           setProfile({
+            id: playerId || undefined,
             username: data.username || 'YOU',
             avatar_url: data.avatar_url || '👤',
             xp: data.xp || 0,
@@ -180,21 +183,8 @@ export function GameScreen() {
     avatar: opponentInfo.avatar,
   };
 
-  // AI opponent tapping simulation
-  useEffect(() => {
-    if (!isGameActive || winner) return;
-
-    const aiInterval = setInterval(() => {
-      const aiTap = Math.random() * 3;
-      setArmPosition(prev => {
-        const newPos = Math.min(100, prev + aiTap);
-        return newPos;
-      });
-      setPlayer2Power(prev => Math.max(0, prev - 0.5));
-    }, 500);
-
-    return () => clearInterval(aiInterval);
-  }, [isGameActive, winner]);
+  // REMOVED: AI opponent tapping simulation
+  // This is now driven by the socket/hardware
 
   // Check win condition
   useEffect(() => {
@@ -324,28 +314,54 @@ export function GameScreen() {
     }, 3000);
   };
 
-  // Power drain over time
+  // REMOVED: Power drain over time
+  // This is now handled by physical resistance or hardware logic
+
+  // Handle Socket Messages for Real-time Game Data
   useEffect(() => {
-    if (!isGameActive || winner) return;
+    if (!socket || !isGameActive || winner) return;
 
-    const drainInterval = setInterval(() => {
-      setPlayer1Power(prev => Math.max(0, prev - 0.3));
-    }, 1000);
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        const serverData = data.data || data;
 
-    return () => clearInterval(drainInterval);
-  }, [isGameActive, winner]);
+        // Map server position to armPosition (0-100)
+        if (serverData.position !== undefined) {
+          // Hardware sends 0-100 where 0 is P1 win, 100 is P2 win
+          setArmPosition(serverData.position);
+          console.log('[Game v15] - Socket Position Update:', serverData.position);
+        }
+
+        // Map force/power if available
+        if (serverData.force_p1 !== undefined) setPlayer1Power(serverData.force_p1);
+        if (serverData.force_p2 !== undefined) setPlayer2Power(serverData.force_p2);
+
+      } catch (e) {
+        // Skip non-JSON
+      }
+    };
+
+    socket.addEventListener('message', handleMessage);
+    return () => socket.removeEventListener('message', handleMessage);
+  }, [socket, isGameActive, winner]);
 
   // Handle player tap
   const handleTap = () => {
     if (!isGameActive || winner) return;
 
-    const power = Math.random() * 5 + 3;
-    setArmPosition(prev => Math.max(0, prev - power));
-    setPlayer1Power(prev => Math.max(0, prev - 1));
-    setTapCount(prev => prev + 1);
-    playTap();
+    // SEND COMMAND TO SOCKET instead of local state update
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const tapMsg = JSON.stringify({ cmd: { TAP: 1, player_id: profile?.id || 'GUEST' } });
+      socket.send(tapMsg);
+      console.log('[Game v15] - Tap Command Sent:', tapMsg);
+    }
 
-    // Combo system
+    // Still play feedback locally
+    playTap();
+    setTapCount(prev => prev + 1);
+
+    // Combo system (Visual only)
     setCombo(prev => {
       const newCombo = prev + 1;
       if (newCombo % 10 === 0) {
