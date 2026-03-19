@@ -12,6 +12,7 @@ export function VersusScreen() {
   const [countdown, setCountdown] = useState(5);
   const [player1, setPlayer1] = useState<any>(null);
   const [player2, setPlayer2] = useState<any>(null);
+  const [isVideoFinished, setIsVideoFinished] = useState(false);
 
   const matchId = location.state?.matchId;
   const opponentData = location.state?.opponent;
@@ -72,6 +73,8 @@ export function VersusScreen() {
   }, [opponentData]);
 
   useEffect(() => {
+    if (!isVideoFinished) return;
+    
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
@@ -390,53 +393,61 @@ export function VersusScreen() {
                 PREPARE FOR BATTLE
               </motion.h2>
 
-              {/* Video Tutorial Placeholder */}
-              <div className="relative mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-[#1a0a2e] to-[#0a0515] border-2 border-white/20">
-                <div className="aspect-video flex flex-col items-center justify-center gap-4 p-8">
-                  {/* Animated phone grip illustration */}
-                  <motion.div
-                    className="text-center"
-                    animate={{
-                      y: [0, -10, 0],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      type: "tween"
-                    }}
-                  >
-                    <div className="text-6xl mb-4">📱</div>
-                    <div className="text-7xl">👊</div>
-                  </motion.div>
+              {/* Video Placeholder or Referee Video */}
+              <div className="relative mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-[#1a0a2e] to-[#0a0515] border-2 border-white/20 aspect-video">
+                {!isVideoFinished ? (
+                  <video 
+                    src="/assets/Referee.mp4" 
+                    autoPlay 
+                    playsInline
+                    onEnded={() => setIsVideoFinished(true)}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 p-8 h-full bg-black/40">
+                    <motion.div
+                      className="text-center"
+                      animate={{
+                        y: [0, -10, 0],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        type: "tween"
+                      }}
+                    >
+                      <div className="text-6xl mb-4">📱</div>
+                      <div className="text-7xl">👊</div>
+                    </motion.div>
 
-                  <div className="text-center">
-                    <p className="text-white/80 text-sm mb-2">Grip your phone firmly</p>
-                    <p className="text-[#00f0ff] text-xs uppercase tracking-wider">Arm Wrestling Tutorial</p>
+                    <div className="text-center">
+                      <p className="text-white/80 text-sm mb-2">Grip your phone firmly</p>
+                      <p className="text-[#00f0ff] text-xs uppercase tracking-wider">Arm Wrestling Tutorial</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {[0, 1, 2].map((i) => (
+                        <motion.div
+                          key={i}
+                          className="w-2 h-2 rounded-full bg-[#00f0ff]"
+                          animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [0.5, 1, 0.5],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            delay: i * 0.2,
+                            type: "tween"
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
+                )}
 
-                  {/* Animated grip indicators */}
-                  <div className="flex gap-2">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-2 h-2 rounded-full bg-[#00f0ff]"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [0.5, 1, 0.5],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                          type: "tween"
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Video play indicator */}
+                {/* Video status indicator */}
                 <div className="absolute top-4 right-4 px-3 py-1 bg-red-600 rounded-full flex items-center gap-2">
                   <motion.div
                     className="w-2 h-2 bg-white rounded-full"
@@ -449,7 +460,9 @@ export function VersusScreen() {
                       type: "tween"
                     }}
                   />
-                  <span className="text-white text-xs uppercase font-bold">Tutorial</span>
+                  <span className="text-white text-xs uppercase font-bold">
+                    {!isVideoFinished ? 'Referee' : 'Tutorial'}
+                  </span>
                 </div>
               </div>
 
