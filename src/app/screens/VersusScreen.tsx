@@ -31,57 +31,67 @@ export function VersusScreen() {
 
   useEffect(() => {
     async function loadPlayers() {
-      // Get self stats
-      const { data: { user } } = await supabase.auth.getUser();
-      let currentId = localStorage.getItem('fighter_player_id');
-      
-      if (user) {
-        const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
-        if (player?.id) currentId = player.id;
-      }
-
-      if (currentId) {
-        const { data: p1 } = await supabase.from('players').select('*').eq('id', currentId).single();
-        if (p1) {
-          setPlayer1({
-            name: p1.username || 'YOU',
-            avatar: p1.avatar_url,
-            level: Math.floor((p1.xp || 0) / 100) + 1,
-            wins: 12, // Placeholder for actual match history count
-            winRate: 65,
-            power: 75 + Math.min(25, (p1.xp || 0) / 500),
-            speed: 80,
-          });
+      try {
+        // 1. Get Match record to determine roles
+        if (!matchId) {
+          // Fallback if no matchId (e.g. Gauntlet)
+          const { data: { user } } = await supabase.auth.getUser();
+          let currentId = localStorage.getItem('fighter_player_id');
+          if (user) {
+            const { data: p } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+            if (p?.id) currentId = p.id;
+          }
+          
+          if (currentId) {
+            const { data: p1 } = await supabase.from('players').select('*').eq('id', currentId).single();
+            if (p1) setPlayer1(mapPlayerData(p1, 1));
+          }
+          
+          if (opponentData) {
+            setPlayer2(mapPlayerData(opponentData, 10)); // Dummy level for opponent
+          } else {
+            setPlayer2({ name: 'CYBER_QUEEN', avatar: '👑', level: 38, wins: 134, winRate: 72, power: 88, speed: 90 });
+          }
+          return;
         }
-      }
 
-      // Handle opponent
-      if (opponentData) {
-        setPlayer2({
-          name: opponentData.username,
-          avatar: opponentData.avatar_url,
-          level: 10, // Placeholder
-          wins: 8,
-          winRate: 55,
-          power: 82,
-          speed: 88,
-        });
-      } else {
-        // Fallback or Gauntlet dummy
-        setPlayer2({
-          name: 'CYBER_QUEEN',
-          avatar: '👑',
-          level: 38,
-          wins: 134,
-          winRate: 72,
-          power: 88,
-          speed: 90,
-        });
+        const { data: match, error: matchError } = await supabase
+          .from('matches')
+          .select('player1_id, player2_id')
+          .eq('id', matchId)
+          .single();
+
+        if (matchError || !match) throw matchError || new Error('Match not found');
+
+        // 2. Fetch both profiles
+        const { data: p1Data } = await supabase.from('players').select('*').eq('id', match.player1_id).single();
+        const { data: p2Data } = await supabase.from('players').select('*').eq('id', match.player2_id).single();
+
+        if (p1Data) setPlayer1(mapPlayerData(p1Data, 1)); // Map using shared logic
+        if (p2Data) setPlayer2(mapPlayerData(p2Data, 2));
+
+      } catch (err) {
+        console.error('Error loading players:', err);
       }
     }
 
+    // Helper to map DB record to UI state
+    function mapPlayerData(p: any, role: number) {
+      return {
+        name: p.username || (role === 1 ? 'PLAYER_01' : 'PLAYER_02'),
+        avatar: p.avatar_url,
+        level: Math.floor((p.xp || 0) / 100) + 1,
+        wins: p.win_count || 0,
+        winRate: p.win_count + (p.loss_count || 0) > 0 
+          ? Math.round((p.win_count / (p.win_count + (p.loss_count || 0))) * 100) 
+          : 0,
+        power: 75 + Math.min(25, (p.xp || 0) / 500),
+        speed: 80 + (role === 2 ? 8 : 0), // Slight variation for flavor
+      };
+    }
+
     loadPlayers();
-  }, [opponentData]);
+  }, [matchId, opponentData]);
 
   useEffect(() => {
     if (!isVideoFinished) return;
@@ -91,7 +101,15 @@ export function VersusScreen() {
       return () => clearTimeout(timer);
     } else {
       setTimeout(() => {
-        navigate('/game', { state: { matchId, mode: 'ranked', opponent: player2, gameType } });
+        navigate('/game', { 
+          state: { 
+            matchId, 
+            mode: 'ranked', 
+            opponent: player2, 
+            isPlayer1: location.state?.isPlayer1,
+            gameType 
+          } 
+        });
       }, 500);
     }
   }, [countdown, isVideoFinished, navigate, matchId, player2]);

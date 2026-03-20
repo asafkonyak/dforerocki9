@@ -10,7 +10,9 @@ interface Player {
   id: string;
   name: string;
   avatar: string;
-  score: number;
+  xp: number;
+  winCount: number;
+  lossCount: number;
   recentForm: ('W' | 'L')[];
   rank: number;
 }
@@ -26,17 +28,21 @@ interface FightResult {
 // Removed GLOBAL_PLAYERS and BASE_USER constants to use live data from Supabase
 
 function FormDots({ form, highlightLast }: { form: ('W' | 'L')[]; highlightLast?: boolean }) {
+  // Ensure we show exactly 5 dots
+  const displayForm = [...form].slice(-5);
+  const placeholders = Array.from({ length: Math.max(0, 5 - displayForm.length) });
+
   return (
     <div className="flex gap-1.5 items-center">
-      {form.map((result, i) => {
-        const isLast = highlightLast && i === form.length - 1;
+      {displayForm.map((result, i) => {
+        const isLast = highlightLast && i === displayForm.length - 1;
         return (
           <motion.div
             key={i}
-            className={`w-2.5 h-2.5 rounded-full ${
+            className={`w-2 h-2 rounded-full ${
               result === 'W'
-                ? 'bg-[#00f0ff] shadow-[0_0_6px_#00f0ff]'
-                : 'bg-[#ff2244] shadow-[0_0_6px_#ff2244]'
+                ? 'bg-[#00d1ff] shadow-[0_0_8px_#00d1ff]'
+                : 'bg-[#ff0044] shadow-[0_0_8px_#ff0044]'
             } ${isLast ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-transparent' : ''}`}
             initial={{ scale: 0 }}
             animate={{ scale: isLast ? [0, 1.4, 1] : 1 }}
@@ -49,6 +55,9 @@ function FormDots({ form, highlightLast }: { form: ('W' | 'L')[]; highlightLast?
           />
         );
       })}
+      {placeholders.map((_, i) => (
+        <div key={`p-${i}`} className="w-2 h-2 rounded-full bg-white/5 border border-white/5" />
+      ))}
     </div>
   );
 }
@@ -98,15 +107,20 @@ function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 
       </p>
 
       <p
-        className={`text-xs mb-1.5 ${
+        className={`text-[10px] mb-1.5 ${
           position === 1 ? 'text-[#ffd700]' : position === 2 ? 'text-[#c0c0c0]' : 'text-[#cd7f32]'
         }`}
         style={{ fontFamily: "'Orbitron', sans-serif" }}
       >
-        {player.score.toLocaleString()} PP
+        {player.xp.toLocaleString()} XP
       </p>
 
-      <FormDots form={player.recentForm} />
+      <div className="flex flex-col items-center gap-1.5 mb-2">
+        <span className="text-[9px] text-white/40 uppercase tracking-tighter">
+          {player.winCount}W - {player.lossCount}L
+        </span>
+        <FormDots form={player.recentForm} />
+      </div>
 
       <motion.div
         className={`w-full ${config.podium} mt-3 rounded-t-lg relative overflow-hidden`}
@@ -160,9 +174,22 @@ function RankedRow({ player, index }: { player: Player; index: number }) {
           <p className="text-white text-sm tracking-wider truncate" style={{ fontFamily: "'Orbitron', sans-serif" }}>
             {player.name}
           </p>
-          <p className="text-[#00f0ff]/70 text-xs" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-            {player.score.toLocaleString()} PP
-          </p>
+        </div>
+
+        <div className="flex flex-col items-center min-w-[50px]">
+          <span className="text-[#00f0ff] text-[10px] font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+            {player.xp.toLocaleString()}
+          </span>
+          <span className="text-white/30 text-[7px] uppercase tracking-tighter">XP</span>
+        </div>
+
+        <div className="flex flex-col items-center min-w-[65px]">
+          <span className="text-white text-[9px] font-medium" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+            {player.winCount}W - {player.lossCount}L
+          </span>
+          <span className="text-[#00f0ff]/60 text-[8px] font-bold">
+            {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
+          </span>
         </div>
 
         <FormDots form={player.recentForm} />
@@ -365,9 +392,11 @@ export function LeaderboardScreen() {
               id: p.id,
               name: p.username || 'Anonymous',
               avatar: p.avatar_url || '👤',
-              score: p.xp || 0,
+              xp: p.xp || 0,
+              winCount: p.win_count || 0,
+              lossCount: p.loss_count || 0,
               rank: index + 1,
-              recentForm: ['W', 'W', 'W'] as ('W' | 'L')[]
+              recentForm: (p.last_results || '').split(',').filter(Boolean) as ('W' | 'L')[]
             }));
           setPlayers(mapped);
 
@@ -393,9 +422,11 @@ export function LeaderboardScreen() {
                   id: userStats.id,
                   name: userStats.username || 'YOU',
                   avatar: userStats.avatar_url || '🎮',
-                  score: userStats.xp || 0,
+                  xp: userStats.xp || 0,
+                  winCount: userStats.win_count || 0,
+                  lossCount: userStats.loss_count || 0,
                   rank: (count || 0) + 1,
-                  recentForm: ['W', 'L', 'W'] as ('W' | 'L')[]
+                  recentForm: (userStats.last_results || '').split(',').filter(Boolean) as ('W' | 'L')[]
                 });
               }
             }
@@ -597,8 +628,8 @@ export function LeaderboardScreen() {
                 {userPlayer?.name || 'YOU'}
               </p>
               <div className="flex items-center gap-2">
-                <p className="text-white/60 text-xs" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-                  {(userPlayer?.score || 0).toLocaleString()} PP
+                <p className="text-white/60 text-[10px]" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+                  {(userPlayer?.xp || 0).toLocaleString()} XP • {userPlayer?.winCount}W - {userPlayer?.lossCount}L
                 </p>
                 {fightResult && (
                   <motion.span

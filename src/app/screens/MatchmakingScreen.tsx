@@ -141,6 +141,7 @@ export function MatchmakingScreen() {
                   matchId,
                   mode: 'ranked',
                   opponent: opponentDataRef.current,
+                  isPlayer1: isPlayer1,
                   gameType: gameType
                 }
               });
@@ -363,119 +364,120 @@ export function MatchmakingScreen() {
           </p>
         </div>
 
-        {/* VS Display */}
-        <GlassCard className="p-8 border-t border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <div className="grid grid-cols-3 gap-4 items-center relative">
-            {/* Player */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-[#00f0ff]/20 rounded-2xl blur-md group-hover:blur-lg transition-all" />
-                <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0a0515] to-[#1a0a2e] border-2 border-[#00f0ff] flex items-center justify-center shadow-[0_0_30px_#00f0ff40] overflow-hidden">
-                  <AvatarDisplay avatar={userData?.avatar_url || '👤'} size="lg" className="w-full h-full rounded-none" />
+        {/* VS Display - Positioned by Player Rank (P1=Alpha, P2=Omega) */}
+        {(() => {
+          const displayP1 = (matchFound && !isPlayer1) ? opponentData : userData;
+          const displayP2 = (matchFound && !isPlayer1) ? userData : opponentData;
+          
+          return (
+            <GlassCard className="p-8 border-t border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+              <div className="grid grid-cols-3 gap-4 items-center relative">
+                {/* Player 1 (Left / ALPHA) */}
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-[#00f0ff]/20 rounded-2xl blur-md group-hover:blur-lg transition-all" />
+                    <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0a0515] to-[#1a0a2e] border-2 border-[#00f0ff] flex items-center justify-center shadow-[0_0_30px_#00f0ff40] overflow-hidden">
+                      <AvatarDisplay avatar={displayP1?.avatar_url || '👤'} size="lg" className="w-full h-full rounded-none" />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-white font-bold tracking-wider text-sm mb-1 uppercase leading-none">{displayP1?.username || 'PLAYER_01'}</p>
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] shadow-[0_0_5px_#00f0ff]" />
+                      <p className="text-[#00f0ff] text-[10px] font-bold uppercase tracking-widest leading-none">ALPHA</p>
+                    </div>
+                  </div>
                 </div>
 
-              </div>
-              <div className="text-center">
-                <p className="text-white font-bold tracking-wider text-sm mb-1 uppercase leading-none">{userData?.username || 'PLAYER_01'}</p>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] shadow-[0_0_5px_#00f0ff]" />
-                  <p className="text-[#00f0ff] text-[10px] font-bold uppercase tracking-widest leading-none">ALPHA</p>
+                {/* VS Divider */}
+                <div className="flex flex-col items-center justify-center h-full">
+                  <div className="relative">
+                    <motion.div
+                      className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#ff006e] to-[#ff006e]/50 italic px-4 py-2"
+                      animate={{
+                        scale: matchFound ? [1, 1.4, 1] : [1, 1.1, 1],
+                        rotate: matchFound ? [0, 10, -10, 0] : [0, 2, -2, 0],
+                      }}
+                      transition={{
+                        duration: matchFound ? 0.5 : 2,
+                        repeat: matchFound ? 0 : Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      VS
+                    </motion.div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* VS */}
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="relative">
-                <motion.div
-                  className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#ff006e] to-[#ff006e]/50 italic px-4 py-2"
-                  animate={{
-                    scale: matchFound ? [1, 1.4, 1] : [1, 1.1, 1],
-                    rotate: matchFound ? [0, 10, -10, 0] : [0, 2, -2, 0],
-                  }}
-                  transition={{
-                    duration: matchFound ? 0.5 : 2,
-                    repeat: matchFound ? 0 : Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  VS
-                </motion.div>
-                <motion.div
-                  className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-[#ff006e] to-transparent"
-                  animate={{ opacity: [0, 1, 0], scaleX: [0, 1.5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              </div>
-            </div>
-
-            {/* Opponent - Skeleton or Real */}
-            <div className="flex flex-col items-center gap-4">
-              <AnimatePresence mode="wait">
-                {!matchFound ? (
-                  <motion.div
-                    key="searching"
-                    className="flex flex-col items-center gap-4"
-                    exit={{ opacity: 0, scale: 0.8 }}
-                  >
-                    <div className="relative">
+                {/* Player 2 (Right / OMEGA) */}
+                <div className="flex flex-col items-center gap-4">
+                  <AnimatePresence mode="wait">
+                    {!matchFound ? (
                       <motion.div
-                        className="w-24 h-24 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 border-2 border-white/10 flex items-center justify-center"
-                        animate={{
-                          borderColor: ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"],
-                          boxShadow: ["0 0 0px transparent", "0 0 20px rgba(0,240,255,0.2)", "0 0 0px transparent"]
-                        }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                        key="searching"
+                        className="flex flex-col items-center gap-4"
+                        exit={{ opacity: 0, scale: 0.8 }}
                       >
-                        <Zap className="w-8 h-8 text-white/10 animate-pulse" />
+                        <div className="relative">
+                          <motion.div
+                            className="w-24 h-24 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 border-2 border-white/10 flex items-center justify-center"
+                            animate={{
+                              borderColor: ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"],
+                              boxShadow: ["0 0 0px transparent", "0 0 20px rgba(0,240,255,0.2)", "0 0 0px transparent"]
+                            }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            <Zap className="w-8 h-8 text-white/10 animate-pulse" />
+                          </motion.div>
+                          <motion.div
+                            className="absolute inset-0 border-t-2 border-[#00f0ff]/40 rounded-2xl"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                          />
+                        </div>
+                        <div className="text-center space-y-2">
+                          <div className="h-3 w-20 bg-white/5 rounded-full relative overflow-hidden">
+                            <motion.div
+                              className="absolute inset-0 bg-[#00f0ff]/20"
+                              animate={{ x: ['-100%', '100%'] }}
+                              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                            />
+                          </div>
+                          <div className="h-2 w-16 bg-white/5 rounded-full mx-auto" />
+                        </div>
                       </motion.div>
+                    ) : (
                       <motion.div
-                        className="absolute inset-0 border-t-2 border-[#00f0ff]/40 rounded-2xl"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                      />
-                    </div>
-                    <div className="text-center space-y-2">
-                      <div className="h-3 w-20 bg-white/5 rounded-full relative overflow-hidden">
-                        <motion.div
-                          className="absolute inset-0 bg-[#00f0ff]/20"
-                          animate={{ x: ['-100%', '100%'] }}
-                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                        />
-                      </div>
-                      <div className="h-2 w-16 bg-white/5 rounded-full mx-auto" />
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="opponent"
-                    className="flex flex-col items-center gap-4"
-                    initial={{ opacity: 0, x: 20, scale: 0.8 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    transition={{ type: "spring", damping: 15 }}
-                  >
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-[#ff006e]/30 rounded-2xl blur-md group-hover:blur-lg transition-all" />
-                      <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0a0515] to-[#1a0a2e] border-2 border-[#ff006e] flex items-center justify-center shadow-[0_0_30px_#ff006e50] overflow-hidden">
-                        <AvatarDisplay avatar={opponentData?.avatar_url || '👤'} size="lg" className="w-full h-full rounded-none" />
-                      </div>
-                      <div className="absolute -bottom-2 -left-2 w-8 h-8 rounded-lg bg-[#ff006e] border-2 border-[#0a0515] flex items-center justify-center">
-                        <Swords className="w-4 h-4 text-[#0a0515]" />
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-white font-bold tracking-wider text-sm mb-1 uppercase leading-none">{opponentData?.username || 'UNKNOWN'}</p>
-                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff006e]/10 border border-[#ff006e]/30">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#ff006e] shadow-[0_0_5px_#ff006e]" />
-                        <p className="text-[#ff006e] text-[10px] font-bold uppercase tracking-widest leading-none">OMEGA</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </GlassCard>
+                        key="opponent"
+                        className="flex flex-col items-center gap-4"
+                        initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        transition={{ type: "spring", damping: 15 }}
+                      >
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-[#ff006e]/30 rounded-2xl blur-md group-hover:blur-lg transition-all" />
+                          <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0a0515] to-[#1a0a2e] border-2 border-[#ff006e] flex items-center justify-center shadow-[0_0_30px_#ff006e50] overflow-hidden">
+                            <AvatarDisplay avatar={displayP2?.avatar_url || '👤'} size="lg" className="w-full h-full rounded-none" />
+                          </div>
+                          <div className="absolute -bottom-2 -left-2 w-8 h-8 rounded-lg bg-[#ff006e] border-2 border-[#0a0515] flex items-center justify-center">
+                            <Swords className="w-4 h-4 text-[#0a0515]" />
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-white font-bold tracking-wider text-sm mb-1 uppercase leading-none">{displayP2?.username || 'UNKNOWN'}</p>
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#ff006e]/10 border border-[#ff006e]/30">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#ff006e] shadow-[0_0_5px_#ff006e]" />
+                            <p className="text-[#ff006e] text-[10px] font-bold uppercase tracking-widest leading-none">OMEGA</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </GlassCard>
+          );
+        })()}
 
         {/* Status Indicators */}
         <div className="grid grid-cols-2 gap-4">

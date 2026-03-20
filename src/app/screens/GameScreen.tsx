@@ -167,15 +167,7 @@ export function GameScreen() {
   comboRef.current = combo;
   tapCountRef.current = tapCount;
 
-  // Player data
-  const player1 = {
-    name: profile?.username || 'NEON_KNIGHT',
-    avatar: profile?.avatar_url || '⚡',
-    rank: profile?.rank || 'Novice',
-    xp: profile?.xp || 0
-  };
-
-  // Resolve Opponent Data
+  // Resolve Opponent Data for Gauntlet
   const getRobotData = (stage: number) => {
     const robots = [
       { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.jpg' },
@@ -190,17 +182,30 @@ export function GameScreen() {
   const isRanked = gameMode === 'ranked' && location.state?.matchId && location.state?.opponent;
   const matchId = location.state?.matchId;
   const rankedOpponent = location.state?.opponent;
+  const isPlayer1 = location.state?.isPlayer1 ?? true;
+
+  // Player data mapping based on roles
+  const localPlayer = {
+    name: profile?.username || 'YOU',
+    avatar: profile?.avatar_url || '👤',
+    rank: profile?.rank || 'Novice',
+    xp: profile?.xp || 0
+  };
 
   const opponentInfo = isRanked
-    ? { name: rankedOpponent.username, avatar: rankedOpponent.avatar }
+    ? { name: rankedOpponent.username, avatar: rankedOpponent.avatar, rank: 'RIVAL' }
     : gameMode === 'gauntlet'
-      ? getRobotData(stageNumber || 1)
-      : { name: 'CYBER_QUEEN', avatar: '🤖' };
+      ? { ...getRobotData(stageNumber || 1), rank: 'GAUNTLET' }
+      : { name: 'CYBER_QUEEN', avatar: '🤖', rank: 'AI' };
 
-  const player2 = {
-    name: opponentInfo.name,
-    avatar: opponentInfo.avatar,
-  };
+  // UI Positions: player1 (Left) is always Host/P1, player2 (Right) is always Guest/P2
+  const player1 = isRanked 
+    ? (isPlayer1 ? localPlayer : opponentInfo) 
+    : localPlayer;
+
+  const player2 = isRanked 
+    ? (isPlayer1 ? opponentInfo : localPlayer) 
+    : opponentInfo;
 
   // REMOVED: AI opponent tapping simulation
   // This is now driven by the socket/hardware
@@ -245,8 +250,9 @@ export function GameScreen() {
       p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent
     };
 
+    const isMeWinner = finalWinner === (isPlayer1 ? 'player1' : 'player2');
     const opponentId = isRanked ? location.state?.opponent?.id : null;
-    const winnerId = finalWinner === 'player1' ? playerId : opponentId;
+    const winnerId = isMeWinner ? playerId : opponentId;
 
     if (matchId) {
       await supabase.from('matches').update({
@@ -283,14 +289,14 @@ export function GameScreen() {
       }
     };
 
-    await updatePlayerStats(playerId, finalWinner === 'player1');
+    await updatePlayerStats(playerId, isMeWinner);
     if (opponentId) {
-      await updatePlayerStats(opponentId, finalWinner === 'player2');
+      await updatePlayerStats(opponentId, !isMeWinner);
     }
 
     // 5. Add XP and Update Progress
     const earnedXp = gameMode === 'gauntlet' ? 500 : isRanked ? 300 : 150;
-    const isWin = finalWinner === 'player1';
+    const isWin = isMeWinner;
 
     if (isWin) {
       await supabase.rpc('increment_xp', { p_id: playerId, xp_amount: earnedXp });
@@ -368,19 +374,21 @@ export function GameScreen() {
           setResistanceValue(Number(serverData.result));
         }
 
-        // Handle Win/Loss by computer_state
         if (serverData.computer_state === 'MAIN_SM_GAMEOVER_WIN') {
           console.log('[Game v18] - WIN condition detected via computer_state');
           setIsGameActive(false);
-          setWinner('player1');
+          const winningSlot = isPlayer1 ? 'player1' : 'player2';
+          setWinner(winningSlot);
           playWin();
-          saveMatchResult('player1');
+          saveMatchResult(winningSlot);
         } else if (serverData.computer_state === 'MAIN_SM_GAMEOVER_LOSE') {
           console.log('[Game v18] - LOSS condition detected via computer_state');
           setIsGameActive(false);
-          setWinner('player2');
+          const losingSlot = isPlayer1 ? 'player1' : 'player2';
+          const winningSlot = isPlayer1 ? 'player2' : 'player1';
+          setWinner(winningSlot);
           playLose();
-          saveMatchResult('player2');
+          saveMatchResult(winningSlot);
         }
 
         // Optionally map force/power if available in this message
@@ -597,9 +605,14 @@ export function GameScreen() {
                 </div>
                 <div>
                   <h3 className="text-lg text-[#00f0ff] font-bold uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    {player1.name}
+                    {player1.name} {isPlayer1 && '(YOU)'}
                   </h3>
-                  <p className="text-[#00f0ff]/60 text-xs font-bold uppercase">{player1.rank}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[#00f0ff]/60 text-[10px] font-bold uppercase tracking-widest">{player1.rank}</p>
+                    <div className="px-1.5 py-0.5 rounded bg-[#00f0ff]/10 border border-[#00f0ff]/30">
+                      <p className="text-[#00f0ff] text-[8px] font-black uppercase tracking-widest leading-none">ALPHA</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -673,10 +686,15 @@ export function GameScreen() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg text-[#ff006e] font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    {player2.name}
+                  <h3 className="text-lg text-[#ff006e] font-bold uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    {player2.name} {!isPlayer1 && '(YOU)'}
                   </h3>
-                  <p className="text-white/60 text-xs">OPPONENT</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[#ff006e]/60 text-[10px] font-bold uppercase tracking-widest">{player2.rank || 'OPPONENT'}</p>
+                    <div className="px-1.5 py-0.5 rounded bg-[#ff006e]/10 border border-[#ff006e]/30">
+                      <p className="text-[#ff006e] text-[8px] font-black uppercase tracking-widest leading-none">OMEGA</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
