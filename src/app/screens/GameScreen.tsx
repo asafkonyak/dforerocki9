@@ -24,6 +24,7 @@ export function GameScreen() {
   const [player2Power, setPlayer2Power] = useState(100);
   const [tapCount, setTapCount] = useState(0);
   const [isGameActive, setIsGameActive] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState<number | string>(3);
   const [showCountdown, setShowCountdown] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export function GameScreen() {
         setCountdown('GO!');
         playStart();
         setIsGameActive(true);
+        setStartTime(Date.now());
         count--;
         timer = setTimeout(() => {
           setShowCountdown(false);
@@ -233,27 +235,60 @@ export function GameScreen() {
 
     if (!playerId) return;
 
-    // 2. Record the match
+    // 2. Calculate duration
+    const endTime = Date.now();
+    const durationSeconds = startTime ? Math.floor((endTime - startTime) / 1000) : 0;
+
+    // 3. Record the match
     const scoreObj = {
       p1_rounds: finalWinner === 'player1' ? roundsWonPlayer + 1 : roundsWonPlayer,
       p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent
     };
 
+    const opponentId = isRanked ? location.state?.opponent?.id : null;
+    const winnerId = finalWinner === 'player1' ? playerId : opponentId;
+
     if (matchId) {
       await supabase.from('matches').update({
-        winner_id: finalWinner === 'player1' ? playerId : null, // Handle opponent ID if we have it
-        status: 'finished',
+        winner_id: winnerId,
+        status: 'done',
+        duration: durationSeconds,
         score: scoreObj
       }).eq('id', matchId);
     } else {
       await supabase.from('matches').insert({
         player1_id: playerId,
-        winner_id: finalWinner === 'player1' ? playerId : null,
+        player2_id: opponentId,
+        winner_id: winnerId,
+        status: 'done',
+        duration: durationSeconds,
         score: scoreObj
       });
     }
 
-    // 3. Add XP and Update Progress
+    // 4. Update Player Statistics (Scenario Post-Game)
+    const updatePlayerStats = async (pId: string, isWin: boolean) => {
+      const { data: pData } = await supabase.from('players').select('win_count, loss_count, last_results').eq('id', pId).single();
+      if (pData) {
+        const results = pData.last_results ? pData.last_results.split(',').filter(Boolean) : [];
+        results.push(isWin ? 'W' : 'L');
+        const newResults = results.slice(-10).join(','); // Keep last 10
+
+        await supabase.from('players').update({
+          win_count: isWin ? (pData.win_count || 0) + 1 : (pData.win_count || 0),
+          loss_count: !isWin ? (pData.loss_count || 0) + 1 : (pData.loss_count || 0),
+          last_results: newResults,
+          last_game_time: new Date().toISOString()
+        }).eq('id', pId);
+      }
+    };
+
+    await updatePlayerStats(playerId, finalWinner === 'player1');
+    if (opponentId) {
+      await updatePlayerStats(opponentId, finalWinner === 'player2');
+    }
+
+    // 5. Add XP and Update Progress
     const earnedXp = gameMode === 'gauntlet' ? 500 : isRanked ? 300 : 150;
     const isWin = finalWinner === 'player1';
 
@@ -268,14 +303,11 @@ export function GameScreen() {
         if (nextStage > currentProgress) {
           await supabase.from('players').update({ gauntlet_progress: nextStage }).eq('id', playerId);
           localStorage.setItem('fighter_gauntlet_progress', nextStage.toString());
-          console.log(`Gauntlet progress updated: ${currentProgress} -> ${nextStage}`);
-        } else {
-          console.log(`Gauntlet progress maintained: already at ${currentProgress}, win on stage ${stageNumber}`);
         }
       }
     }
 
-    // 4. Navigate
+    // 6. Navigate
     setTimeout(() => {
       if (gameMode === 'gauntlet') {
         navigate('/victory', {

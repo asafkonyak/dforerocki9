@@ -1,28 +1,37 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { GlassCard } from '../components/GlassCard';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, RotateCcw, Zap, User, Weight, ArrowLeft } from 'lucide-react';
 import { NeonButton } from '../components/NeonButton';
 import { supabase } from '../../lib/supabase';
 
+import { useSocket } from '../../contexts/SocketContext';
 import { SUGGESTED_NAMES } from '../data/suggestedNames';
 
-const AVATAR_OPTIONS = [
-  { id: 1, emoji: '🤖', label: 'Cyber Bot' },
-  { id: 2, emoji: '👾', label: 'Glitch Entity' },
-  { id: 3, emoji: '🦾', label: 'Mech Warrior' }
-];
+const CHARACTER_AVATARS = Array.from({ length: 24 }, (_, i) => `/assets/avatars/cyber_${i + 1}.png`);
+
+interface AvatarOption {
+  id: number;
+  url: string;
+}
 
 export function OnboardingScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isEditing = location.state?.isEditing;
+  const { isConnected, isError } = useSocket();
   const [playerName, setPlayerName] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [weight, setWeight] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
+  const [preferredHand, setPreferredHand] = useState<'left' | 'right'>('right');
+  const [avatarOptions, setAvatarOptions] = useState<AvatarOption[]>([]);
+  const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null); // null = none, 0 = camera, 1-4 = emoji
   const [cameraCountdown, setCameraCountdown] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
@@ -94,10 +103,89 @@ export function OnboardingScreen() {
   };
 
   useEffect(() => {
+    // Pick the 8 split characters for avatars
+    const pickedAvatars = CHARACTER_AVATARS.map((url, index) => ({
+      id: index + 1,
+      url
+    }));
+    setAvatarOptions(pickedAvatars);
+
     // Pick 5 random suggestions from the pool
-    const shuffled = [...SUGGESTED_NAMES].sort(() => 0.5 - Math.random());
-    setSuggestions(shuffled.slice(0, 5));
-  }, []);
+    const shuffledNames = [...SUGGESTED_NAMES].sort(() => 0.5 - Math.random());
+    setSuggestions(shuffledNames.slice(0, 5));
+
+    // Handle Edit Mode Pre-population
+    const prefillData = async () => {
+      if (isEditing) {
+        console.log("Onboarding [v2] - EDIT MODE ACTIVE");
+        const playerId = localStorage.getItem('fighter_player_id');
+        if (playerId) {
+          const { data: player } = await supabase.from('players').select('*').eq('id', playerId).maybeSingle();
+          if (player) {
+            setPlayerName(player.username || '');
+            setWeight(player.weight?.toString() || '');
+            setPreferredHand(player.preferred_hand || 'right');
+            
+            // Try to match avatar URL
+            const matchedAvatar = pickedAvatars.find(a => a.url === player.avatar_url);
+            if (matchedAvatar) {
+              setSelectedAvatar(matchedAvatar.id);
+            } else if (player.avatar_url && player.avatar_url.includes('avatars')) {
+              // It's a custom photo
+              setPhotoDataUrl(player.avatar_url);
+              setSelectedAvatar(0);
+            }
+          }
+        }
+      }
+    };
+    prefillData();
+  }, [isEditing]);
+
+  // Real-time username validation
+  useEffect(() => {
+    if (!playerName || playerName.length < 3) {
+      setNameError(playerName ? 'Name too short' : null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsValidating(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: existing, error } = await supabase
+          .from('players')
+          .select('id, user_id')
+          .eq('username', playerName)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (existing) {
+          // Check if it's the current user re-entering the name
+          let currentId = localStorage.getItem('fighter_player_id');
+          if (user) {
+             const { data: p } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+             if (p) currentId = p.id;
+          }
+          
+          if (existing.id !== currentId) {
+            setNameError('Username already taken');
+          } else {
+            setNameError(null);
+          }
+        } else {
+          setNameError(null);
+        }
+      } catch (err) {
+        console.error('Validation error:', err);
+      } finally {
+        setIsValidating(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [playerName]);
 
   const handleComplete = async () => {
     setIsSyncing(true); // Reusing state for loading
@@ -109,36 +197,27 @@ export function OnboardingScreen() {
     let finalAvatarUrl = '👤';
     
     if (selectedAvatar === 0 && photoDataUrl) {
-      try {
-        // Convert Base64 to Blob
-        const fetchResponse = await fetch(photoDataUrl);
-        const blob = await fetchResponse.blob();
-        
-        // Generate unique filename
-        const fileName = `avatar_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-        
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, blob, {
-            contentType: 'image/jpeg',
-            upsert: false
-          });
-          
-        if (uploadError) throw uploadError;
-        
-        // Get Public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-          
-        finalAvatarUrl = publicUrl;
-      } catch (err) {
-        console.error("Avatar upload failed:", err);
-        alert("Failed to upload avatar, falling back to default.");
+      // If it's already a URL (e.g. from a previous upload while editing), just use it
+      if (photoDataUrl.startsWith('http')) {
+        finalAvatarUrl = photoDataUrl;
+      } else {
+        try {
+          const fetchResponse = await fetch(photoDataUrl);
+          const blob = await fetchResponse.blob();
+          const fileName = `avatar_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, blob, { contentType: 'image/jpeg', upsert: false });
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+          finalAvatarUrl = publicUrl;
+        } catch (err) {
+          console.error("Avatar upload failed:", err);
+          alert("Failed to upload avatar, falling back to default.");
+        }
       }
     } else if (selectedAvatar) {
-      finalAvatarUrl = AVATAR_OPTIONS.find(a => a.id === selectedAvatar)?.emoji || '👤';
+      finalAvatarUrl = avatarOptions.find(a => a.id === selectedAvatar)?.url || '👤';
     }
 
     // Unified Player Handling
@@ -157,41 +236,14 @@ export function OnboardingScreen() {
     localStorage.setItem('fighter_player_id', playerId);
 
     try {
-      // 0. Ensure Name Uniqueness
-      let finalName = playerName;
-      let isUnique = false;
-      let checkCounter = 0;
-
-      while (!isUnique) {
-        const checkName = checkCounter === 0 ? playerName : `${playerName}${checkCounter}`;
-        const { data: existingPlayers, error: checkError } = await supabase
-          .from('players')
-          .select('id')
-          .eq('username', checkName)
-          .limit(1);
-
-        if (checkError) throw checkError;
-
-        const existingPlayer = existingPlayers && existingPlayers.length > 0 ? existingPlayers[0] : null;
-
-        // If no one has this name, or the person who has it is US (updating profile)
-        if (!existingPlayer || existingPlayer.id === playerId) {
-          finalName = checkName;
-          isUnique = true;
-        } else {
-          checkCounter++;
-        }
-        
-        if (checkCounter > 100) throw new Error("Could not generate a unique name after 100 attempts.");
-      }
-
       // 1. Upsert to players table
       const { error: playerError } = await supabase.from('players').upsert({
         id: playerId,
-        user_id: user?.id || null,
-        username: finalName,
+        user_id: user?.id || null, // Guest will be null, Email will be populated
+        username: playerName,
         avatar_url: finalAvatarUrl,
-        weight: parseInt(weight) || 0,
+        weight: parseInt(weight) || null,
+        preferred_hand: preferredHand,
         gauntlet_progress: 1,
         updated_at: new Date().toISOString()
       });
@@ -200,8 +252,10 @@ export function OnboardingScreen() {
 
       // Ensure playerId is in localStorage for fallback
       localStorage.setItem('fighter_player_id', playerId);
-      // Reset Gauntlet progress for new player
-      localStorage.setItem('fighter_gauntlet_progress', '1');
+      // Reset Gauntlet progress ONLY if not editing
+      if (!isEditing) {
+        localStorage.setItem('fighter_gauntlet_progress', '1');
+      }
 
       setIsSyncing(false);
       navigate('/menu');
@@ -268,7 +322,7 @@ export function OnboardingScreen() {
               className="text-4xl font-bold text-[#00f0ff]"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
-              CREATE YOUR IDENTITY
+              {isEditing ? 'UPDATE IDENTITY' : 'CREATE YOUR IDENTITY'}
             </h1>
           </motion.div>
 
@@ -278,13 +332,17 @@ export function OnboardingScreen() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <GlassCard className="px-4 py-2 border-2 border-[#00ff00]/40 bg-gradient-to-r from-[#00ff00]/10 to-[#00ff00]/5 shadow-[0_0_20px_rgba(0,255,0,0.4)]">
+            <GlassCard className={`px-4 py-2 border-2 bg-gradient-to-r ${
+              isConnected ? 'border-[#00ff00]/40 from-[#00ff00]/10 to-[#00ff00]/5 shadow-[0_0_20px_rgba(0,255,0,0.4)]' :
+              isError ? 'border-[#ff0000]/40 from-[#ff0000]/10 to-[#ff0000]/5 shadow-[0_0_20px_rgba(255,0,0,0.4)]' :
+              'border-white/10 from-white/5 to-transparent'
+            }`}>
               <div className="flex items-center gap-3">
-                {/* Pulsing Green Dot */}
+                {/* Pulsing Dot */}
                 <motion.div
                   className="relative"
                   animate={{
-                    scale: [1, 1.2, 1],
+                    scale: (isConnected || isError) ? [1, 1.2, 1] : 1,
                   }}
                   transition={{
                     duration: 1.5,
@@ -292,10 +350,18 @@ export function OnboardingScreen() {
                     type: 'tween',
                   }}
                 >
-                  <div className="w-3 h-3 rounded-full bg-[#00ff00] shadow-[0_0_10px_#00ff00]" />
+                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${
+                    isConnected ? 'bg-[#00ff00] text-[#00ff00]' :
+                    isError ? 'bg-[#ff0000] text-[#ff0000]' :
+                    'bg-[#888888] text-[#888888]'
+                  }`} />
                   {/* Outer glow ring */}
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-[#00ff00]"
+                    className={`absolute inset-0 rounded-full border-2 ${
+                      isConnected ? 'border-[#00ff00]' :
+                      isError ? 'border-[#ff0000]' :
+                      'border-[#888888]'
+                    }`}
                     animate={{
                       scale: [1, 2, 1],
                       opacity: [0.8, 0, 0.8],
@@ -310,11 +376,15 @@ export function OnboardingScreen() {
 
                 {/* Badge Text */}
                 <div className="text-sm">
-                  <div className="text-[#00ff00] font-bold uppercase tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    ROCKI: CONNECTED
+                  <div className={`font-bold uppercase tracking-wider ${
+                    isConnected ? 'text-[#00ff00]' :
+                    isError ? 'text-[#ff0000]' :
+                    'text-white/40'
+                  }`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    ROCKY: {isConnected ? 'CONNECTED' : isError ? 'ERROR' : 'OFFLINE'}
                   </div>
                   <div className="text-white/40 text-xs uppercase tracking-wider">
-                    Hardware Synced
+                    {isConnected ? 'Hardware Synced' : isError ? 'Link Failure' : 'No Connection'}
                   </div>
                 </div>
               </div>
@@ -363,6 +433,27 @@ export function OnboardingScreen() {
                           fontFamily: 'var(--font-family-heading)',
                         }}
                       />
+                      {isValidating && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <motion.div
+                            className="w-4 h-4 border-2 border-[#00f0ff] border-t-transparent rounded-full"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          />
+                        </div>
+                      )}
+                      <AnimatePresence>
+                        {nameError && (
+                          <motion.p
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute -bottom-6 left-0 text-xs text-[#ff006e] font-bold uppercase tracking-wider"
+                          >
+                            {nameError}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
                       <motion.div
                         className="absolute inset-0 rounded-lg pointer-events-none"
                         animate={{
@@ -454,9 +545,10 @@ export function OnboardingScreen() {
                     <div className="relative aspect-square w-full">
                     {/* Camera Frame */}
                     <motion.div
-                      className="relative w-full h-full rounded-2xl overflow-hidden
-                               border-4 border-[#ff006e] bg-black/60
-                               shadow-[0_0_30px_#ff006e40]"
+                      className={`relative w-full h-full rounded-2xl overflow-hidden
+                                border-4 bg-black/60
+                                shadow-[0_0_30px_#ff006e40]
+                                ${selectedAvatar === 0 ? 'border-[#ff006e]' : 'border-white/10'}`}
                       animate={{
                         boxShadow: cameraCountdown !== null
                           ? ['0 0 30px #ff006e40', '0 0 50px #ff006e80', '0 0 30px #ff006e40']
@@ -572,26 +664,34 @@ export function OnboardingScreen() {
                   <label className="block text-xs text-white/40 uppercase tracking-wider">
                     Or Choose Avatar
                   </label>
-                  <div className="flex gap-2 justify-center">
-                    {AVATAR_OPTIONS.map((avatar, index) => (
+                  <div className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory no-scrollbar scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <style>{`
+                      .no-scrollbar::-webkit-scrollbar {
+                        display: none;
+                      }
+                    `}</style>
+                    {avatarOptions.map((avatar) => (
                       <motion.button
                         key={avatar.id}
                         onClick={() => setSelectedAvatar(avatar.id)}
                         className={`
-                          flex-1 aspect-square rounded-xl border-2 flex items-center justify-center text-3xl
+                          flex-shrink-0 w-[85px] h-[85px] rounded-full border-2 p-1 snap-center
                           transition-all duration-300
                           ${selectedAvatar === avatar.id
-                            ? 'border-[#ff006e] bg-[#ff006e]/20 shadow-[0_0_20px_#ff006e60]'
-                            : 'border-white/20 bg-black/40 hover:border-[#ff006e]/50'
+                            ? 'border-[#ff006e] bg-[#ff006e]/10 shadow-[0_0_20px_#ff006e60] scale-110'
+                            : 'border-white/10 bg-black/40 hover:border-white/30'
                           }
                         `}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + index * 0.1 }}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
-                        {avatar.emoji}
+                        <div className="w-full h-full rounded-full overflow-hidden">
+                          <img 
+                            src={avatar.url} 
+                            alt={`Avatar ${avatar.id}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                       </motion.button>
                     ))}
                   </div>
@@ -618,7 +718,38 @@ export function OnboardingScreen() {
                   {/* Weight Input and Auto-Sync */}
                   <div className="space-y-3">
                     <label className="block text-sm text-[#ffff00] mb-2 uppercase tracking-wider">
-                      Weight (kg)
+                      Physical Stats
+                    </label>
+                    
+                    {/* Handedness Selection - MANDATORY */}
+                    <div className="space-y-2 mb-4">
+                      <p className="text-xs text-white/40 uppercase tracking-widest">Preferred Stance</p>
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => setPreferredHand('right')}
+                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${
+                            preferredHand === 'right' 
+                              ? 'border-[#00f0ff] bg-[#00f0ff]/20 text-[#00f0ff] shadow-[0_0_15px_#00f0ff40]' 
+                              : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
+                          }`}
+                        >
+                          RIGHT HANDED
+                        </button>
+                        <button
+                          onClick={() => setPreferredHand('left')}
+                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${
+                            preferredHand === 'left' 
+                              ? 'border-[#ff006e] bg-[#ff006e]/20 text-[#ff006e] shadow-[0_0_15px_#ff006e40]' 
+                              : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
+                          }`}
+                        >
+                          LEFT HANDED
+                        </button>
+                      </div>
+                    </div>
+
+                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
+                      Weight (kg) - Optional
                     </label>
                     <div className="space-y-3">
                       {/* Manual Input */}
@@ -728,9 +859,9 @@ export function OnboardingScreen() {
               variant="primary"
               color="yellow"
               onClick={handleComplete}
-              className={`w-full py-6 text-xl font-bold ${(!playerName || (!selectedAvatar && selectedAvatar !== 0) || !weight) ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+              className={`w-full py-6 text-xl font-bold ${(!playerName || nameError || (!selectedAvatar && selectedAvatar !== 0)) ? 'opacity-40 grayscale pointer-events-none' : ''}`}
             >
-              {isSyncing ? 'SYNCING DATA...' : 'COMPLETE SETUP'}
+              {isSyncing ? 'SYNCING DATA...' : isEditing ? 'UPDATE PROFILE' : 'COMPLETE SETUP'}
             </NeonButton>
           </div>
         </div>

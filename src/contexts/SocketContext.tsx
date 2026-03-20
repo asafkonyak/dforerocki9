@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 interface SocketContextType {
   socket: WebSocket | null;
   isConnected: boolean;
+  isError: boolean;
   connect: () => void;
   disconnect: () => void;
 }
@@ -24,10 +25,14 @@ interface SocketProviderProps {
 
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socketUrl }) => {
   const [isConnected, setIsConnected] = useState(false);
+  const [isError, setIsError] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
 
   const connect = () => {
     if (socketRef.current) return;
+    
+    // Reset error state on new connection attempt
+    setIsError(false);
     
     // Convert http/https to ws/wss if needed, and add /ws if not present
     let url = socketUrl || window.location.origin.replace(/^http/, 'ws');
@@ -44,11 +49,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
     
     ws.onopen = () => {
       setIsConnected(true);
+      setIsError(false);
       console.log('WebSocket connected');
     };
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      setIsError(true);
+      setIsConnected(false);
     };
 
     ws.onmessage = (event) => {
@@ -96,6 +104,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
     <SocketContext.Provider value={{
       socket: socketRef.current,
       isConnected,
+      isError,
       connect,
       disconnect
     }}>

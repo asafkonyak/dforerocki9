@@ -20,12 +20,21 @@ export function MatchmakingScreen() {
   const [matchId, setMatchId] = useState<string | null>(null);
   const [isPlayer1, setIsPlayer1] = useState<boolean | null>(null);
   const [onlineCount, setOnlineCount] = useState(Math.floor(Math.random() * 100) + 40);
+  const [isValidated, setIsValidated] = useState(false);
+  const [errorHeader, setErrorHeader] = useState<string | null>(null);
+  const [timeoutActive, setTimeoutActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [showRefereeVideo, setShowRefereeVideo] = useState(false);
+  const [isBattleInitiated, setIsBattleInitiated] = useState(false);
+  const [countdown, setCountdown] = useState<string | number | null>(null);
 
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
-  const { socket, isConnected } = useSocket();
+  const { socket, isConnected, isError } = useSocket();
   const subscriptionRef = useRef<any>(null);
 
   const startMatchRef = useRef<(id: string, opponent: any) => void>(() => { });
+  const opponentDataRef = useRef(opponentData);
+  useEffect(() => { opponentDataRef.current = opponentData; }, [opponentData]);
 
   const startMatch = (id: string, opponent: any) => {
     setMatchId(id);
@@ -36,20 +45,12 @@ export function MatchmakingScreen() {
     });
     setMatchFound(true);
     playMatchFound();
-    // Replaced: navigation is now driven by DB status 'in_progress'
   };
 
   // Keep the ref updated so the realtime callback always calls the latest version
   startMatchRef.current = startMatch;
 
   useEffect(() => {
-    console.log('Matchmaking [v14] - Socket Effect Triggered. State:', {
-      hasPlayerId: !!playerId,
-      hasSocket: !!socket,
-      readyState: socket?.readyState,
-      isConnected
-    });
-
     if (playerId && socket && socket.readyState === WebSocket.OPEN) {
       const initMsg = JSON.stringify({ 
         cmd: { 
@@ -59,34 +60,91 @@ export function MatchmakingScreen() {
       });
       console.log('Matchmaking [v15] - SENDING COMMAND TO SOCKET:', initMsg);
       socket.send(initMsg);
-    } else {
-      console.log('Matchmaking [v15] - Socket not ready or playerId missing. Skipping init.');
     }
   }, [playerId, socket, isConnected]);
 
+  // Timeout logic (Scenario 4)
+  useEffect(() => {
+    if (!matchId || matchFound || !isPlayer1) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleTimeout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [matchId, matchFound, isPlayer1]);
+
+  const handleTimeout = async () => {
+    if (matchId) {
+      await supabase.from('matches').update({ status: 'no found' }).eq('id', matchId);
+    }
+    setTimeoutActive(true);
+  };
+
   // Handle Socket Messages for Matchmaking (Player 1 waits for Player 2)
   useEffect(() => {
-    if (!socket || !isPlayer1 || matchFound) return;
+    if (!socket || !matchId || matchFound) return;
 
     const handleMessage = async (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        const serverData = data.data || data; // Handle both direct and nested data
+        const serverData = data.data || data;
         
-        // If message has a player_id and it's NOT mine, it's the opponent
+        // Scenario 1 & 2: Validate the player back in socket
         if (serverData.player_id && serverData.player_id !== playerId) {
           console.log('Matchmaking [v15] - Socket detected Opponent:', serverData.player_id);
           
-          // Fetch opponent profile from DB
-          const { data: oppProfile } = await supabase
-            .from('players')
-            .select('*')
-            .eq('id', serverData.player_id)
-            .maybeSingle();
+          // Verify with DB (match record)
+          const { data: match } = await supabase.from('matches').select('player1_id, player2_id').eq('id', matchId).single();
+          
+          const expectedOpponentId = isPlayer1 ? match?.player2_id : match?.player1_id;
+          
+          if (serverData.player_id === expectedOpponentId) {
+            console.log('Matchmaking [v17] - ✅ Validation passed via socket! Rival:', serverData.player_id, 'Status:', data.status || 'OK');
+            setIsValidated(true);
             
-          if (oppProfile) {
-            console.log('Matchmaking [v15] - ✅ Player 2 identified via socket! Starting match...');
-            startMatchRef.current(matchId!, oppProfile);
+            // Fetch opponent profile if not already set
+            if (!matchFound) {
+              const { data: oppProfile } = await supabase.from('players').select('*').eq('id', serverData.player_id).maybeSingle();
+              if (oppProfile) {
+                startMatchRef.current(matchId!, oppProfile);
+              }
+            }
+          } else {
+            console.error('Matchmaking [v17] - ❌ Validation FAILED. Socket player_id does not match DB.');
+            setErrorHeader('VALIDATION ERROR: SYNC FAILED');
+          }
+        }
+
+        // New: Handle Countdown from socket
+        if (serverData.type === 'countdown' || data.type === 'countdown') {
+          const val = serverData.value || data.value;
+          console.log('Matchmaking [v17] - SOCKET COUNTDOWN:', val);
+          setCountdown(val);
+          
+          if (val === 'GO' || val === 'GO!') {
+            console.log('Matchmaking [v17] - GO signal received. Finalizing match...');
+            // Update status to active and navigate
+            if (playerId && matchId) {
+              await supabase.from('matches').update({ status: 'active' }).eq('id', matchId);
+            }
+            setTimeout(() => {
+              navigate('/versus', {
+                state: {
+                  matchId,
+                  mode: 'ranked',
+                  opponent: opponentDataRef.current,
+                  gameType: gameType
+                }
+              });
+            }, 1000);
           }
         }
       } catch (e) {
@@ -96,7 +154,7 @@ export function MatchmakingScreen() {
 
     socket.addEventListener('message', handleMessage);
     return () => socket.removeEventListener('message', handleMessage);
-  }, [socket, isPlayer1, playerId, matchFound, matchId]);
+  }, [socket, isPlayer1, playerId, matchFound, matchId, opponentData]);
 
   useEffect(() => {
     async function initMatchmaking() {
@@ -127,15 +185,16 @@ export function MatchmakingScreen() {
       }
 
       // Cleanup dangling matches from this device
-      await supabase.from('matches').update({ status: 'canceled' }).eq('player1_id', currentId).eq('status', 'pending');
+      await supabase.from('matches').update({ status: 'abended' }).eq('player1_id', currentId).eq('status', 'pending');
 
-      // 1. Search for a pending match to join
-      console.log('Matchmaking [v15] - Searching for pending matches. GameType:', gameType, 'ReferenceId:', referenceMatchId, 'Self:', currentId);
+      // 1. Search for a pending match to join (Scenario 1)
+      console.log('Matchmaking [v16] - Searching for pending matches. GameType:', gameType, 'ReferenceId:', referenceMatchId, 'Self:', currentId);
       let pendingMatchQuery = supabase
         .from('matches')
         .select('*')
         .eq('status', 'pending')
         .eq('game_type', gameType)
+        .is('player2_id', null)
         .neq('player1_id', currentId);
 
       if (referenceMatchId) {
@@ -145,12 +204,12 @@ export function MatchmakingScreen() {
       const { data: pendingMatches, error: searchError } = await pendingMatchQuery.limit(1);
 
       if (searchError) {
-        console.error('Matchmaking [v15] - ERROR searching for matches:', searchError);
+        console.error('Matchmaking [v16] - ERROR searching for matches:', searchError);
       }
 
       if (pendingMatches && pendingMatches.length > 0) {
         const joinMatch = pendingMatches[0];
-        console.log('Matchmaking [v15] - Found pending match. Joining as Player 2:', joinMatch.id);
+        console.log('Matchmaking [v16] - Found pending match. Joining as Player 2:', joinMatch.id);
         setIsPlayer1(false);
 
         const { error: updateError } = await supabase
@@ -159,7 +218,7 @@ export function MatchmakingScreen() {
           .eq('id', joinMatch.id);
 
         if (updateError) {
-          console.error('Matchmaking [v15] - ERROR updating match with player2_id:', updateError);
+          console.error('Matchmaking [v16] - ERROR updating match with player2_id:', updateError);
           navigate('/menu');
           return;
         }
@@ -167,14 +226,15 @@ export function MatchmakingScreen() {
         // Get Player 1 profile to show VS
         const { data: p1Profile } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).maybeSingle();
         if (p1Profile) {
-          console.log('Matchmaking [v15] - ✅ Joined as P2. Starting match vs P1:', p1Profile.username);
+          console.log('Matchmaking [v16] - ✅ Joined as P2. Waiting for socket validation...');
           startMatchRef.current(joinMatch.id, p1Profile);
+          // Socket validation happens in the other useEffect
           return;
         }
       }
 
-      // 2. No match found, create a new pending match
-      console.log('Matchmaking [v15] - No matches found. Creating pending match as Player 1.');
+      // 2. No match found, create a new pending match (Scenario 2)
+      console.log('Matchmaking [v16] - No matches found. Creating pending match as Player 1.');
       setIsPlayer1(true);
       const { data: newMatch, error: insertError } = await supabase
         .from('matches')
@@ -194,7 +254,7 @@ export function MatchmakingScreen() {
       }
 
       setMatchId(newMatch.id);
-      console.log('Matchmaking [v16] - Waiting for Player 2 via Realtime/Socket...');
+      console.log('Matchmaking [v16] - Waiting for Player 2 via Realtime...');
 
       // Subscribe to changes for this match
       const channel = supabase
@@ -205,40 +265,16 @@ export function MatchmakingScreen() {
           async (payload: any) => {
             console.log('Matchmaking [v16] - Sync UPDATE:', payload.new.status, payload.new.player2_id);
             
-            // 1. When matched (P2 joined)
+            // When matched (P2 joined)
             if (payload.new.status === 'matched' && payload.new.player2_id && !matchFound) {
               const { data: opp } = await supabase.from('players').select('*').eq('id', 
                 currentId === payload.new.player1_id ? payload.new.player2_id : payload.new.player1_id
               ).maybeSingle();
               
               if (opp) {
-                console.log('Matchmaking [v17] - Match detected. Waiting 3s...');
+                console.log('Matchmaking [v16] - Match detected. Waiting for socket validation...');
                 startMatchRef.current(payload.new.id, opp);
-                
-                // After 3 seconds, Player 2 (the joining player) updates the status to in_progress
-                if (currentId === payload.new.player2_id) {
-                  setTimeout(async () => {
-                    console.log('Matchmaking [v17] - 3s passed (P2 side). Updating status to in_progress.');
-                    await supabase.from('matches').update({ status: 'in_progress' }).eq('id', payload.new.id);
-                  }, 3000);
-                }
               }
-            }
-
-            // 2. When in_progress (Final transition)
-            if (payload.new.status === 'in_progress') {
-              console.log('Matchmaking [v16] - Status is in_progress. Navigating to Versus...');
-              navigate('/versus', {
-                state: {
-                  matchId: payload.new.id,
-                  mode: 'ranked',
-                  opponent: {
-                    username: opponentDataRef.current?.username,
-                    avatar: opponentDataRef.current?.avatar_url
-                  },
-                  gameType: gameType
-                }
-              });
             }
           }
         )
@@ -253,26 +289,36 @@ export function MatchmakingScreen() {
       // Unmount cleanup
       if (subscriptionRef.current) supabase.removeChannel(subscriptionRef.current);
 
-      if (matchId && !matchFound) {
-        supabase.from('matches').update({ status: 'canceled' }).eq('id', matchId).then();
+      if (matchId && !matchFound && !isBattleInitiated) {
+        // Default to abended if closed without completion (Scenario 3)
+        supabase.from('matches').update({ status: 'abended' }).eq('id', matchId).then();
       }
     };
-  }, [navigate, playerId, gameType, socket, isConnected]);
+  }, [navigate, playerId, gameType, socket, isConnected, referenceMatchId]);
 
   const handleStartMatch = () => {
-    navigate('/versus', {
-      state: {
-        matchId,
-        mode: 'ranked',
-        opponent: opponentData,
-        gameType: gameType
-      }
-    });
+    setIsBattleInitiated(true);
+    setShowRefereeVideo(true);
+  };
+
+  const handleVideoEnd = () => {
+    setShowRefereeVideo(false);
+    // Send socket INIT only after video ends
+    if (playerId && socket && socket.readyState === WebSocket.OPEN) {
+      const initMsg = JSON.stringify({ 
+        cmd: { 
+          INIT: 1, 
+          player_id: playerId 
+        } 
+      });
+      console.log('Matchmaking [v17] - POST-VIDEO SOCKET INIT:', initMsg);
+      socket.send(initMsg);
+    }
   };
 
   const handleCancel = async () => {
     if (matchId && !matchFound) {
-      await supabase.from('matches').update({ status: 'canceled' }).eq('id', matchId);
+      await supabase.from('matches').update({ status: 'abended' }).eq('id', matchId);
       setMatchId(null);
     }
     navigate('/menu');
@@ -310,10 +356,10 @@ export function MatchmakingScreen() {
               type: "tween"
             }}
           >
-            {matchFound ? 'TARGET ACQUIRED' : 'SIGNAL SCANNING'}
+            {errorHeader ? errorHeader : timeoutActive ? 'NO PARTNER FOUND' : matchFound ? 'TARGET ACQUIRED' : 'SIGNAL SCANNING'}
           </motion.h2>
           <p className="text-white/60 text-sm tracking-widest uppercase">
-            {matchFound ? 'Synchronizing battle protocols' : 'searching for active hostiles'}
+            {timeoutActive ? 'Try again later' : matchFound ? 'Synchronizing battle protocols' : 'searching for active hostiles'}
           </p>
         </div>
 
@@ -435,16 +481,33 @@ export function MatchmakingScreen() {
         <div className="grid grid-cols-2 gap-4">
           <GlassCard className="py-3 px-4 flex items-center gap-3 border-white/5 bg-white/5">
             <div className="relative">
-              <Wifi className="w-4 h-4 text-[#00f0ff]" />
               <motion.div
-                className="absolute inset-0 bg-[#00f0ff] opacity-20 rounded-full"
-                animate={{ scale: [1, 2], opacity: [0.2, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
+                className="relative"
+                animate={{
+                  scale: (isConnected || isError) ? [1, 1.2, 1] : 1,
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  type: 'tween',
+                }}
+              >
+                <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${
+                  isConnected ? 'bg-[#00f0ff] text-[#00f0ff]' :
+                  isError ? 'bg-[#ff0000] text-[#ff0000]' :
+                  'bg-[#888888] text-[#888888]'
+                }`} />
+              </motion.div>
             </div>
             <div>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest leading-none mb-1">Status</p>
-              <p className="text-xs text-white uppercase tracking-wider font-bold">Optimal</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest leading-none mb-1">
+                ROCKY: {isConnected ? 'SYNCED' : isError ? 'ERROR' : 'OFFLINE'}
+              </p>
+              <p className={`text-xs uppercase tracking-wider font-bold ${
+                isConnected ? 'text-[#00f0ff]' : isError ? 'text-[#ff0000]' : 'text-white/40'
+              }`}>
+                {isConnected ? 'OPTIMAL' : isError ? 'FAILURE' : 'WAITING'}
+              </p>
             </div>
           </GlassCard>
           <GlassCard className="py-3 px-4 flex items-center gap-3 border-white/5 bg-white/5">
@@ -462,11 +525,22 @@ export function MatchmakingScreen() {
 
         {/* Action Buttons */}
         <AnimatePresence mode="wait">
-          {matchFound ? (
+          {timeoutActive ? (
+            <motion.button
+              key="back"
+              onClick={() => navigate('/menu')}
+              className="w-full py-5 px-6 rounded-2xl bg-[#ff006e] text-white font-black uppercase tracking-[0.2em] text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,0,110,0.4)]"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              Back to Menu
+            </motion.button>
+          ) : matchFound ? (
             <motion.button
               key="start"
               onClick={handleStartMatch}
-              className="w-full relative group overflow-hidden"
+              disabled={!matchFound}
+              className={`w-full relative group overflow-hidden transition-all duration-300 ${!matchFound ? 'opacity-40 grayscale pointer-events-none' : ''}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -502,6 +576,64 @@ export function MatchmakingScreen() {
           />
         </div>
       </motion.div>
+
+      {/* Referee Video Overlay */}
+      <AnimatePresence>
+        {showRefereeVideo && (
+          <motion.div 
+            className="fixed inset-0 z-[100] bg-black"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <video
+              autoPlay
+              playsInline
+              onEnded={handleVideoEnd}
+              className="w-full h-full object-cover"
+            >
+              <source src="/assets/Referee.mp4" type="video/mp4" />
+            </video>
+            {/* Skip Option for dev/safety */}
+            <button 
+              onClick={handleVideoEnd}
+              className="absolute top-10 right-10 text-white/40 hover:text-white uppercase text-xs tracking-[.3em]"
+            >
+              Skip Intro
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Socket-Driven Countdown Overlay */}
+      <AnimatePresence>
+        {countdown !== null && (
+          <motion.div 
+            className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 2 }}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div
+              key={countdown}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1.5, opacity: 1 }}
+              exit={{ scale: 2, opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className={`text-[12rem] font-bold italic tracking-tighter ${
+                countdown === 'GO' || countdown === 'GO!' ? 'text-[#00ff00]' : 'text-[#00f0ff]'
+              }`}
+              style={{ 
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: countdown === 'GO' || countdown === 'GO!' ? '0 0 50px #00ff00' : '0 0 50px #00f0ff'
+              }}
+            >
+              {countdown}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

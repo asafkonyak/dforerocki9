@@ -1,21 +1,31 @@
 import { useNavigate } from 'react-router';
 import { GlassCard } from '../components/GlassCard';
-import { Swords, Bot, Zap, Trophy, ChevronRight, ArrowLeft } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Swords, Bot, Zap, Trophy, ChevronRight, ArrowLeft, LogOut, AlertTriangle, Edit2, User, Target } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useSocket } from '../../contexts/SocketContext';
+import { AvatarDisplay } from '../components/AvatarDisplay';
+import Lightning from '../components/Lightning';
 
 const DIFFICULTY_ICONS = ['🤖', '🦾', '💀'];
 const PROGRESSION_LEVELS = 5;
 
 export function MainMenuScreen() {
   const navigate = useNavigate();
+  const { isConnected, isError } = useSocket();
   const [playerData, setPlayerData] = useState<{
+    id: string;
     username: string;
     xp: number;
     gauntlet_progress: number;
+    avatar_url: string;
+    win_count: number;
+    loss_count: number;
+    last_results: string;
   } | null>(null);
   const [selectedGameType, setSelectedGameType] = useState<'1_round' | 'bo3' | 'bo5' | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const bossVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -32,7 +42,7 @@ export function MainMenuScreen() {
         if (playerId) {
           const { data, error } = await supabase
             .from('players')
-            .select('username, xp, gauntlet_progress')
+            .select('id, username, xp, gauntlet_progress, avatar_url, win_count, loss_count, last_results')
             .eq('id', playerId)
             .maybeSingle();
             
@@ -47,8 +57,44 @@ export function MainMenuScreen() {
     fetchPlayerData();
   }, []);
 
+  const handleLogout = async () => {
+    // Navigate home which acts as logout/exit
+    navigate('/');
+  };
+
   return (
-    <div className="h-screen bg-gradient-to-b from-[#0a0515] via-[#1a0a2e] to-[#0a0515] overflow-hidden flex flex-col">
+    <div className="h-screen bg-gradient-to-b from-[#0a0515] via-[#1a0a2e] to-[#0a0515] overflow-hidden flex flex-col relative">
+      {/* Lightning Background Layer */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-40 mix-blend-screen">
+        {/* Left Lightning (Blue-ish) */}
+        <div 
+          className="absolute top-1/2 -left-[450px] -translate-y-1/2" 
+          style={{ width: '1080px', height: '1080px' }}
+        >
+          <Lightning
+            hue={220}
+            xOffset={0.9}
+            speed={1.6}
+            intensity={1.6}
+            size={1.6}
+          />
+        </div>
+
+        {/* Right Lightning (Red-ish) */}
+        <div 
+          className="absolute top-1/2 -right-[450px] -translate-y-1/2" 
+          style={{ width: '1080px', height: '1080px' }}
+        >
+          <Lightning
+            hue={0}
+            xOffset={-1.2}
+            speed={1.6}
+            intensity={2}
+            size={1.6}
+          />
+        </div>
+      </div>
+
       {/* Enhanced Header with Back Icon, Title, and Hardware Sync Badge */}
       <motion.div
         className="relative z-10 py-6 px-6 flex-shrink-0"
@@ -57,16 +103,84 @@ export function MainMenuScreen() {
         transition={{ duration: 0.5 }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Left: Back Button */}
-          <motion.button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#00f0ff]/30 transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          {/* Left: Player Info Card (Restyled as Stories/HUD) */}
+          <motion.div
+            className="flex items-center gap-4"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
           >
-            <ArrowLeft className="w-5 h-5 text-[#00f0ff]" />
-            <span className="text-white/60 text-sm uppercase tracking-wider">Back</span>
-          </motion.button>
+            <GlassCard className="p-4 border-2 border-[#00f0ff]/20 bg-black/60 shadow-[0_0_25px_rgba(0,0,0,0.5)] flex items-center gap-5 min-w-[340px]">
+              {/* Avatar with Hub-Style Edit Icon */}
+              <div className="relative flex-shrink-0 group">
+                <div className="p-0.5 rounded-full bg-gradient-to-br from-[#00f0ff] to-[#ff006e] shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+                  <AvatarDisplay 
+                    avatar={playerData?.avatar_url || '👤'} 
+                    size="lg" 
+                    className="w-20 h-20 border-2 border-black" 
+                  />
+                </div>
+                {/* Visible edit trigger - Moved to bottom-left as requested */}
+                <button 
+                  onClick={() => navigate('/onboarding', { state: { isEditing: true } })}
+                  className="absolute bottom-0 left-0 w-8 h-8 bg-[#1a0a2e] border border-[#00f0ff]/50 rounded-full flex items-center justify-center text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black hover:shadow-[0_0_15px_#00f0ff] transition-all z-10"
+                  title="Edit Profile"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Player Info & Stats */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <h3 className="text-2xl text-white font-bold truncate tracking-tight" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    {playerData?.username || 'PLAYER'}
+                  </h3>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-white/30 uppercase tracking-widest leading-none mb-1">XP Points</span>
+                    <span className="text-[#ffff00] text-sm font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      {playerData?.xp || 0}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6 h-12">
+                  {/* Win Ratio */}
+                  <div className="flex flex-col justify-center h-full">
+                    <span className="text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Win Ratio</span>
+                    <div className="flex items-center gap-1 leading-none">
+                      <span className="text-xl text-[#00ff00] font-bold italic leading-none">
+                        {playerData ? Math.round((playerData.win_count / (Math.max(1, playerData.win_count + playerData.loss_count))) * 100) : 0}
+                      </span>
+                      <span className="text-[10px] text-[#00ff00]/60 font-bold leading-none">%</span>
+                    </div>
+                  </div>
+                  
+                  {/* Vertical Divider */}
+                  <div className="self-center w-px h-8 bg-white/10" />
+
+                  {/* Recent Match History */}
+                  <div className="flex flex-col justify-center h-full">
+                    <span className="text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Recent Flow</span>
+                    <div className="flex gap-1.5 items-center h-[20px]">
+                      {(playerData?.last_results || '').split(',').filter(Boolean).slice(-5).map((res, i) => (
+                        <motion.div 
+                          key={i} 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: i * 0.1 }}
+                          className={`w-2.5 h-2.5 rounded-full ${res === 'W' ? 'bg-[#00ff00] shadow-[0_0_8px_#00ff00]' : 'bg-[#ff006e] shadow-[0_0_8px_#ff006e]'}`}
+                        />
+                      ))}
+                      {/* Placeholders */}
+                      {Array.from({ length: Math.max(0, 5 - (playerData?.last_results || '').split(',').filter(Boolean).length) }).map((_, i) => (
+                        <div key={`p-${i}`} className="w-2.5 h-2.5 rounded-full bg-white/5 border border-white/5" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </GlassCard>
+          </motion.div>
 
           {/* Center: Glowing Title */}
           <motion.div
@@ -112,10 +226,18 @@ export function MainMenuScreen() {
                     type: 'tween',
                   }}
                 >
-                  <div className="w-3 h-3 rounded-full bg-[#00ff00] shadow-[0_0_10px_#00ff00]" />
+                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${
+                    isConnected ? 'bg-[#00ff00] text-[#00ff00]' : 
+                    isError ? 'bg-[#ff0000] text-[#ff0000]' : 
+                    'bg-[#888888] text-[#888888]'
+                  }`} />
                   {/* Outer glow ring */}
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-[#00ff00]"
+                    className={`absolute inset-0 rounded-full border-2 ${
+                      isConnected ? 'border-[#00ff00]' : 
+                      isError ? 'border-[#ff0000]' : 
+                      'border-[#888888]'
+                    }`}
                     animate={{
                       scale: [1, 2, 1],
                       opacity: [0.8, 0, 0.8],
@@ -130,8 +252,12 @@ export function MainMenuScreen() {
 
                 {/* Badge Text */}
                 <div className="text-sm">
-                  <div className="text-[#00ff00] font-bold uppercase tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    ROCKI: CONNECTED
+                  <div className={`font-bold uppercase tracking-wider ${
+                    isConnected ? 'text-[#00ff00]' : 
+                    isError ? 'text-[#ff0000]' : 
+                    'text-white/60'
+                  }`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    ROCKY: {isConnected ? 'CONNECTED' : isError ? 'ERROR' : 'OFFLINE'}
                   </div>
                   <div className="text-white/40 text-xs uppercase tracking-wider">
                     Hardware Synced
@@ -388,10 +514,10 @@ export function MainMenuScreen() {
             transition={{ delay: 0.5, duration: 0.5 }}
           >
             <button
-              onClick={() => navigate('/')}
-              className="text-white/60 hover:text-[#00f0ff] transition-colors text-sm uppercase tracking-wider"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="text-white/40 hover:text-[#ff006e] transition-colors text-sm uppercase tracking-wider flex items-center gap-2"
             >
-              ← Back to Home
+              <LogOut className="w-4 h-4" /> Exit to Home
             </button>
 
             <span className="text-white/30">|</span>
@@ -405,94 +531,64 @@ export function MainMenuScreen() {
         </div>
       </div>
 
-      {/* User Profile Card - Docked Bottom Left */}
-      <motion.div
-        className="absolute bottom-6 left-6 z-20"
-        initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.6, duration: 0.5 }}
-      >
-        <GlassCard className="p-4 border-2 border-[#00f0ff]/40 bg-gradient-to-r from-[#00f0ff]/10 to-[#ff006e]/10 shadow-[0_0_30px_rgba(0,240,255,0.4)] min-w-[280px]">
-          <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <motion.div
-              className="relative"
-              whileHover={{ scale: 1.1 }}
-              transition={{ type: 'spring', stiffness: 300 }}
-            >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#00f0ff] to-[#ff006e] p-0.5 shadow-[0_0_20px_rgba(0,240,255,0.6)]">
-                <div className="w-full h-full rounded-xl bg-[#0a0515] flex items-center justify-center text-3xl">
-                  🤖
-                </div>
-              </div>
-              {/* Online indicator */}
-              <motion.div
-                className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#00ff00] border-2 border-[#0a0515]"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  boxShadow: [
-                    '0 0 5px rgba(0, 255, 0, 0.6)',
-                    '0 0 15px rgba(0, 255, 0, 1)',
-                    '0 0 5px rgba(0, 255, 0, 0.6)',
-                  ],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  type: 'tween',
-                }}
-              />
-            </motion.div>
+      {/* Removed Bottom Left Card - Moved to Top Hud */}
 
-            {/* User Info */}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 
-                  className="text-white font-bold text-lg"
-                  style={{ fontFamily: "'Orbitron', sans-serif" }}
-                >
-                  {playerData?.username || 'CyberRex'}
-                </h3>
-                <motion.div
-                  className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]"
-                  animate={{
-                    opacity: [0.4, 1, 0.4],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    type: 'tween',
-                  }}
-                />
-              </div>
-              
-              {/* XP Bar */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#ffff00] font-bold uppercase tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    XP: {playerData?.xp || 0}
-                  </span>
-                  <span className="text-white/40">Level {Math.floor((playerData?.xp || 0) / 100) + 1}</span>
-                </div>
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md"
+            >
+              <GlassCard className="p-8 border-2 border-[#ff006e]/50 bg-gradient-to-b from-[#1a0a2e] to-[#0a0515] overflow-hidden">
+                {/* Background Glow */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#ff006e] blur-[60px] opacity-20 pointer-events-none" />
                 
-                {/* Progress Bar */}
-                <div className="h-2 bg-black/50 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-[#00f0ff] via-[#ffff00] to-[#ff006e] shadow-[0_0_10px_rgba(0,240,255,0.8)]"
-                    initial={{ width: '0%' }}
-                    animate={{ width: `${(playerData?.xp || 0) % 100}%` }}
-                    transition={{ delay: 0.8, duration: 1, ease: 'easeOut' }}
-                  />
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <div className="w-16 h-16 rounded-full bg-[#ff006e]/20 flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(255,0,110,0.3)]">
+                    <AlertTriangle className="w-8 h-8 text-[#ff006e]" />
+                  </div>
+                  
+                  <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    ABANDON SESSION?
+                  </h2>
+                  
+                  <p className="text-white/60 text-sm mb-8 leading-relaxed">
+                    You are about to log out. Unsaved progress might be lost. Are you prepared to exit the arena?
+                  </p>
+                  
+                  <div className="flex flex-col w-full gap-3">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full py-4 rounded-xl bg-[#ff006e] text-white font-bold uppercase tracking-widest hover:bg-[#ff006e]/80 transition-all shadow-[0_0_20px_rgba(255,0,110,0.4)] flex items-center justify-center gap-2"
+                    >
+                      <LogOut className="w-5 h-5" /> Confirm Logout
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowLogoutConfirm(false)}
+                      className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                      Stay in Arena
+                    </button>
+                  </div>
                 </div>
-                
-                <div className="text-xs text-white/40">
-                  {(playerData?.xp || 0) % 100} / 100 XP to Level {Math.floor((playerData?.xp || 0) / 100) + 2}
-                </div>
-              </div>
-            </div>
+              </GlassCard>
+            </motion.div>
           </div>
-        </GlassCard>
-      </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

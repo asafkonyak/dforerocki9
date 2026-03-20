@@ -89,3 +89,63 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN
   RAISE NOTICE 'matches already in supabase_realtime publication';
 END $$;
+
+-- 11. Add win_count, loss_count, last_results, last_game_time    -- 5. Statistics, Last results, and Preferred Hand
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'players' AND column_name = 'win_count') THEN
+        ALTER TABLE players ADD COLUMN win_count INTEGER DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'players' AND column_name = 'loss_count') THEN
+        ALTER TABLE players ADD COLUMN loss_count INTEGER DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'players' AND column_name = 'last_results') THEN
+        ALTER TABLE players ADD COLUMN last_results TEXT DEFAULT ''; -- e.g., 'W,W,L'
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'players' AND column_name = 'last_game_time') THEN
+        ALTER TABLE players ADD COLUMN last_game_time TIMESTAMPTZ;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'players' AND column_name = 'preferred_hand') THEN
+        ALTER TABLE players ADD COLUMN preferred_hand TEXT CHECK (preferred_hand IN ('left', 'right')) DEFAULT 'right';
+    END IF;
+END $$;
+
+-- 12. Add duration and winner_id to matches (if not exists)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'matches' AND column_name = 'duration') THEN
+        ALTER TABLE matches ADD COLUMN duration INTEGER;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'matches' AND column_name = 'winner_id') THEN
+        ALTER TABLE matches ADD COLUMN winner_id UUID REFERENCES players(id);
+    END IF;
+END $$;
+
+-- 13. Add unique constraint to players.username
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'players' AND constraint_name = 'players_username_key') THEN
+        ALTER TABLE players ADD CONSTRAINT players_username_key UNIQUE (username);
+    END IF;
+END $$;
+
+-- 14. Add check constraints for status and game_type
+DO $$ 
+BEGIN
+    -- Normalize existing status values before adding constraint
+    UPDATE matches SET status = 'done' WHERE status = 'finished';
+    UPDATE matches SET status = 'active' WHERE status = 'in_progress';
+    UPDATE matches SET status = 'abended' WHERE status = 'canceled';
+    -- Any other unknown status should be set to 'abended' or similar to pass constraint
+    UPDATE matches SET status = 'abended' WHERE status NOT IN ('pending', 'matched', 'active', 'done', 'no found', 'abended', 'canceled');
+
+    -- status check
+    ALTER TABLE matches DROP CONSTRAINT IF EXISTS matches_status_check;
+    ALTER TABLE matches ADD CONSTRAINT matches_status_check 
+        CHECK (status IN ('pending', 'matched', 'active', 'done', 'no found', 'abended', 'canceled'));
+    
+    -- game_type check
+    ALTER TABLE matches DROP CONSTRAINT IF EXISTS matches_game_type_check;
+    ALTER TABLE matches ADD CONSTRAINT matches_game_type_check 
+        CHECK (game_type IN ('1_round', '3_rounds', '5_rounds'));
+END $$;

@@ -8,7 +8,12 @@ interface AvatarDisplayProps {
 
 export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDisplayProps) {
   const safeAvatar = avatar || '👤';
-  const isUrl = typeof safeAvatar === 'string' && (safeAvatar.startsWith('http') || safeAvatar.startsWith('/') || safeAvatar.startsWith('data:'));
+  const isUrl = typeof safeAvatar === 'string' && (
+    safeAvatar.startsWith('http') || 
+    safeAvatar.startsWith('/') || 
+    safeAvatar.startsWith('data:') ||
+    safeAvatar.includes('.') // Generic fallback for assets
+  );
   
   const sizeClasses = {
     sm: 'w-8 h-8 text-xl',
@@ -31,7 +36,7 @@ export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDis
           }}
         />
       ) : (
-        <span>{safeAvatar || '👤'}</span>
+        <span className="leading-none select-none">{safeAvatar}</span>
       )}
     </div>
   );
