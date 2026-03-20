@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 
 interface SocketContextType {
   socket: WebSocket | null;
   isConnected: boolean;
   isError: boolean;
+  lastMessage: any | null;
+  sendMessage: (msg: any) => void;
   connect: () => void;
   disconnect: () => void;
 }
@@ -26,16 +28,17 @@ interface SocketProviderProps {
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socketUrl }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [lastMessage, setLastMessage] = useState<any | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
-  const connect = () => {
-    if (socketRef.current) return;
+  const connect = useCallback(() => {
+    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
     
-    // Reset error state on new connection attempt
     setIsError(false);
     
-    // Convert http/https to ws/wss if needed, and add /ws if not present
-    let url = socketUrl || window.location.origin.replace(/^http/, 'ws');
+    let url = socketUrl || ((import.meta as any).env.VITE_SIGNALING_SERVER_URL || window.location.origin.replace(/^http/, 'ws'));
     if (!url.startsWith('ws')) {
       url = 'ws://' + url;
     }
@@ -43,18 +46,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
       url = url.replace(/\/$/, '') + '/ws';
     }
 
-    console.log('Attempting to connect to WebSocket at:', url);
+    console.log('[SocketContext] Connecting to:', url);
     
     const ws = new WebSocket(url);
     
     ws.onopen = () => {
       setIsConnected(true);
       setIsError(false);
-      console.log('WebSocket connected');
+      console.log('[SocketContext] Connected');
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error('[SocketContext] Error:', error);
       setIsError(true);
       setIsConnected(false);
     };
@@ -62,49 +65,52 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'log') {
-          console.log('[Server Log]:', data.payload || data);
-        } else if (data.type === 'message') {
-          console.log('[Server Message]:', data.payload || data);
-        } else {
-          console.log('[WebSocket Message]:', data);
-        }
+        setLastMessage(data);
       } catch (e) {
-        console.log('[WebSocket Raw Message]:', event.data);
+        setLastMessage({ type: 'raw', data: event.data });
       }
     };
     
     ws.onclose = () => {
       setIsConnected(false);
-      console.log('WebSocket disconnected');
+      console.log('[SocketContext] Disconnected');
       socketRef.current = null;
     };
     
     socketRef.current = ws;
-  };
+  }, [socketUrl]);
   
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
     if (socketRef.current) {
       socketRef.current.close();
       socketRef.current = null;
       setIsConnected(false);
     }
-  };
+  }, []);
+
+  const sendMessage = useCallback((msg: any) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(msg));
+    } else {
+      console.warn('[SocketContext] Cannot send message: Socket not connected');
+    }
+  }, []);
 
   useEffect(() => {
-    if (socketUrl) {
-      connect();
-    }
+    connect();
     return () => {
-      disconnect();
+      // Logic removed to keep socket alive across navigation
+      // disconnect(); 
     };
-  }, [socketUrl]);
+  }, [connect]);
 
   return (
     <SocketContext.Provider value={{
       socket: socketRef.current,
       isConnected,
       isError,
+      lastMessage,
+      sendMessage,
       connect,
       disconnect
     }}>
