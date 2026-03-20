@@ -445,7 +445,7 @@ export function LeaderboardScreen() {
       <div className="relative z-10 px-4 pt-6 pb-3">
         <div className="flex items-center gap-3 mb-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             className="w-10 h-10 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 hover:text-[#00f0ff] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
