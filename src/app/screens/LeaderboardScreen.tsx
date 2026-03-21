@@ -62,11 +62,11 @@ function FormDots({ form, highlightLast }: { form: ('W' | 'L')[]; highlightLast?
   );
 }
 
-function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 3 }) {
+function PodiumPlayer({ player, position, isCurrentUser }: { player: Player; position: 1 | 2 | 3; isCurrentUser?: boolean }) {
   const sizes = {
-    1: { avatar: 'w-20 h-20', podium: 'h-28', delay: 0.3, ring: 'border-[#ffd700] shadow-[0_0_20px_#ffd700aa,0_0_40px_#ffd70044]' },
-    2: { avatar: 'w-16 h-16', podium: 'h-20', delay: 0.4, ring: 'border-[#c0c0c0] shadow-[0_0_12px_#c0c0c0aa]' },
-    3: { avatar: 'w-14 h-14', podium: 'h-14', delay: 0.5, ring: 'border-[#cd7f32] shadow-[0_0_12px_#cd7f32aa]' },
+    1: { avatar: 'w-24 h-24', podium: 'h-32', delay: 0.3, ring: 'border-[#ffd700] shadow-[0_0_25px_#ffd700cc,0_0_50px_#ffd70044]' },
+    2: { avatar: 'w-20 h-20', podium: 'h-24', delay: 0.4, ring: 'border-[#c0c0c0] shadow-[0_0_15px_#c0c0c0aa]' },
+    3: { avatar: 'w-18 h-18', podium: 'h-18', delay: 0.5, ring: 'border-[#cd7f32] shadow-[0_0_15px_#cd7f32aa]' },
   };
 
   const config = sizes[position];
@@ -86,28 +86,32 @@ function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 
           transition={{ delay: 0.7, type: 'spring', stiffness: 200 }}
           className="mb-1"
         >
-          <Crown className="w-8 h-8 text-[#ffd700] drop-shadow-[0_0_8px_#ffd700]" />
+          <Crown className="w-10 h-10 text-[#ffd700] drop-shadow-[0_0_12px_#ffd700]" />
         </motion.div>
       )}
 
       <div
         className={`${config.avatar} rounded-full border-2 ${config.ring} 
         bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-md
-        flex items-center justify-center mb-2 overflow-hidden`}
+        flex items-center justify-center mb-2 overflow-hidden relative`}
       >
         <AvatarDisplay 
           avatar={player.avatar} 
           size={position === 1 ? 'lg' : 'md'} 
           className="w-full h-full rounded-none"
         />
+        {isCurrentUser && (
+          <div className="absolute inset-0 border-4 border-[#00f0ff]/40 rounded-full animate-pulse" />
+        )}
       </div>
 
-      <p className="text-white text-xs tracking-wider mb-0.5" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+      <p className={`text-sm tracking-wider mb-0.5 ${isCurrentUser ? 'text-[#00f0ff]' : 'text-white'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
         {player.name}
+        {isCurrentUser && <span className="block text-[8px] bg-[#00f0ff]/20 px-1 rounded text-[#00f0ff] mt-0.5">YOU</span>}
       </p>
 
       <p
-        className={`text-[10px] mb-1.5 ${
+        className={`text-xs mb-1.5 font-bold ${
           position === 1 ? 'text-[#ffd700]' : position === 2 ? 'text-[#c0c0c0]' : 'text-[#cd7f32]'
         }`}
         style={{ fontFamily: "'Orbitron', sans-serif" }}
@@ -116,7 +120,7 @@ function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 
       </p>
 
       <div className="flex flex-col items-center gap-1.5 mb-2">
-        <span className="text-[9px] text-white/40 uppercase tracking-tighter">
+        <span className="text-[10px] text-white/40 uppercase tracking-tighter">
           {player.winCount}W - {player.lossCount}L
         </span>
         <FormDots form={player.recentForm} />
@@ -125,7 +129,7 @@ function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 
       <motion.div
         className={`w-full ${config.podium} mt-3 rounded-t-lg relative overflow-hidden`}
         initial={{ height: 0 }}
-        animate={{ height: position === 1 ? 112 : position === 2 ? 80 : 56 }}
+        animate={{ height: position === 1 ? 128 : position === 2 ? 96 : 72 }}
         transition={{ delay: config.delay + 0.2, duration: 0.5, type: 'spring' }}
         style={{
           background:
@@ -139,7 +143,7 @@ function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 
         <div className="absolute inset-0 backdrop-blur-sm border border-white/10 rounded-t-lg" />
         <div className="relative z-10 flex items-center justify-center h-full">
           <span
-            className={`text-2xl ${
+            className={`text-3xl ${
               position === 1 ? 'text-[#ffd700]' : position === 2 ? 'text-[#c0c0c0]' : 'text-[#cd7f32]'
             }`}
             style={{ fontFamily: "'Orbitron', sans-serif" }}
@@ -152,47 +156,57 @@ function PodiumPlayer({ player, position }: { player: Player; position: 1 | 2 | 
   );
 }
 
-function RankedRow({ player, index }: { player: Player; index: number }) {
+function RankedRow({ player, index, isCurrentUser }: { player: Player; index: number; isCurrentUser?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.6 + index * 0.05, duration: 0.4 }}
     >
-      <GlassCard className="px-4 py-3 flex items-center gap-3">
-        <div className="w-8 text-center">
-          <span className="text-white/60 text-sm" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+      <GlassCard 
+        className={`px-4 py-4 flex items-center gap-4 transition-all ${
+          isCurrentUser 
+            ? 'border-[#00f0ff]/40 shadow-[0_0_20px_#00f0ff22,inset_0_0_15px_#00f0ff11] bg-white/10 ring-1 ring-[#00f0ff]/30' 
+            : 'hover:bg-white/5'
+        }`}
+      >
+        <div className="w-10 text-center">
+          <span className={`text-base ${isCurrentUser ? 'text-[#00f0ff] font-bold' : 'text-white/60'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
             {player.rank}
           </span>
         </div>
 
-        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-          <AvatarDisplay avatar={player.avatar} size="sm" className="w-full h-full rounded-none" />
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 transition-all ${
+          isCurrentUser ? 'border-[#00f0ff]/60 shadow-[0_0_10px_#00f0ff33]' : 'bg-white/5 border-white/10'
+        }`}>
+          <AvatarDisplay avatar={player.avatar} size="md" className="w-full h-full rounded-none" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-white text-sm tracking-wider truncate" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+          <p className={`text-base tracking-wider truncate mb-0.5 ${isCurrentUser ? 'text-[#00f0ff] font-bold' : 'text-white'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
             {player.name}
+            {isCurrentUser && <span className="ml-2 text-[10px] bg-[#00f0ff]/20 px-1.5 py-0.5 rounded text-[#00f0ff] align-middle">YOU</span>}
           </p>
+          <div className="flex items-center gap-3">
+            <span className="text-white/60 text-xs font-medium" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              {player.winCount}W - {player.lossCount}L
+            </span>
+            <span className="text-[#00f0ff]/40 text-[10px] font-bold">
+              {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-col items-center min-w-[50px]">
-          <span className="text-[#00f0ff] text-[10px] font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-            {player.xp.toLocaleString()}
-          </span>
-          <span className="text-white/30 text-[7px] uppercase tracking-tighter">XP</span>
+        <div className="flex items-center gap-5">
+          <FormDots form={player.recentForm} />
+          
+          <div className="flex flex-col items-end min-w-[75px]">
+            <span className="text-[#00f0ff] text-base font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+              {player.xp.toLocaleString()}
+            </span>
+            <span className="text-white/30 text-[9px] uppercase tracking-tighter">XP</span>
+          </div>
         </div>
-
-        <div className="flex flex-col items-center min-w-[65px]">
-          <span className="text-white text-[9px] font-medium" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-            {player.winCount}W - {player.lossCount}L
-          </span>
-          <span className="text-[#00f0ff]/60 text-[8px] font-bold">
-            {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
-          </span>
-        </div>
-
-        <FormDots form={player.recentForm} />
       </GlassCard>
     </motion.div>
   );
@@ -507,9 +521,9 @@ export function LeaderboardScreen() {
         {/* Podium */}
         <div className="pt-4 pb-6">
           <div className="flex items-end gap-2 justify-center">
-            {top3[1] && <PodiumPlayer player={top3[1]} position={2} />}
-            {top3[0] && <PodiumPlayer player={top3[0]} position={1} />}
-            {top3[2] && <PodiumPlayer player={top3[2]} position={3} />}
+            {top3[1] && <PodiumPlayer player={top3[1]} position={2} isCurrentUser={top3[1].id === userPlayer?.id} />}
+            {top3[0] && <PodiumPlayer player={top3[0]} position={1} isCurrentUser={top3[0].id === userPlayer?.id} />}
+            {top3[2] && <PodiumPlayer player={top3[2]} position={3} isCurrentUser={top3[2].id === userPlayer?.id} />}
           </div>
         </div>
 
@@ -528,136 +542,17 @@ export function LeaderboardScreen() {
         {/* Ranked List */}
         <div className="space-y-2">
           {rest.map((player, i) => (
-            <RankedRow key={player.id} player={player} index={i} />
+            <RankedRow 
+              key={player.id} 
+              player={player} 
+              index={i} 
+              isCurrentUser={player.id === userPlayer?.id}
+            />
           ))}
         </div>
       </div>
 
-      {/* Sticky User Rank Card */}
-      <motion.div
-        className="absolute bottom-0 left-0 right-0 z-20 p-4"
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        transition={{ delay: 0.8, type: 'spring', stiffness: 200, damping: 25 }}
-      >
-        <div
-          className={`relative rounded-2xl overflow-hidden ${
-            fightResult
-              ? isWin
-                ? 'shadow-[0_0_25px_#00f0ff44,0_0_50px_#00f0ff22]'
-                : 'shadow-[0_0_25px_#ff006e44,0_0_50px_#ff006e22]'
-              : ''
-          }`}
-          style={{
-            background: isWin
-              ? 'linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(0,240,255,0.05) 100%)'
-              : fightResult
-              ? 'linear-gradient(135deg, rgba(255,0,110,0.15) 0%, rgba(255,0,110,0.05) 100%)'
-              : 'linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(0,240,255,0.05) 100%)',
-          }}
-        >
-          <div
-            className={`absolute inset-0 rounded-2xl border ${
-              fightResult
-                ? isWin
-                  ? 'border-[#00f0ff]/50 shadow-[0_0_15px_#00f0ff33,inset_0_0_15px_#00f0ff11]'
-                  : 'border-[#ff006e]/50 shadow-[0_0_15px_#ff006e33,inset_0_0_15px_#ff006e11]'
-                : 'border-[#00f0ff]/40 shadow-[0_0_15px_#00f0ff33,inset_0_0_15px_#00f0ff11]'
-            }`}
-          />
-          <div className="absolute inset-0 backdrop-blur-xl bg-[#0a0515]/60" />
-
-          <div className="relative z-10 px-4 py-3.5 flex items-center gap-3">
-            {/* Rank with change indicator */}
-            <div className="w-12 text-center">
-              <motion.span
-                className="text-[#00f0ff] text-lg block"
-                style={{ fontFamily: "'Orbitron', sans-serif" }}
-                initial={fightResult ? { scale: 0.5, opacity: 0 } : {}}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 1, type: 'spring' }}
-              >
-                #{userPlayer?.rank || '--'}
-              </motion.span>
-              {fightResult && (
-                <motion.span
-                  className={`text-[10px] block ${
-                    isWin ? 'text-[#00ff88]' : 'text-[#ff2244]'
-                  }`}
-                  style={{ fontFamily: "'Orbitron', sans-serif" }}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.3 }}
-                >
-                  {fightResult.rankChange > 0 ? '▲' : '▼'} {Math.abs(fightResult.rankChange)}
-                </motion.span>
-              )}
-            </div>
-
-            {/* Avatar with pulse */}
-            <div className="relative">
-              <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${
-                  fightResult
-                    ? isWin
-                      ? 'bg-[#00f0ff]/10 border-2 border-[#00f0ff]/50 shadow-[0_0_10px_#00f0ff44]'
-                      : 'bg-[#ff006e]/10 border-2 border-[#ff006e]/50 shadow-[0_0_10px_#ff006e44]'
-                    : 'bg-[#00f0ff]/10 border-2 border-[#00f0ff]/50 shadow-[0_0_10px_#00f0ff44]'
-                }`}
-              >
-                <AvatarDisplay avatar={userPlayer?.avatar || '🎮'} size="md" className="w-full h-full rounded-none" />
-              </div>
-              {fightResult && (
-                <motion.div
-                  className={`absolute inset-0 rounded-full border-2 ${
-                    isWin ? 'border-[#00f0ff]' : 'border-[#ff006e]'
-                  }`}
-                  initial={{ scale: 1, opacity: 0.8 }}
-                  animate={{ scale: 1.6, opacity: 0 }}
-                  transition={{ delay: 1, duration: 0.8 }}
-                />
-              )}
-            </div>
-
-            {/* Name & Score with change */}
-            <div className="flex-1 min-w-0">
-              <p
-                className={`text-sm tracking-wider ${isWin || !fightResult ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`}
-                style={{ fontFamily: "'Orbitron', sans-serif" }}
-              >
-                {userPlayer?.name || 'YOU'}
-              </p>
-              <div className="flex items-center gap-2">
-                <p className="text-white/60 text-[10px]" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-                  {(userPlayer?.xp || 0).toLocaleString()} XP • {userPlayer?.winCount}W - {userPlayer?.lossCount}L
-                </p>
-                {fightResult && (
-                  <motion.span
-                    className={`text-xs ${isWin ? 'text-[#00ff88]' : 'text-[#ff2244]'}`}
-                    style={{ fontFamily: "'Orbitron', sans-serif" }}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 1.1 }}
-                  >
-                    ({fightResult.scoreChange > 0 ? '+' : ''}
-                    {fightResult.scoreChange})
-                  </motion.span>
-                )}
-              </div>
-            </div>
-
-            {/* Recent Form with highlighted last dot */}
-            <FormDots form={userPlayer?.recentForm || []} highlightLast={!!fightResult} />
-          </div>
-
-          {/* Top edge highlight */}
-          <div
-            className={`absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent ${
-              isWin || !fightResult ? 'via-[#00f0ff]/60' : 'via-[#ff006e]/60'
-            } to-transparent`}
-          />
-        </div>
-      </motion.div>
+      {/* Removed Sticky User Rank Card as requested */}
     </div>
   );
 }
