@@ -34,8 +34,8 @@ export function OnboardingScreen() {
   const [isValidating, setIsValidating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
-  const [randomNames] = useState(() => 
+
+  const [randomNames] = useState(() =>
     [...SUGGESTED_NAMES].sort(() => Math.random() - 0.5).slice(0, 3)
   );
 
@@ -125,7 +125,7 @@ export function OnboardingScreen() {
             setPlayerName(player.username || '');
             setWeight(player.weight?.toString() || '');
             setPreferredHand(player.preferred_hand || 'right');
-            
+
             // Try to match avatar URL
             const matchedAvatar = pickedAvatars.find(a => a.url === player.avatar_url);
             if (matchedAvatar) {
@@ -165,10 +165,10 @@ export function OnboardingScreen() {
           // Check if it's the current user re-entering the name
           let currentId = localStorage.getItem('fighter_player_id');
           if (user) {
-             const { data: p } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
-             if (p) currentId = p.id;
+            const { data: p } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+            if (p) currentId = p.id;
           }
-          
+
           if (existing.id !== currentId) {
             setNameError('Username already taken');
           } else {
@@ -189,13 +189,13 @@ export function OnboardingScreen() {
 
   const handleComplete = async () => {
     setIsSyncing(true); // Reusing state for loading
-    
+
     // Check if real user or guest
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     // Handle Avatar Upload if a real photo was taken
     let finalAvatarUrl = '👤';
-    
+
     if (selectedAvatar === 0 && photoDataUrl) {
       // If it's already a URL (e.g. from a previous upload while editing), just use it
       if (photoDataUrl.startsWith('http')) {
@@ -222,14 +222,14 @@ export function OnboardingScreen() {
 
     // Unified Player Handling
     let playerId = localStorage.getItem('fighter_player_id');
-    
+
     if (user) {
       const { data: existingUserPlayer } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
       if (existingUserPlayer?.id) {
         playerId = existingUserPlayer.id;
       }
     }
-    
+
     if (!playerId) {
       playerId = crypto.randomUUID();
     }
@@ -318,7 +318,7 @@ export function OnboardingScreen() {
               type: 'tween',
             }}
           >
-            <h1 
+            <h1
               className="text-4xl font-bold text-[#00f0ff]"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
@@ -332,11 +332,10 @@ export function OnboardingScreen() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <GlassCard className={`px-4 py-2 border-2 bg-gradient-to-r ${
-              isConnected ? 'border-[#00ff00]/40 from-[#00ff00]/10 to-[#00ff00]/5 shadow-[0_0_20px_rgba(0,255,0,0.4)]' :
-              isError ? 'border-[#ff0000]/40 from-[#ff0000]/10 to-[#ff0000]/5 shadow-[0_0_20px_rgba(255,0,0,0.4)]' :
-              'border-white/10 from-white/5 to-transparent'
-            }`}>
+            <GlassCard className={`px-4 py-2 border-2 bg-gradient-to-r ${isConnected ? 'border-[#00ff00]/40 from-[#00ff00]/10 to-[#00ff00]/5 shadow-[0_0_20px_rgba(0,255,0,0.4)]' :
+                isError ? 'border-[#ff0000]/40 from-[#ff0000]/10 to-[#ff0000]/5 shadow-[0_0_20px_rgba(255,0,0,0.4)]' :
+                  'border-white/10 from-white/5 to-transparent'
+              }`}>
               <div className="flex items-center gap-3">
                 {/* Pulsing Dot */}
                 <motion.div
@@ -350,18 +349,16 @@ export function OnboardingScreen() {
                     type: 'tween',
                   }}
                 >
-                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${
-                    isConnected ? 'bg-[#00ff00] text-[#00ff00]' :
-                    isError ? 'bg-[#ff0000] text-[#ff0000]' :
-                    'bg-[#888888] text-[#888888]'
-                  }`} />
+                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${isConnected ? 'bg-[#00ff00] text-[#00ff00]' :
+                      isError ? 'bg-[#ff0000] text-[#ff0000]' :
+                        'bg-[#888888] text-[#888888]'
+                    }`} />
                   {/* Outer glow ring */}
                   <motion.div
-                    className={`absolute inset-0 rounded-full border-2 ${
-                      isConnected ? 'border-[#00ff00]' :
-                      isError ? 'border-[#ff0000]' :
-                      'border-[#888888]'
-                    }`}
+                    className={`absolute inset-0 rounded-full border-2 ${isConnected ? 'border-[#00ff00]' :
+                        isError ? 'border-[#ff0000]' :
+                          'border-[#888888]'
+                      }`}
                     animate={{
                       scale: [1, 2, 1],
                       opacity: [0.8, 0, 0.8],
@@ -376,11 +373,10 @@ export function OnboardingScreen() {
 
                 {/* Badge Text */}
                 <div className="text-sm">
-                  <div className={`font-bold uppercase tracking-wider ${
-                    isConnected ? 'text-[#00ff00]' :
-                    isError ? 'text-[#ff0000]' :
-                    'text-white/40'
-                  }`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <div className={`font-bold uppercase tracking-wider ${isConnected ? 'text-[#00ff00]' :
+                      isError ? 'text-[#ff0000]' :
+                        'text-white/40'
+                    }`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     ROCKY: {isConnected ? 'CONNECTED' : isError ? 'ERROR' : 'OFFLINE'}
                   </div>
                   <div className="text-white/40 text-xs uppercase tracking-wider">
@@ -457,7 +453,7 @@ export function OnboardingScreen() {
                       <motion.div
                         className="absolute inset-0 rounded-lg pointer-events-none"
                         animate={{
-                          boxShadow: playerName 
+                          boxShadow: playerName
                             ? ['0 0 0px #00f0ff', '0 0 20px #00f0ff40', '0 0 0px #00f0ff']
                             : '0 0 0px #00f0ff',
                         }}
@@ -498,25 +494,7 @@ export function OnboardingScreen() {
                     </div>
                   </div>
 
-                  {/* Immediate CTA for Identity */}
-                  <motion.div
-                    className="pt-4"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: playerName ? 1 : 0.5 }}
-                  >
-                    <NeonButton
-                      variant="primary"
-                      color="cyan"
-                      onClick={() => {
-                        // Just a visual feedback button for now, or could scroll to next section
-                        const attrSection = document.getElementById('avatar-section');
-                        attrSection?.scrollIntoView({ behavior: 'smooth' });
-                      }}
-                      className="w-full"
-                    >
-                      Create Identity
-                    </NeonButton>
-                  </motion.div>
+                  {/* Immediate CTA removed as requested */}
                 </div>
               </GlassCard>
             </motion.div>
@@ -543,160 +521,160 @@ export function OnboardingScreen() {
                       Camera Photo
                     </label>
                     <div className="relative aspect-square w-full">
-                    {/* Camera Frame */}
-                    <motion.div
-                      className={`relative w-full h-full rounded-2xl overflow-hidden
+                      {/* Camera Frame */}
+                      <motion.div
+                        className={`relative w-full h-full rounded-2xl overflow-hidden
                                 border-4 bg-black/60
                                 shadow-[0_0_30px_#ff006e40]
                                 ${selectedAvatar === 0 ? 'border-[#ff006e]' : 'border-white/10'}`}
-                      animate={{
-                        boxShadow: cameraCountdown !== null
-                          ? ['0 0 30px #ff006e40', '0 0 50px #ff006e80', '0 0 30px #ff006e40']
-                          : '0 0 30px #ff006e40',
-                      }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        type: "tween"
-                      }}
-                    >
-                      {/* Camera Grid Overlay */}
-                      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-20">
-                        {Array.from({ length: 9 }).map((_, i) => (
-                          <div key={i} className="border border-[#ff006e]/50" />
-                        ))}
-                      </div>
+                        animate={{
+                          boxShadow: cameraCountdown !== null
+                            ? ['0 0 30px #ff006e40', '0 0 50px #ff006e80', '0 0 30px #ff006e40']
+                            : '0 0 30px #ff006e40',
+                        }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          type: "tween"
+                        }}
+                      >
+                        {/* Camera Grid Overlay */}
+                        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-20">
+                          {Array.from({ length: 9 }).map((_, i) => (
+                            <div key={i} className="border border-[#ff006e]/50" />
+                          ))}
+                        </div>
 
-                      {/* Countdown Overlay */}
-                      <AnimatePresence>
-                        {cameraCountdown !== null && cameraCountdown > 0 && (
-                          <motion.div
-                            className="absolute inset-0 flex items-center justify-center z-10"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                          >
+                        {/* Countdown Overlay */}
+                        <AnimatePresence>
+                          {cameraCountdown !== null && cameraCountdown > 0 && (
                             <motion.div
-                              className="text-8xl text-[#ffff00]"
-                              style={{ fontFamily: 'var(--font-family-heading)' }}
-                              key={cameraCountdown}
-                              initial={{ scale: 0.5, opacity: 0 }}
-                              animate={{ scale: 1.5, opacity: 1 }}
-                              exit={{ scale: 2, opacity: 0 }}
-                              transition={{ duration: 0.8 }}
+                              className="absolute inset-0 flex items-center justify-center z-10"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
                             >
-                              {cameraCountdown}
+                              <motion.div
+                                className="text-8xl text-[#ffff00]"
+                                style={{ fontFamily: 'var(--font-family-heading)' }}
+                                key={cameraCountdown}
+                                initial={{ scale: 0.5, opacity: 0 }}
+                                animate={{ scale: 1.5, opacity: 1 }}
+                                exit={{ scale: 2, opacity: 0 }}
+                                transition={{ duration: 0.8 }}
+                              >
+                                {cameraCountdown}
+                              </motion.div>
                             </motion.div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          )}
+                        </AnimatePresence>
 
-                      {/* Camera Content */}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-                        {/* Always show video feed unless a photo is finalized and we aren't counting down */}
-                        <video 
-                          ref={videoRef} 
-                          autoPlay 
-                          playsInline 
-                          muted /* Important to prevent feedback loop */
-                          className={`w-full h-full object-cover ${(selectedAvatar === 0 && photoDataUrl && cameraCountdown === null) ? 'opacity-0 absolute' : 'opacity-100 relative'}`}
-                        />
-                        
-                        {/* Show standard camera icon if video isn't loaded yet */}
-                        {!streamRef.current && cameraCountdown === null && selectedAvatar !== 0 && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-                            <Camera className="w-16 h-16 text-[#ff006e]/40 mx-auto mb-2" />
-                            <p className="text-white/40 text-sm">Initializing Camera...</p>
-                          </div>
-                        )}
-
-                        {/* Show captured photo on top if selected */}
-                        {selectedAvatar === 0 && photoDataUrl && cameraCountdown === null && (
-                          <motion.img
-                            src={photoDataUrl}
-                            alt="Captured Avatar"
-                            className="absolute inset-0 w-full h-full object-cover z-20"
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ type: "spring", duration: 0.8 }}
+                        {/* Camera Content */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                          {/* Always show video feed unless a photo is finalized and we aren't counting down */}
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted /* Important to prevent feedback loop */
+                            className={`w-full h-full object-cover ${(selectedAvatar === 0 && photoDataUrl && cameraCountdown === null) ? 'opacity-0 absolute' : 'opacity-100 relative'}`}
                           />
-                        )}
-                      </div>
 
-                      {/* Retake Button */}
-                      {selectedAvatar === 0 && (
-                        <motion.button
-                          onClick={startCameraCountdown}
-                          className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-sm
+                          {/* Show standard camera icon if video isn't loaded yet */}
+                          {!streamRef.current && cameraCountdown === null && selectedAvatar !== 0 && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                              <Camera className="w-16 h-16 text-[#ff006e]/40 mx-auto mb-2" />
+                              <p className="text-white/40 text-sm">Initializing Camera...</p>
+                            </div>
+                          )}
+
+                          {/* Show captured photo on top if selected */}
+                          {selectedAvatar === 0 && photoDataUrl && cameraCountdown === null && (
+                            <motion.img
+                              src={photoDataUrl}
+                              alt="Captured Avatar"
+                              className="absolute inset-0 w-full h-full object-cover z-20"
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ type: "spring", duration: 0.8 }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Retake Button */}
+                        {selectedAvatar === 0 && (
+                          <motion.button
+                            onClick={startCameraCountdown}
+                            className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-sm
                                    border border-[#ff006e]/50 rounded-lg
                                    hover:bg-[#ff006e]/20 transition-all"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <RotateCcw className="w-5 h-5 text-[#ff006e]" />
-                        </motion.button>
-                      )}
-                    </motion.div>
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <RotateCcw className="w-5 h-5 text-[#ff006e]" />
+                          </motion.button>
+                        )}
+                      </motion.div>
 
-                    {/* Take Photo Button */}
-                    {cameraCountdown === null && (
-                      <motion.button
-                        onClick={startCameraCountdown}
-                        className="absolute bottom-4 left-1/2 -translate-x-1/2
+                      {/* Take Photo Button */}
+                      {cameraCountdown === null && (
+                        <motion.button
+                          onClick={startCameraCountdown}
+                          className="absolute bottom-4 left-1/2 -translate-x-1/2
                                  px-6 py-3 bg-[#ff006e] text-white rounded-full
                                  hover:bg-[#ff006e]/80 hover:shadow-[0_0_20px_#ff006e80]
                                  transition-all duration-300 z-30"
-                        style={{ fontFamily: 'var(--font-family-heading)' }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        {photoDataUrl ? 'Retake Photo' : 'CAPTURE'}
-                      </motion.button>
-                    )}
+                          style={{ fontFamily: 'var(--font-family-heading)' }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {photoDataUrl ? 'Retake Photo' : 'CAPTURE'}
+                        </motion.button>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Avatar Thumbnails */}
-                <div className="space-y-2">
-                  <label className="block text-xs text-white/40 uppercase tracking-wider">
-                    Or Choose Avatar
-                  </label>
-                  <div className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory no-scrollbar scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <style>{`
+                  {/* Avatar Thumbnails */}
+                  <div className="space-y-2">
+                    <label className="block text-xs text-white/40 uppercase tracking-wider">
+                      Or Choose Avatar
+                    </label>
+                    <div className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory no-scrollbar scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      <style>{`
                       .no-scrollbar::-webkit-scrollbar {
                         display: none;
                       }
                     `}</style>
-                    {avatarOptions.map((avatar) => (
-                      <motion.button
-                        key={avatar.id}
-                        onClick={() => setSelectedAvatar(avatar.id)}
-                        className={`
+                      {avatarOptions.map((avatar) => (
+                        <motion.button
+                          key={avatar.id}
+                          onClick={() => setSelectedAvatar(avatar.id)}
+                          className={`
                           flex-shrink-0 w-[85px] h-[85px] rounded-full border-2 p-1 snap-center
                           transition-all duration-300
                           ${selectedAvatar === avatar.id
-                            ? 'border-[#ff006e] bg-[#ff006e]/10 shadow-[0_0_20px_#ff006e60] scale-110'
-                            : 'border-white/10 bg-black/40 hover:border-white/30'
-                          }
+                              ? 'border-[#ff006e] bg-[#ff006e]/10 shadow-[0_0_20px_#ff006e60] scale-110'
+                              : 'border-white/10 bg-black/40 hover:border-white/30'
+                            }
                         `}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <div className="w-full h-full rounded-full overflow-hidden">
-                          <img 
-                            src={avatar.url} 
-                            alt={`Avatar ${avatar.id}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </motion.button>
-                    ))}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <div className="w-full h-full rounded-full overflow-hidden">
+                            <img
+                              src={avatar.url}
+                              alt={`Avatar ${avatar.id}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
               </GlassCard>
             </motion.div>
 
@@ -720,28 +698,26 @@ export function OnboardingScreen() {
                     <label className="block text-sm text-[#ffff00] mb-2 uppercase tracking-wider">
                       Physical Stats
                     </label>
-                    
+
                     {/* Handedness Selection - MANDATORY */}
                     <div className="space-y-2 mb-4">
                       <p className="text-xs text-white/40 uppercase tracking-widest">Preferred Stance</p>
                       <div className="flex gap-4">
                         <button
                           onClick={() => setPreferredHand('right')}
-                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${
-                            preferredHand === 'right' 
-                              ? 'border-[#00f0ff] bg-[#00f0ff]/20 text-[#00f0ff] shadow-[0_0_15px_#00f0ff40]' 
+                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${preferredHand === 'right'
+                              ? 'border-[#00f0ff] bg-[#00f0ff]/20 text-[#00f0ff] shadow-[0_0_15px_#00f0ff40]'
                               : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
-                          }`}
+                            }`}
                         >
                           RIGHT HANDED
                         </button>
                         <button
                           onClick={() => setPreferredHand('left')}
-                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${
-                            preferredHand === 'left' 
-                              ? 'border-[#ff006e] bg-[#ff006e]/20 text-[#ff006e] shadow-[0_0_15px_#ff006e40]' 
+                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${preferredHand === 'left'
+                              ? 'border-[#ff006e] bg-[#ff006e]/20 text-[#ff006e] shadow-[0_0_15px_#ff006e40]'
                               : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
-                          }`}
+                            }`}
                         >
                           LEFT HANDED
                         </button>
@@ -807,7 +783,7 @@ export function OnboardingScreen() {
                                 type: "tween"
                               }}
                             />
-                            
+
                             {/* Digital Data Stream */}
                             <motion.div
                               className="absolute inset-0 opacity-30"

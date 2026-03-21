@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Scan, Lock, Mail } from 'lucide-react';
+import { Scan, Lock, Mail, ArrowLeft } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { supabase } from '../../lib/supabase';
 
@@ -148,6 +148,19 @@ export function LoginScreen() {
           style={{ bottom: '10%', right: '20%' }}
         />
       </div>
+      
+      {/* Back Button */}
+      <motion.button
+        onClick={() => navigate(-1)}
+        className="absolute top-8 left-8 z-50 flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#00f0ff]/30 transition-all text-white/60 text-sm uppercase tracking-wider"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <ArrowLeft className="w-5 h-5 text-[#00f0ff]" />
+        <span>Back</span>
+      </motion.button>
 
       {/* Header */}
       <motion.div
@@ -157,10 +170,10 @@ export function LoginScreen() {
         transition={{ duration: 0.8 }}
       >
         <h1 
-          className="text-6xl tracking-wider bg-gradient-to-r from-[#00f0ff] via-[#ff006e] to-[#00f0ff] bg-clip-text text-transparent"
+          className="text-6xl tracking-wider text-white"
           style={{ fontFamily: 'Orbitron, sans-serif' }}
         >
-          dforce.fit
+          D-FORCE
         </h1>
         <motion.div 
           className="h-[2px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent mt-2"
@@ -301,18 +314,7 @@ export function LoginScreen() {
                   )}
                 </button>
 
-                {/* Forgot Password */}
-                {!isRegister && (
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    disabled={cooldown > 0}
-                    className={`w-full text-sm ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : 'text-[#00f0ff]/60 hover:text-[#00f0ff]'} transition-colors uppercase tracking-wider`}
-                    style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                  >
-                    {cooldown > 0 ? `Reset Available in ${cooldown}s` : 'Forgot Password?'}
-                  </button>
-                )}
+                {/* Forgot Password Removed */}
               </form>
             </motion.div>
 
@@ -362,16 +364,15 @@ export function LoginScreen() {
               transition={{ delay: 0.6, duration: 0.6 }}
             >
               <h2 
-                className="text-2xl text-[#ff006e] mb-8 uppercase tracking-wider"
+                className="text-2xl text-[#ff006e] mb-8 uppercase tracking-wider h-8"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
               >
-                Instant Access
+                {/* Text Removed */}
               </h2>
 
-              {/* QR Scan Button */}
-              <button
-                onClick={handleQRLogin}
-                className="group relative w-full max-w-md aspect-square rounded-3xl border-2 border-[#ff006e]/50 hover:border-[#ff006e] transition-all duration-300 overflow-hidden"
+              {/* QR Container (Not clickable) */}
+              <div
+                className="group relative w-full max-w-md aspect-square rounded-3xl border-2 border-[#ff006e]/50 transition-all duration-300 overflow-hidden"
                 style={{
                   background: 'rgba(255, 0, 110, 0.05)',
                   boxShadow: '0 0 40px rgba(255, 0, 110, 0.2)',
@@ -422,10 +423,10 @@ export function LoginScreen() {
                     />
                   </motion.div>
                   <p 
-                    className="text-xl text-[#ff006e] uppercase tracking-wider"
+                    className="text-xl text-[#ff006e] uppercase tracking-wider h-8"
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
-                    Quick Join
+                    {/* Text Removed */}
                   </p>
                   <p 
                     className="text-sm text-white/60 mt-2 uppercase tracking-widest text-center"
@@ -435,49 +436,17 @@ export function LoginScreen() {
                   </p>
                 </div>
 
-                {/* Glow effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#ff006e]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </button>
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#ff006e]/10 to-transparent transition-opacity duration-300" />
+              </div>
 
-              {/* Additional info */}
-              <motion.p 
-                className="text-xs text-white/40 mt-6 text-center uppercase tracking-widest"
-                style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.2 }}
-              >
-                Fastest way to enter the arena
-              </motion.p>
+              {/* Text Removed */}
             </motion.div>
           </div>
         </div>
       </motion.div>
 
-      {/* Footer */}
-      {!isRegister && (
-        <motion.div
-          className="relative z-10 mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.4, duration: 0.6 }}
-        >
-          <div 
-            className="px-8 py-3 rounded-full border-2 border-[#ff006e]/50"
-            style={{
-              background: 'rgba(255, 0, 110, 0.1)',
-              backdropFilter: 'blur(20px)',
-            }}
-          >
-            <p 
-              className="text-sm text-white/70 uppercase tracking-wider"
-              style={{ fontFamily: 'Rajdhani, sans-serif' }}
-            >
-              New Player? <button onClick={() => setIsRegister(true)} className="text-[#ff006e] hover:underline">Register at dforce.fit</button>
-            </p>
-          </div>
-        </motion.div>
-      )}
+      {/* Footer Removed */}
 
       {/* Corner accents */}
       <div className="absolute top-8 left-8 w-24 h-24 border-t-2 border-l-2 border-[#00f0ff]/30" />

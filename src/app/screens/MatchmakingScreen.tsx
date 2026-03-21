@@ -8,6 +8,38 @@ import { useAudio } from '../../hooks/useAudio';
 import { Swords, Zap, Globe } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
 
+const RadarScan = () => (
+  <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black/20">
+    <motion.div 
+      className="absolute inset-0 border border-[#ff006e]/50 rounded-full"
+      initial={{ scale: 0.2, opacity: 0 }}
+      animate={{ scale: 2, opacity: [0, 0.8, 0] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+    />
+    <motion.div 
+      className="absolute inset-0 border border-[#ff006e]/30 rounded-full"
+      initial={{ scale: 0.2, opacity: 0 }}
+      animate={{ scale: 1.5, opacity: [0, 0.5, 0] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.6 }}
+    />
+    <motion.div 
+      className="absolute inset-0 border border-[#ff006e]/20 rounded-full"
+      initial={{ scale: 0.2, opacity: 0 }}
+      animate={{ scale: 1, opacity: [0, 0.3, 0] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 1.2 }}
+    />
+    <div className="z-10 flex flex-col items-center">
+      <Zap className="w-8 h-8 text-[#ff006e] animate-pulse mb-1" />
+      <motion.div 
+        className="h-[1px] w-12 bg-[#ff006e]/50"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+        style={{ originX: 0 }}
+      />
+    </div>
+  </div>
+);
+
 export function MatchmakingScreen() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -221,16 +253,53 @@ export function MatchmakingScreen() {
                     </div>
                   </div>
 
-                  <div className="text-center text-4xl font-black italic text-[#ff006e]">VS</div>
+                  <div className="relative flex flex-col items-center">
+                    <motion.div 
+                      className="text-4xl font-black italic text-[#ff006e] relative z-20"
+                      animate={matchFound ? { scale: [1, 1.2, 1], filter: 'drop-shadow(0 0 10px #ff006e)' } : { scale: [1, 1.1, 1] }}
+                      transition={{ duration: 1, repeat: matchFound ? 0 : Infinity }}
+                    >
+                      VS
+                    </motion.div>
+                    {!matchFound && (
+                      <motion.div 
+                        className="absolute inset-0 bg-[#ff006e]/30 blur-2xl rounded-full z-10"
+                        animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.3, 0.6, 0.3] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                    )}
+                  </div>
 
-                  {/* P2 / OMEGA */}
+                  {/* P2 / OMEGA / SEARCHING */}
                   <div className="flex flex-col items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-2xl bg-[#ff006e]/10 border-2 border-[#ff006e] flex items-center justify-center overflow-hidden">
-                      <AvatarDisplay avatar={(isPlayer1 ? opponentData : userData)?.avatar_url || '👤'} size="lg" />
-                    </div>
+                    <motion.div 
+                      className={`relative w-24 h-24 rounded-2xl bg-[#ff006e]/10 border-2 flex items-center justify-center overflow-hidden transition-colors duration-500 ${
+                        matchFound ? 'border-[#ff006e] shadow-[0_0_20px_#ff006e40]' : 'border-[#ff006e]/30'
+                      }`}
+                      animate={matchFound ? {} : { borderColor: ['rgba(255,0,110,0.3)', 'rgba(255,0,110,0.8)', 'rgba(255,0,110,0.3)'] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      {matchFound ? (
+                        <AvatarDisplay avatar={(isPlayer1 ? opponentData : userData)?.avatar_url || '👤'} size="lg" />
+                      ) : (
+                        <RadarScan />
+                      )}
+                      
+                      {!matchFound && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <motion.div 
+                            className="absolute top-0 left-0 w-full h-[2px] bg-[#ff006e]/50"
+                            animate={{ top: ['0%', '100%'] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                          />
+                        </div>
+                      )}
+                    </motion.div>
                     <div className="text-center">
-                      <p className="text-white font-bold text-xs uppercase">{(isPlayer1 ? opponentData : userData)?.username || 'OMEGA'}</p>
-                      <p className="text-[#ff006e] text-[8px] font-bold uppercase tracking-widest">OMEGA</p>
+                      <p className={`font-bold text-xs uppercase tracking-wider ${matchFound ? 'text-white' : 'text-[#ff006e] animate-pulse'}`}>
+                        {matchFound ? (isPlayer1 ? opponentData : userData)?.username || 'OMEGA' : 'SEARCHING...'}
+                      </p>
+                      <p className="text-[#ff006e] text-[8px] font-bold uppercase tracking-widest mt-0.5">OMEGA SLOT</p>
                     </div>
                   </div>
                 </div>

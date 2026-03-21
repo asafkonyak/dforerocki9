@@ -110,7 +110,7 @@ export function WelcomeScreen() {
               className="w-full"
               size="lg"
             >
-              Scan QR to Login
+              Login to Player
             </NeonButton>
           </motion.div>
 

@@ -68,7 +68,7 @@ export function MainMenuScreen() {
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-40 mix-blend-screen">
         {/* Left Lightning (Blue-ish) */}
         <div 
-          className="absolute top-1/2 -left-[450px] -translate-y-1/2" 
+          className="absolute top-1/2 -left-[300px] -translate-y-1/2" 
           style={{ width: '1080px', height: '1080px' }}
         >
           <Lightning
@@ -82,7 +82,7 @@ export function MainMenuScreen() {
 
         {/* Right Lightning (Red-ish) */}
         <div 
-          className="absolute top-1/2 -right-[450px] -translate-y-1/2" 
+          className="absolute top-1/2 -right-[300px] -translate-y-1/2" 
           style={{ width: '1080px', height: '1080px' }}
         >
           <Lightning
@@ -335,9 +335,9 @@ export function MainMenuScreen() {
                   {/* Game Type Selection - Box Style triggers navigation */}
                   <div className="flex gap-2 w-full mt-auto pt-6 border-t border-white/10">
                     {[
-                      { id: '1_round', label: '1 Round', icon: <Zap className="w-5 h-5" /> },
-                      { id: 'bo3', label: 'Best of 3', icon: <Trophy className="w-5 h-5" /> },
-                      { id: 'bo5', label: 'Best of 5', icon: <Swords className="w-5 h-5" /> },
+                      { id: '1_round', label: '1 Round', icon: <Zap className="w-5 h-5" />, color: '#00f0ff' },
+                      { id: 'bo3', label: 'Best of 3', icon: <Trophy className="w-5 h-5" />, color: '#ff006e' },
+                      { id: 'bo5', label: 'Best of 5', icon: <Swords className="w-5 h-5" />, color: '#ffff00' },
                     ].map((type) => (
                       <button
                         key={type.id}
@@ -349,10 +349,15 @@ export function MainMenuScreen() {
                         className={`
                           flex-1 h-[100px] flex flex-col items-center justify-center gap-2 px-1 rounded-xl border transition-all group/btn backdrop-blur-sm
                           ${selectedGameType === type.id 
-                            ? 'bg-[#00f0ff]/30 border-[#00f0ff] text-[#00f0ff] shadow-[0_0_15px_#00f0ff60]' 
-                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-[#00f0ff]/10 hover:border-[#00f0ff]/50 hover:text-[#00f0ff]'
+                            ? `bg-opacity-40 border-opacity-100 shadow-[0_0_15px_rgba(0,240,255,0.4)]` 
+                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
                           }
                         `}
+                        style={{
+                          borderColor: selectedGameType === type.id ? type.color : undefined,
+                          color: selectedGameType === type.id ? type.color : undefined,
+                          backgroundColor: selectedGameType === type.id ? `${type.color}20` : undefined,
+                        }}
                       >
                         <div className={`transition-transform duration-300 group-hover/btn:scale-110 ${selectedGameType === type.id ? 'scale-110' : ''}`}>
                           {type.icon}
@@ -404,9 +409,9 @@ export function MainMenuScreen() {
                   {/* Difficulty Selection - Box Style */}
                   <div className="flex gap-2 w-full mt-auto pt-6 border-t border-white/10">
                     {[
-                      { id: 'easy', label: 'ROOKIE', icon: '🥉' },
-                      { id: 'medium', label: 'FIGHTER', icon: '🥈' },
-                      { id: 'hard', label: 'MASTER', icon: '🥇' },
+                      { id: 'easy', label: 'ROOKIE', icon: '🥉', color: '#00f0ff' },
+                      { id: 'medium', label: 'FIGHTER', icon: '🥈', color: '#ff006e' },
+                      { id: 'hard', label: 'MASTER', icon: '🥇', color: '#ffff00' },
                     ].map((diff) => (
                       <button
                         key={diff.id}
@@ -415,9 +420,22 @@ export function MainMenuScreen() {
                           navigate('/training');
                         }}
                         className={`
-                          flex-1 h-[100px] flex flex-col items-center justify-center gap-2 px-1 rounded-xl border transition-all group/btn
-                          bg-white/5 border-white/10 text-white/40 hover:bg-[#ff006e]/10 hover:border-[#ff006e]/50 hover:text-[#ff006e] backdrop-blur-sm
+                          flex-1 h-[100px] flex flex-col items-center justify-center gap-2 px-1 rounded-xl border transition-all group/btn backdrop-blur-sm
+                          bg-white/5 border-white/10 text-white/40 hover:bg-white/10
                         `}
+                        style={{
+                          '--hover-color': diff.color,
+                        } as any}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = diff.color;
+                          e.currentTarget.style.color = diff.color;
+                          e.currentTarget.style.backgroundColor = `${diff.color}20`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.color = '';
+                          e.currentTarget.style.backgroundColor = '';
+                        }}
                       >
                         <div className="text-2xl transition-transform duration-300 group-hover/btn:scale-110 leading-none">
                           {diff.icon}
@@ -517,7 +535,7 @@ export function MainMenuScreen() {
               onClick={() => setShowLogoutConfirm(true)}
               className="text-white/40 hover:text-[#ff006e] transition-colors text-sm uppercase tracking-wider flex items-center gap-2"
             >
-              <LogOut className="w-4 h-4" /> Exit to Home
+              <LogOut className="w-4 h-4" /> Logout
             </button>
 
             <span className="text-white/30">|</span>
