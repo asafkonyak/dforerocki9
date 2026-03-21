@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { CameraFeed } from '../components/CameraFeed';
 import { useSocket } from '../../contexts/SocketContext';
+import { GameCanvas } from '../components/GameCanvas';
 
 export function GameScreen() {
   const navigate = useNavigate();
@@ -781,350 +782,119 @@ export function GameScreen() {
         {/* Center - Arm Wrestling Battle Area */}
         <div className="flex-1 flex items-center justify-center px-6 min-h-0">
           <div className="w-full max-w-4xl">
-            {/* RADIAL ARC GAUGE - Replaces linear progress bar */}
+            {/* HIGH-PERFORMANCE CANVAS GAUGE */}
             <motion.div
-              className="mb-8 flex items-center justify-center"
-              initial={{ opacity: 0, scale: 0.8 }}
+              className="relative w-full max-w-[500px] h-[350px] mx-auto overflow-visible mb-8"
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
+              transition={{ delay: 0.5 }}
             >
-              <div className="relative w-full max-w-2xl aspect-square">
-                <svg
-                  viewBox="0 0 400 300"
-                  className="w-full h-full"
-                  style={{ filter: 'drop-shadow(0 0 20px rgba(0, 240, 255, 0.3))' }}
+              <GameCanvas 
+                armPosition={armPosition} 
+                resistanceValue={resistanceValue} 
+                width={500} 
+                height={350} 
+              />
+
+              {/* DATA UI - Digital counters (Keeping these as DOM for crisp text) */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full flex justify-center gap-8">
+                {/* Current Angle Display */}
+                <motion.div
+                  className="relative"
+                  animate={{
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    type: 'tween'
+                  }}
                 >
-                  {/* Background Arc - Full range */}
-                  <defs>
-                    {/* Gradient for left side (Opponent - Pink) */}
-                    <linearGradient id="leftGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" style={{ stopColor: '#ff006e', stopOpacity: 0.3 }} />
-                      <stop offset="100%" style={{ stopColor: '#ff006e', stopOpacity: 0.6 }} />
-                    </linearGradient>
+                  <GlassCard className="px-6 py-4 border-2 border-[#00f0ff]/40 bg-black/60">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-[#00f0ff]/20 to-transparent rounded-xl"
+                      animate={{
+                        x: ['-100%', '100%'],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'linear',
+                        type: 'tween'
+                      }}
+                    />
 
-                    {/* Gradient for right side (User - Cyan) */}
-                    <linearGradient id="rightGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" style={{ stopColor: '#00f0ff', stopOpacity: 0.6 }} />
-                      <stop offset="100%" style={{ stopColor: '#00f0ff', stopOpacity: 0.3 }} />
-                    </linearGradient>
-
-                    {/* Glow filter for the needle */}
-                    <filter id="neonGlow">
-                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                      <feMerge>
-                        <feMergeNode in="coloredBlur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-
-                    {/* Electric spark filter */}
-                    <filter id="electricSpark">
-                      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" result="turbulence" />
-                      <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="5" xChannelSelector="R" yChannelSelector="G" />
-                      <feGaussianBlur stdDeviation="1" />
-                    </filter>
-                  </defs>
-
-                  {/* Left Arc (Opponent Zone - Pink) -70° to 0° */}
-                  <path
-                    d="M 80 250 A 150 150 0 0 1 200 100"
-                    fill="none"
-                    stroke="url(#leftGradient)"
-                    strokeWidth="20"
-                    strokeLinecap="round"
-                    opacity="0.5"
-                  />
-
-                  {/* Right Arc (User Zone - Cyan) 0° to 70° */}
-                  <path
-                    d="M 200 100 A 150 150 0 0 1 320 250"
-                    fill="none"
-                    stroke="url(#rightGradient)"
-                    strokeWidth="20"
-                    strokeLinecap="round"
-                    opacity="0.5"
-                  />
-
-                  {/* Center neutral marker */}
-                  <circle
-                    cx="200"
-                    cy="100"
-                    r="8"
-                    fill="white"
-                    opacity="0.6"
-                    filter="url(#neonGlow)"
-                  />
-
-                  {/* Angle markers every 20° */}
-                  {[-60, -40, -20, 20, 40, 60].map((angle) => {
-                    const radians = ((angle - 90) * Math.PI) / 180;
-                    const x = 200 + 150 * Math.cos(radians);
-                    const y = 250 + 150 * Math.sin(radians);
-                    const x2 = 200 + 165 * Math.cos(radians);
-                    const y2 = 250 + 165 * Math.sin(radians);
-
-                    return (
-                      <line
-                        key={angle}
-                        x1={x}
-                        y1={y}
-                        x2={x2}
-                        y2={y2}
-                        stroke={angle < 0 ? '#ff006e' : '#00f0ff'}
-                        strokeWidth="2"
-                        opacity="0.4"
-                      />
-                    );
-                  })}
-
-                  {/* GHOST TRAIL - Multiple fading needles behind the current position */}
-                  {[...Array(8)].map((_, i) => {
-                    // Calculate the angle: current position (based on armPosition mapped to -70 to +70)
-                    // armPosition: 0 = user winning (70°), 50 = neutral (0°), 100 = opponent winning (-70°)
-                    const currentAngle = 70 - (armPosition * 1.4); // Maps 0-100 to 70 to -70
-
-                    // Ghost trail angles - spread backwards towards 0
-                    const trailOffset = i * 3; // degrees behind
-                    const ghostAngle = currentAngle > 0
-                      ? Math.max(0, currentAngle - trailOffset)
-                      : Math.min(0, currentAngle + trailOffset);
-
-                    const angleInRadians = ((ghostAngle - 90) * Math.PI) / 180;
-                    const needleLength = 140;
-                    const needleX = 200 + needleLength * Math.cos(angleInRadians);
-                    const needleY = 250 + needleLength * Math.sin(angleInRadians);
-
-                    const opacity = 0.6 - (i * 0.08); // Fade out
-                    const color = currentAngle >= 0 ? '#00f0ff' : '#ff006e';
-
-                    return (
-                      <motion.line
-                        key={`ghost-${i}`}
-                        x1="200"
-                        y1="250"
-                        x2={needleX}
-                        y2={needleY}
-                        stroke={color}
-                        strokeWidth={8 - i * 0.5}
-                        strokeLinecap="round"
-                        opacity={opacity}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: opacity }}
-                      />
-                    );
-                  })}
-
-                  {/* MAIN ENERGY NEEDLE - Bright pulsing pointer */}
-                  <motion.g
-                    animate={{
-                      filter: [
-                        'drop-shadow(0 0 10px rgba(0, 240, 255, 0.8))',
-                        'drop-shadow(0 0 20px rgba(0, 240, 255, 1))',
-                        'drop-shadow(0 0 10px rgba(0, 240, 255, 0.8))',
-                      ]
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                      type: 'tween'
-                    }}
-                  >
-                    {(() => {
-                      // Calculate angle: 0-100 maps to 70° to -70°
-                      const currentAngle = 70 - (armPosition * 1.4);
-                      const angleInRadians = ((currentAngle - 90) * Math.PI) / 180;
-                      const needleLength = 145;
-                      const needleX = 200 + needleLength * Math.cos(angleInRadians);
-                      const needleY = 250 + needleLength * Math.sin(angleInRadians);
-                      const needleColor = currentAngle >= 0 ? '#00f0ff' : '#ff006e';
-
-                      return (
-                        <>
-                          {/* Main needle line */}
-                          <motion.line
-                            x1="200"
-                            y1="250"
-                            x2={needleX}
-                            y2={needleY}
-                            stroke={needleColor}
-                            strokeWidth="10"
-                            strokeLinecap="round"
-                            filter="url(#neonGlow)"
-                            animate={{
-                              x2: needleX,
-                              y2: needleY,
-                            }}
-                            transition={{ type: 'spring', stiffness: 100, damping: 15 }}
-                          />
-
-                          {/* Needle tip glow */}
-                          <motion.circle
-                            cx={needleX}
-                            cy={needleY}
-                            r="12"
-                            fill={needleColor}
-                            filter="url(#neonGlow)"
-                            animate={{
-                              cx: needleX,
-                              cy: needleY,
-                              r: [12, 15, 12],
-                            }}
-                            transition={{
-                              r: { duration: 1, repeat: Infinity, ease: 'easeInOut', type: 'tween' },
-                              cx: { type: 'spring', stiffness: 100, damping: 15 },
-                              cy: { type: 'spring', stiffness: 100, damping: 15 }
-                            }}
-                          />
-
-                          {/* Electric sparks around needle tip */}
-                          {[...Array(6)].map((_, i) => {
-                            const sparkAngle = (i * 60) * Math.PI / 180;
-                            const sparkDist = 20 + Math.random() * 10;
-                            const sparkX = needleX + sparkDist * Math.cos(sparkAngle);
-                            const sparkY = needleY + sparkDist * Math.sin(sparkAngle);
-
-                            return (
-                              <motion.circle
-                                key={`spark-${i}`}
-                                cx={sparkX}
-                                cy={sparkY}
-                                r="2"
-                                fill={needleColor}
-                                animate={{
-                                  opacity: [0, 1, 0],
-                                  r: [1, 3, 1],
-                                  cx: sparkX,
-                                  cy: sparkY,
-                                }}
-                                transition={{
-                                  opacity: { duration: 0.5, repeat: Infinity, delay: i * 0.1, type: 'tween' },
-                                  r: { duration: 0.5, repeat: Infinity, delay: i * 0.1, type: 'tween' },
-                                  cx: { type: 'spring', stiffness: 100, damping: 15 },
-                                  cy: { type: 'spring', stiffness: 100, damping: 15 },
-                                }}
-                              />
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </motion.g>
-
-                  {/* Center pivot point */}
-                  <circle
-                    cx="200"
-                    cy="250"
-                    r="15"
-                    fill="rgba(0, 0, 0, 0.8)"
-                    stroke="white"
-                    strokeWidth="3"
-                    filter="url(#neonGlow)"
-                  />
-                </svg>
-
-                {/* DATA UI - Digital counters */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full flex justify-center gap-8">
-                  {/* Current Angle Display */}
-                  <motion.div
-                    className="relative"
-                    animate={{
-                      scale: [1, 1.05, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                      type: 'tween'
-                    }}
-                  >
-                    <GlassCard className="px-6 py-4 border-2 border-[#00f0ff]/40 bg-black/60">
-                      {/* Digital distortion effect */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-[#00f0ff]/20 to-transparent rounded-xl"
-                        animate={{
-                          x: ['-100%', '100%'],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: 'linear',
-                          type: 'tween'
-                        }}
-                      />
-
-                      <div className="relative">
-                        <div className="text-[#00f0ff]/60 text-xs uppercase tracking-widest mb-1">
-                          Current Angle
-                        </div>
-                        <div
-                          className="text-3xl font-bold text-[#00f0ff]"
-                          style={{
-                            fontFamily: "'Orbitron', monospace",
-                            textShadow: '0 0 10px rgba(0, 240, 255, 0.8)',
-                          }}
-                        >
-                          {Math.round(angleValue)}°
-                        </div>
+                    <div className="relative">
+                      <div className="text-[#00f0ff]/60 text-xs uppercase tracking-widest mb-1">
+                        Current Angle
                       </div>
-                    </GlassCard>
-                  </motion.div>
-
-                  {/* Resistance Display */}
-                  <motion.div
-                    className="relative"
-                    animate={{
-                      scale: [1, 1.05, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                      delay: 0.5,
-                      type: 'tween'
-                    }}
-                  >
-                    <GlassCard className="px-6 py-4 border-2 border-[#ff006e]/40 bg-black/60">
-                      {/* Digital distortion effect */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-[#ff006e]/20 to-transparent rounded-xl"
-                        animate={{
-                          x: ['-100%', '100%'],
+                      <div
+                        className="text-3xl font-bold text-[#00f0ff]"
+                        style={{
+                          fontFamily: "'Orbitron', monospace",
+                          textShadow: '0 0 10px rgba(0, 240, 255, 0.8)',
                         }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: 'linear',
-                          delay: 1,
-                          type: 'tween'
-                        }}
-                      />
-
-                      <div className="relative">
-                        <div className="text-[#ff006e]/60 text-xs uppercase tracking-widest mb-1">
-                          Resistance
-                        </div>
-                        <div
-                          className="text-3xl font-bold text-[#ff006e]"
-                          style={{
-                            fontFamily: "'Orbitron', monospace",
-                            textShadow: '0 0 10px rgba(255, 0, 110, 0.8)',
-                          }}
-                        >
-                          {Math.round(resistanceValue)} KG
-                        </div>
+                      >
+                        {Math.round(angleValue)}°
                       </div>
-                    </GlassCard>
-                  </motion.div>
-                </div>
+                    </div>
+                  </GlassCard>
+                </motion.div>
 
-                {/* Zone Labels */}
-                <div className="absolute top-4 left-0 text-[#ff006e] text-sm uppercase tracking-wider font-bold opacity-60">
-                  ← Opponent
-                </div>
-                <div className="absolute top-4 right-0 text-[#00f0ff] text-sm uppercase tracking-wider font-bold opacity-60">
-                  You →
-                </div>
+                {/* Resistance Display */}
+                <motion.div
+                  className="relative"
+                  animate={{
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: 0.5,
+                    type: 'tween'
+                  }}
+                >
+                  <GlassCard className="px-6 py-4 border-2 border-[#ff006e]/40 bg-black/60">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-[#ff006e]/20 to-transparent rounded-xl"
+                      animate={{
+                        x: ['-100%', '100%'],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'linear',
+                        delay: 1,
+                        type: 'tween'
+                      }}
+                    />
+
+                    <div className="relative">
+                      <div className="text-[#ff006e]/60 text-xs uppercase tracking-widest mb-1">
+                        Resistance
+                      </div>
+                      <div
+                        className="text-3xl font-bold text-[#ff006e]"
+                        style={{
+                          fontFamily: "'Orbitron', monospace",
+                          textShadow: '0 0 10px rgba(255, 0, 110, 0.8)',
+                        }}
+                      >
+                        {Math.round(resistanceValue)} KG
+                      </div>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              </div>
+
+              {/* Zone Labels */}
+              <div className="absolute top-4 left-0 text-[#ff006e] text-sm uppercase tracking-wider font-bold opacity-60">
+                ← Opponent
+              </div>
+              <div className="absolute top-4 right-0 text-[#00f0ff] text-sm uppercase tracking-wider font-bold opacity-60">
+                You →
               </div>
             </motion.div>
 

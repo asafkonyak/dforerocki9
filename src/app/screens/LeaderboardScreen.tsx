@@ -119,10 +119,15 @@ function PodiumPlayer({ player, position, isCurrentUser }: { player: Player; pos
         {player.xp.toLocaleString()} XP
       </p>
 
-      <div className="flex flex-col items-center gap-1.5 mb-2">
-        <span className="text-[10px] text-white/40 uppercase tracking-tighter">
-          {player.winCount}W - {player.lossCount}L
-        </span>
+      <div className="flex flex-col items-center gap-1.5 mb-2 px-1 w-full">
+        <div className="flex items-center justify-between w-full px-4 text-[11px] font-bold">
+          <span className="text-white/60 uppercase tracking-tighter">
+            {player.winCount}W - {player.lossCount}L
+          </span>
+          <span className="text-[#00f0ff] uppercase tracking-tighter">
+            {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
+          </span>
+        </div>
         <FormDots form={player.recentForm} />
       </div>
 
@@ -183,28 +188,31 @@ function RankedRow({ player, index, isCurrentUser }: { player: Player; index: nu
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className={`text-base tracking-wider truncate mb-0.5 ${isCurrentUser ? 'text-[#00f0ff] font-bold' : 'text-white'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+          <p className={`text-base tracking-wider truncate ${isCurrentUser ? 'text-[#00f0ff] font-bold' : 'text-white'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
             {player.name}
             {isCurrentUser && <span className="ml-2 text-[10px] bg-[#00f0ff]/20 px-1.5 py-0.5 rounded text-[#00f0ff] align-middle">YOU</span>}
           </p>
-          <div className="flex items-center gap-3">
-            <span className="text-white/60 text-xs font-medium" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-              {player.winCount}W - {player.lossCount}L
-            </span>
-            <span className="text-[#00f0ff]/40 text-[10px] font-bold">
-              {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
-            </span>
-          </div>
+        </div>
+
+        {/* Stats Grid Column */}
+        <div className="hidden md:flex flex-col items-center justify-center min-w-[100px] border-x border-white/5 px-4 h-8">
+          <span className="text-white text-sm font-bold leading-none mb-1" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+            {player.winCount}W - {player.lossCount}L
+          </span>
+          <span className="text-[#00f0ff] text-[10px] font-bold leading-none tracking-widest">
+            {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
+          </span>
         </div>
 
         <div className="flex items-center gap-5">
-          <FormDots form={player.recentForm} />
+          <div className="hidden sm:block">
+            <FormDots form={player.recentForm} />
+          </div>
           
-          <div className="flex flex-col items-end min-w-[75px]">
-            <span className="text-[#00f0ff] text-base font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-              {player.xp.toLocaleString()}
+          <div className="flex items-center justify-end min-w-[110px]">
+            <span className="text-[#00f0ff] text-lg font-bold whitespace-nowrap" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+              {player.xp.toLocaleString()} XP
             </span>
-            <span className="text-white/30 text-[9px] uppercase tracking-tighter">XP</span>
           </div>
         </div>
       </GlassCard>
