@@ -172,8 +172,8 @@ export function GameScreen() {
     const robots = [
       { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.jpg' },
       { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png' },
-      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.png' },
-      { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.png' },
+      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.jpg' },
+      { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg' },
       { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png' }
     ];
     return robots[Math.min(stage - 1, 4)] || robots[0];
@@ -481,12 +481,7 @@ export function GameScreen() {
           style={{ filter: 'brightness(0.4) contrast(1.2)' }}
         >
           <source
-            src={
-              Number(stageNumber) === 1 ? '/assets/robots/back_stage1.mp4' :
-                Number(stageNumber) === 2 ? '/assets/robots/stage2.mp4' :
-                  Number(stageNumber) === 5 ? '/assets/robots/bosRobot.mp4' :
-                    `/assets/robots/stage${stageNumber}.mp4`
-            }
+            src={`/assets/robots/back_stage${stageNumber}.mp4`}
             type="video/mp4"
             onError={(e) => {
               // Emergency fallback if stage-specific video fails

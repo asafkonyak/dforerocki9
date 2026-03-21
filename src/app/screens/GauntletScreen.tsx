@@ -127,7 +127,7 @@ export function GauntletScreen() {
       id: 3,
       name: 'STAGE 03',
       robot: '⚙️',
-      image: '/assets/robots/stage3.png',
+      image: '/assets/robots/stage3.jpg',
       difficulty: 'Hard',
       description: 'STEEL ASSASSIN',
     },
@@ -135,7 +135,7 @@ export function GauntletScreen() {
       id: 4,
       name: 'STAGE 04',
       robot: '🔥',
-      image: '/assets/robots/stage4.png',
+      image: '/assets/robots/stage4.jpg',
       difficulty: 'Extreme',
       description: 'CRUSHER X-9000',
     },
@@ -794,7 +794,7 @@ export function GauntletScreen() {
                             activeStage.id === 2 ? '/assets/robots/stage2_prefight.mp4' :
                               activeStage.id === 3 ? '/assets/robots/stage3.mp4' :
                                 activeStage.id === 4 ? '/assets/robots/stage4.mp4' :
-                                  activeStage.id === 5 ? '/assets/robots/bosRobot.mp4' :
+                                  activeStage.id === 5 ? '/assets/robots/stage5_prefight.mp4' :
                                     '/assets/training.mp4'
                         }
                         type="video/mp4"

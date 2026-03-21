@@ -248,7 +248,7 @@ export function VictoryAnalyticsScreen() {
                         src={
                           matchData.stageNumber === 1 ? '/assets/robots/stage1_postfight.mp4' :
                           matchData.stageNumber === 2 ? `/assets/robots/stage2.mp4` :
-                          matchData.stageNumber === 5 ? '/assets/robots/bosRobot.mp4' :
+                          matchData.stageNumber === 5 ? '/assets/robots/stage5_postfight.mp4' :
                           `/assets/robots/stage${matchData.stageNumber}.mp4`
                         } 
                         type="video/mp4" 
