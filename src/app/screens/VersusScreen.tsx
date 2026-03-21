@@ -25,11 +25,19 @@ export function VersusScreen() {
 
   // Load Player Data
   useEffect(() => {
+    if (!matchId) {
+      console.error('VersusScreen - No matchId found in state. Redirecting.');
+      navigate('/menu');
+      return;
+    }
+
     async function loadPlayers() {
       try {
-        if (!matchId) return;
         const { data: match } = await supabase.from('matches').select('player1_id, player2_id').eq('id', matchId).single();
-        if (!match) return;
+        if (!match) {
+          navigate('/menu');
+          return;
+        }
 
         const { data: p1Data } = await supabase.from('players').select('*').eq('id', match.player1_id).single();
         const { data: p2Data } = await supabase.from('players').select('*').eq('id', match.player2_id).single();
@@ -38,6 +46,7 @@ export function VersusScreen() {
         if (p2Data) setPlayer2(mapPlayerData(p2Data, 2));
       } catch (err) {
         console.error('Error loading players:', err);
+        navigate('/menu');
       }
     }
 
