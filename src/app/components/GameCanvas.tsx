@@ -90,35 +90,35 @@ export function GameCanvas({
 
       // 2. Draw Stamina Bars (High Performance) - Right to Left growth
       const barWidth = 180;
-      const barHeight = 8;
+      const barHeight = 10;
       const barY = height - 40;
       
-      // Player 1 (Left container, but grows left starting from its right edge)
-      const p1BaseX = centerX - 40; // The right edge of the P1 bar
-      const p1X = p1BaseX - barWidth; // The absolute X start (left edge of container)
-      ctx.shadowBlur = 10;
+      // Player 1 (Left container, grows from center towards left)
+      // Base at centerX - 40, grows left.
+      const p1BaseX = centerX - 40; 
+      const p1X = centerX - 40 - barWidth;
+      ctx.shadowBlur = 15;
       ctx.shadowColor = '#00f0ff';
       ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
       ctx.fillRect(p1X, barY, barWidth, barHeight);
       
       const p1FillWidth = (displayP1Power / 100) * barWidth;
-      // Growth from right to left: X starts at (p1BaseX - p1FillWidth)
       const p1Grad = ctx.createLinearGradient(p1BaseX - barWidth, 0, p1BaseX, 0);
       p1Grad.addColorStop(0, '#00f0ff');
       p1Grad.addColorStop(1, '#00ffff');
       ctx.fillStyle = p1Grad;
       ctx.fillRect(p1BaseX - p1FillWidth, barY, p1FillWidth, barHeight);
 
-      // Player 2 (Right container, grows left starting from its right edge)
-      const p2BaseX = centerX + 40 + barWidth; // Right edge of P2 container
-      const p2X = centerX + 40; // Left edge of P2 container
+      // Player 2 (Right container, grows from right edge towards left)
+      // Base at centerX + 40 + barWidth, grows left.
+      const p2BaseX = centerX + 40 + barWidth; 
+      const p2X = centerX + 40;
       ctx.shadowColor = '#ff006e';
       ctx.fillStyle = 'rgba(255, 0, 110, 0.1)';
       ctx.fillRect(p2X, barY, barWidth, barHeight);
       
       const p2FillWidth = (displayP2Power / 100) * barWidth;
-      // Growth from right to left: X starts at (p2BaseX - p2FillWidth)
-      const p2Grad = ctx.createLinearGradient(p2X, 0, p2X + barWidth, 0);
+      const p2Grad = ctx.createLinearGradient(centerX + 40, 0, p2BaseX, 0);
       p2Grad.addColorStop(0, '#ff006e');
       p2Grad.addColorStop(1, '#ff0080');
       ctx.fillStyle = p2Grad;

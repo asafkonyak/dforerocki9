@@ -498,10 +498,11 @@ export function LeaderboardScreen() {
       <div className="relative z-10 px-4 pt-6 pb-3">
         <div className="flex items-center gap-3 mb-3">
           <button
-            onClick={() => navigate('/cyber')}
-            className="w-10 h-10 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/60 hover:text-[#00f0ff] transition-colors"
+            onClick={() => navigate('/menu')}
+            className="px-4 h-10 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center gap-2 text-white/60 hover:text-[#00f0ff] hover:border-[#00f0ff]/30 transition-all group"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-xs font-bold uppercase tracking-wider">Back to Menu</span>
           </button>
           <div className="flex-1">
             <h1 className="text-2xl text-[#00f0ff] tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>LEADERBOARD</h1>

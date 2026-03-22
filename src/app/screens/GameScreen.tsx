@@ -342,7 +342,7 @@ export function GameScreen() {
           
           // ArmPosition (0-100) derived for visual elements (Needle, Arms)
           // assuming -70 to 70 range for angle
-          const derivedArmPos = 50 - (Number(serverData.position) / 1.4);
+          const derivedArmPos = 50 + (Number(serverData.position) / 1.4);
           setArmPosition(Math.max(0, Math.min(100, derivedArmPos)));
         }
 
