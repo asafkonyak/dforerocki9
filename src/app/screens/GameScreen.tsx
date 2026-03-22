@@ -23,7 +23,6 @@ export function GameScreen() {
   const [armPosition, setArmPosition] = useState(50);
   const [player1Power, setPlayer1Power] = useState(100);
   const [player2Power, setPlayer2Power] = useState(100);
-  const [tapCount, setTapCount] = useState(0);
   const [isGameActive, setIsGameActive] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState<number | string>(3);
@@ -144,9 +143,7 @@ export function GameScreen() {
 
   // Refs to capture latest values for the navigate timeout
   const comboRef = useRef(combo);
-  const tapCountRef = useRef(tapCount);
   comboRef.current = combo;
-  tapCountRef.current = tapCount;
 
   // Resolve Opponent Data for Gauntlet
   const getRobotData = (stage: number) => {
@@ -314,7 +311,6 @@ export function GameScreen() {
             scoreChange: isWin ? 300 : -100,
             rankChange: isWin ? 2 : -1,
             combo: comboRef.current,
-            taps: tapCountRef.current,
             matchId: location.state?.matchId,
             gameMode: gameMode,
             gameType: gameType
@@ -399,32 +395,6 @@ export function GameScreen() {
     return () => socket.removeEventListener('message', handleMessage);
   }, [socket, isGameActive, winner]);
 
-  // Handle player tap
-  const handleTap = () => {
-    if (!isGameActive || winner) return;
-
-    // SEND COMMAND TO SOCKET instead of local state update
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      const tapMsg = JSON.stringify({ cmd: { TAP: 1, player_id: profile?.id || 'GUEST' } });
-      socket.send(tapMsg);
-      console.log('[Game v15] - Tap Command Sent:', tapMsg);
-    }
-
-    // Still play feedback locally
-    playTap();
-    setTapCount(prev => prev + 1);
-
-    // Combo system (Visual only)
-    setCombo(prev => {
-      const newCombo = prev + 1;
-      if (newCombo % 10 === 0) {
-        setShowCombo(true);
-        playCombo();
-        setTimeout(() => setShowCombo(false), 1000);
-      }
-      return newCombo;
-    });
-  };
 
   return (
     <div className="min-h-screen bg-[#0a0515] relative overflow-hidden">
@@ -619,10 +589,6 @@ export function GameScreen() {
                       />
                     ))}
                   </div>
-                </div>
-                <div>
-                  <p className="text-white/40 uppercase tracking-tighter text-right">Taps</p>
-                  <p className="text-[#00f0ff] font-bold text-right">{tapCount}</p>
                 </div>
               </div>
             </GlassCard>
@@ -980,53 +946,6 @@ export function GameScreen() {
                   </GlassCard>
                 </motion.div>
 
-                {/* Tap Button - Center */}
-                <motion.button
-                  className="md:col-span-1 relative"
-                  onPointerDown={handleTap}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <GlassCard className="p-6 md:p-8 border-4 border-[#00f0ff] bg-gradient-to-b from-[#00f0ff]/20 to-[#00f0ff]/5 shadow-[0_0_40px_rgba(0,240,255,0.6)] active:shadow-[0_0_60px_rgba(0,240,255,0.8)]">
-                    <motion.div
-                      className="text-center"
-                      animate={{
-                        scale: [1, 1.05, 1],
-                      }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        type: 'tween',
-                      }}
-                    >
-                      <h2
-                        className="text-4xl md:text-5xl font-bold text-[#00f0ff] mb-2"
-                        style={{
-                          fontFamily: "'Orbitron', sans-serif",
-                          textShadow: '0 0 20px rgba(0, 240, 255, 0.8)',
-                        }}
-                      >
-                        TAP!
-                      </h2>
-                      <p className="text-white/60 text-xs md:text-sm uppercase tracking-wider">
-                        Tap rapidly to push!
-                      </p>
-                    </motion.div>
-
-                    {/* Pulsing ring */}
-                    <motion.div
-                      className="absolute inset-0 rounded-2xl border-4 border-[#00f0ff]"
-                      animate={{
-                        scale: [1, 1.05, 1],
-                        opacity: [0.5, 0.2, 0.5],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        type: 'tween',
-                      }}
-                    />
-                  </GlassCard>
-                </motion.button>
 
                 {/* Opponent Camera Feed (Pink) - Large, Right */}
                 <motion.div

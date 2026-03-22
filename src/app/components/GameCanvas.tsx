@@ -88,37 +88,41 @@ export function GameCanvas({
       ctx.arc(centerX, centerY, radius, Math.PI * 1.5, Math.PI * 2);
       ctx.stroke();
 
-      // 2. Draw Stamina Bars (High Performance)
+      // 2. Draw Stamina Bars (High Performance) - Right to Left growth
       const barWidth = 180;
       const barHeight = 8;
       const barY = height - 40;
       
-      // Player 1 (Left)
-      const p1X = centerX - barWidth - 40;
+      // Player 1 (Left container, but grows left starting from its right edge)
+      const p1BaseX = centerX - 40; // The right edge of the P1 bar
+      const p1X = p1BaseX - barWidth; // The absolute X start (left edge of container)
       ctx.shadowBlur = 10;
       ctx.shadowColor = '#00f0ff';
       ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
       ctx.fillRect(p1X, barY, barWidth, barHeight);
       
       const p1FillWidth = (displayP1Power / 100) * barWidth;
-      const p1Grad = ctx.createLinearGradient(p1X, 0, p1X + barWidth, 0);
+      // Growth from right to left: X starts at (p1BaseX - p1FillWidth)
+      const p1Grad = ctx.createLinearGradient(p1BaseX - barWidth, 0, p1BaseX, 0);
       p1Grad.addColorStop(0, '#00f0ff');
       p1Grad.addColorStop(1, '#00ffff');
       ctx.fillStyle = p1Grad;
-      ctx.fillRect(p1X, barY, p1FillWidth, barHeight);
+      ctx.fillRect(p1BaseX - p1FillWidth, barY, p1FillWidth, barHeight);
 
-      // Player 2 (Right)
-      const p2X = centerX + 40;
+      // Player 2 (Right container, grows left starting from its right edge)
+      const p2BaseX = centerX + 40 + barWidth; // The right edge of the P2 bar
+      const p2X = centerX + 40; // The left edge of the P2 container
       ctx.shadowColor = '#ff006e';
       ctx.fillStyle = 'rgba(255, 0, 110, 0.1)';
       ctx.fillRect(p2X, barY, barWidth, barHeight);
       
       const p2FillWidth = (displayP2Power / 100) * barWidth;
+      // Growth from right to left: X starts at (p2BaseX - p2FillWidth)
       const p2Grad = ctx.createLinearGradient(p2X, 0, p2X + barWidth, 0);
       p2Grad.addColorStop(0, '#ff006e');
       p2Grad.addColorStop(1, '#ff0080');
       ctx.fillStyle = p2Grad;
-      ctx.fillRect(p2X, barY, p2FillWidth, barHeight);
+      ctx.fillRect(p2BaseX - p2FillWidth, barY, p2FillWidth, barHeight);
       
       ctx.shadowBlur = 0;
 
