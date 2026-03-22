@@ -77,7 +77,18 @@ export function VersusScreen() {
       const val = serverData.value;
       setCountdown(val);
       
-      if (val === 'GO' || val === 'GO!') {
+      if (val === 1 || val === '1' || val === 'GO' || val === 'GO!') {
+        setTimeout(() => {
+          navigate('/game', { 
+            state: { matchId, mode: 'ranked', opponent: isPlayer1 ? player2 : player1, isPlayer1, gameType } 
+          });
+        }, 1000);
+      }
+    } else if (serverData.cmd && serverData.cmd.count_down !== undefined) {
+      const val = serverData.cmd.count_down;
+      setCountdown(val);
+      
+      if (val === 1 || val === '1' || val === 0 || val === '0' || val === 'GO' || val === 'GO!') {
         setTimeout(() => {
           navigate('/game', { 
             state: { matchId, mode: 'ranked', opponent: isPlayer1 ? player2 : player1, isPlayer1, gameType } 

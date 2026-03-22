@@ -131,35 +131,15 @@ export function GameScreen() {
     }
   }, [gameMode, location.state]);
 
-  // Fight Countdown Logic
+  // Fight Countdown Logic (NOW MANAGED BY SERVER)
   useEffect(() => {
-    if (!isReady) return;
-    let timer: NodeJS.Timeout;
-    let count = 3;
-
-    setShowCountdown(true);
-
-    const runCountdown = () => {
-      if (count > 0) {
-        setCountdown(count);
-        count--;
-        timer = setTimeout(runCountdown, 1000);
-      } else if (count === 0) {
-        setCountdown('GO!');
-        playStart();
-        setIsGameActive(true);
-        setStartTime(Date.now());
-        count--;
-        timer = setTimeout(() => {
-          setShowCountdown(false);
-        }, 1000);
-      }
-    };
-
-    timer = setTimeout(runCountdown, 500); // Small initial delay
-
-    return () => clearTimeout(timer);
-  }, []);
+    // We only show the countdown overlay, but don't run a local timer.
+    // The "GO!" will be triggered by MAIN_RUN computer_state.
+    if (isReady) {
+      setShowCountdown(true);
+      setCountdown('READY');
+    }
+  }, [isReady]);
 
 
   // Refs to capture latest values for the navigate timeout
@@ -373,6 +353,17 @@ export function GameScreen() {
         if (serverData.result !== undefined) {
           // Mapping according to user: resistance = result
           setResistanceValue(Number(serverData.result));
+        }
+
+        if (serverData.computer_state === 'MAIN_RUN' && !isGameActive) {
+          console.log('[Game v18] - MAIN_RUN detected. Starting game...');
+          setCountdown('GO!');
+          playStart();
+          setIsGameActive(true);
+          setStartTime(Date.now());
+          setTimeout(() => {
+            setShowCountdown(false);
+          }, 1000);
         }
 
         if (serverData.computer_state === 'MAIN_SM_GAMEOVER_WIN') {

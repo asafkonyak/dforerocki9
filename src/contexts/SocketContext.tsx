@@ -68,9 +68,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
         console.log('[SocketContext] Message received:', data);
         
         // Special highlighting for countdown messages
+        // Support both old format {type: 'countdown', value: X} and new format {cmd: {count_down: X}}
         const messageData = data.data || data;
+        let countdownValue = null;
+        
         if (messageData && messageData.type === 'countdown') {
-          console.log('%c[COUNTDOWN] %c' + messageData.value, 'color: #00f0ff; font-weight: bold;', 'color: #ff006e; font-size: 1.2em; font-weight: 900;');
+          countdownValue = messageData.value;
+        } else if (data.cmd && data.cmd.count_down !== undefined) {
+          countdownValue = data.cmd.count_down;
+        }
+        
+        if (countdownValue !== null) {
+          console.log('%c[COUNTDOWN] %c' + countdownValue, 'color: #00f0ff; font-weight: bold;', 'color: #ff006e; font-size: 1.2em; font-weight: 900;');
         }
         
         setLastMessage(data);
