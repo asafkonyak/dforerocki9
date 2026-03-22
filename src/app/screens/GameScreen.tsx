@@ -764,7 +764,7 @@ export function GameScreen() {
                           textShadow: '0 0 10px rgba(0, 240, 255, 0.8)',
                         }}
                       >
-                        {Math.round(angleValue)}°
+                          {Math.abs(angleValue).toFixed(2)}°
                       </div>
                     </div>
                   </GlassCard>
@@ -810,12 +810,12 @@ export function GameScreen() {
                           textShadow: '0 0 10px rgba(255, 0, 110, 0.8)',
                         }}
                       >
-                        {Math.round(resistanceValue)} KG
+                          {resistanceValue.toFixed(2)} <span className="text-xs not-italic">KG</span>
+                        </div>
                       </div>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              </div>
+                    </GlassCard>
+                  </motion.div>
+                </div>
 
               {/* Zone Labels */}
               <div className="absolute top-4 left-0 text-[#ff006e] text-sm uppercase tracking-wider font-bold opacity-60">
@@ -883,7 +883,7 @@ export function GameScreen() {
         {isGameActive && !winner && (
           <div className="p-6 flex-shrink-0">
             <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                 {/* User Camera Feed (Cyan) - Large, Left */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}

@@ -110,8 +110,8 @@ export function GameCanvas({
       ctx.fillRect(p1BaseX - p1FillWidth, barY, p1FillWidth, barHeight);
 
       // Player 2 (Right container, grows left starting from its right edge)
-      const p2BaseX = centerX + 40 + barWidth; // The right edge of the P2 bar
-      const p2X = centerX + 40; // The left edge of the P2 container
+      const p2BaseX = centerX + 40 + barWidth; // Right edge of P2 container
+      const p2X = centerX + 40; // Left edge of P2 container
       ctx.shadowColor = '#ff006e';
       ctx.fillStyle = 'rgba(255, 0, 110, 0.1)';
       ctx.fillRect(p2X, barY, barWidth, barHeight);
