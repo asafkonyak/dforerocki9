@@ -65,8 +65,17 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('[SocketContext] Message received:', data);
+        
+        // Special highlighting for countdown messages
+        const messageData = data.data || data;
+        if (messageData && messageData.type === 'countdown') {
+          console.log('%c[COUNTDOWN] %c' + messageData.value, 'color: #00f0ff; font-weight: bold;', 'color: #ff006e; font-size: 1.2em; font-weight: 900;');
+        }
+        
         setLastMessage(data);
       } catch (e) {
+        console.log('[SocketContext] Raw message:', event.data);
         setLastMessage({ type: 'raw', data: event.data });
       }
     };
