@@ -120,11 +120,11 @@ function PodiumPlayer({ player, position, isCurrentUser }: { player: Player; pos
       </p>
 
       <div className="flex flex-col items-center gap-1.5 mb-2 px-1 w-full">
-        <div className="flex items-center justify-between w-full px-4 text-[11px] font-bold">
-          <span className="text-white/60 uppercase tracking-tighter">
+        <div className="flex items-center justify-between w-full px-6 text-[12px] font-bold">
+          <span className="text-white/80 uppercase tracking-tighter">
             {player.winCount}W - {player.lossCount}L
           </span>
-          <span className="text-[#00f0ff] uppercase tracking-tighter">
+          <span className="text-[#00f0ff] uppercase tracking-tighter drop-shadow-[0_0_8px_#00f0ff44]">
             {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
           </span>
         </div>
@@ -195,11 +195,11 @@ function RankedRow({ player, index, isCurrentUser }: { player: Player; index: nu
         </div>
 
         {/* Stats Grid Column */}
-        <div className="hidden md:flex flex-col items-center justify-center min-w-[100px] border-x border-white/5 px-4 h-8">
-          <span className="text-white text-sm font-bold leading-none mb-1" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+        <div className="hidden md:flex flex-col items-center justify-center min-w-[120px] border-x border-white/5 px-4 h-10">
+          <span className="text-white/90 text-sm font-bold leading-none mb-1.5" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
             {player.winCount}W - {player.lossCount}L
           </span>
-          <span className="text-[#00f0ff] text-[10px] font-bold leading-none tracking-widest">
+          <span className="text-[#00f0ff] text-[11px] font-black leading-none tracking-[0.2em]">
             {Math.round((player.winCount / Math.max(1, player.winCount + player.lossCount)) * 100)}%
           </span>
         </div>
