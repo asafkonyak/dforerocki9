@@ -355,15 +355,18 @@ export function GameScreen() {
           setResistanceValue(Number(serverData.result));
         }
 
-        if (serverData.computer_state === 'MAIN_RUN' && !isGameActive) {
-          console.log('[Game v18] - MAIN_RUN detected. Starting game...');
+        // The user confirmed server sends MAIN_SM_RUN for game start
+        if ((serverData.computer_state === 'MAIN_SM_RUN' || serverData.computer_state === 'MAIN_RUN') && !isGameActive) {
+          console.log('[Game v19] - MAIN_SM_RUN detected. Starting game...');
           setCountdown('GO!');
           playStart();
           setIsGameActive(true);
           setStartTime(Date.now());
+          
+          // Wait 800ms then fade out for snappy response
           setTimeout(() => {
             setShowCountdown(false);
-          }, 1000);
+          }, 800);
         }
 
         if (serverData.computer_state === 'MAIN_SM_GAMEOVER_WIN') {
@@ -603,23 +606,6 @@ export function GameScreen() {
                 </div>
               </div>
 
-              {/* Power Bar */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/60">STAMINA</span>
-                  <span className="text-[#00f0ff] font-bold">{Math.round(player1Power)}%</span>
-                </div>
-                <div className="h-3 bg-black/50 rounded-full overflow-hidden border border-[#00f0ff]/30">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-[#00f0ff] to-[#00ffff] shadow-[0_0_10px_#00f0ff]"
-                    initial={{ width: '100%' }}
-                    animate={{
-                      width: `${player1Power}%`,
-                    }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-              </div>
 
               {/* Stats */}
               <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
@@ -685,23 +671,6 @@ export function GameScreen() {
                 </div>
               </div>
 
-              {/* Power Bar */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/60">STAMINA</span>
-                  <span className="text-[#ff006e] font-bold">{Math.round(player2Power)}%</span>
-                </div>
-                <div className="h-3 bg-black/50 rounded-full overflow-hidden border border-[#ff006e]/30">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-[#ff006e] to-[#ff0080] shadow-[0_0_10px_#ff006e]"
-                    initial={{ width: '100%' }}
-                    animate={{
-                      width: `${player2Power}%`,
-                    }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-              </div>
 
               {/* Stats */}
               <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
@@ -783,6 +752,8 @@ export function GameScreen() {
               <GameCanvas 
                 armPosition={armPosition} 
                 resistanceValue={resistanceValue} 
+                player1Power={player1Power}
+                player2Power={player2Power}
                 width={500} 
                 height={350} 
               />
