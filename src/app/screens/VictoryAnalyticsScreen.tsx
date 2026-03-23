@@ -16,13 +16,22 @@ export function VictoryAnalyticsScreen() {
   const matchData = location.state || {
     isWin: true,
     peakForce: 68,
+    avgForce: 45,
     enduranceTime: 45,
     xpEarned: 500,
     stageName: 'CRUSHER X-9000',
     stageNumber: 4,
+    forceHistory: null,
   };
 
   const isWin = matchData.isWin ?? true;
+
+  const formatTime = (totalSeconds: number) => {
+    if (!totalSeconds || isNaN(totalSeconds)) return "00.00";
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = Math.floor(totalSeconds % 60);
+    return `${mins.toString().padStart(2, '0')}.${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (isWin) {
@@ -39,21 +48,24 @@ export function VictoryAnalyticsScreen() {
     };
   }, []);
 
-  // Simulate force data over time for the chart
-  const forceData = [
-    { time: 0, force: 0 },
-    { time: 5, force: 25 },
-    { time: 10, force: 42 },
-    { time: 15, force: 38 },
-    { time: 20, force: 55 },
-    { time: 25, force: 68 }, // Peak
-    { time: 30, force: 52 },
-    { time: 35, force: 45 },
-    { time: 40, force: 48 },
-    { time: 45, force: isWin ? 60 : 20 }, // Victory or Defeat moment
-  ];
+  // Determine force data for chart
+  const forceData = matchData.forceHistory && matchData.forceHistory.length > 0 
+    ? matchData.forceHistory 
+    : [
+      { time: 0, force: 0 },
+      { time: 5, force: 25 },
+      { time: 10, force: 42 },
+      { time: 15, force: 38 },
+      { time: 20, force: 55 },
+      { time: 25, force: matchData.peakForce || 68 }, // Peak fallback
+      { time: 30, force: 52 },
+      { time: 35, force: 45 },
+      { time: 40, force: 48 },
+      { time: 45, force: isWin ? 60 : 20 },
+    ];
 
-  const maxForce = Math.max(...forceData.map(d => d.force));
+  const maxForceRaw = Math.max(...forceData.map((d: { time: number, force: number }) => d.force));
+  const maxForce = Math.ceil(maxForceRaw < 1 ? 1 : maxForceRaw);
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
@@ -222,8 +234,8 @@ export function VictoryAnalyticsScreen() {
       </div>
 
       {/* Center Content - Analytics Card with improved overflow */}
-      <div className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 md:px-12">
-        <div className="flex flex-col items-center py-8">
+      <div className="relative z-10 flex-1 overflow-hidden min-h-0 px-4 md:px-12">
+        <div className="flex flex-col items-center py-2 h-full justify-center">
           <motion.div
             className="w-full max-w-6xl"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -235,7 +247,7 @@ export function VictoryAnalyticsScreen() {
               {/* Left Column - Metrics & Defeated Icon */}
               <div className="space-y-4">
                 <div className="flex flex-col items-center">
-                  <div className={`w-full aspect-video rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_30px_#00f0ff]' : 'border-[#ff0033] shadow-[0_0_30px_#ff0033]'} bg-black relative mb-6`}>
+                  <div className={`w-full max-w-sm h-32 md:h-40 mx-auto rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_30px_#00f0ff]' : 'border-[#ff0033] shadow-[0_0_30px_#ff0033]'} bg-black relative mb-2`}>
                     <video
                       key={matchData.stageNumber}
                       autoPlay
@@ -333,7 +345,7 @@ export function VictoryAnalyticsScreen() {
                           animate={animateMetrics ? { scale: 1 } : {}}
                           transition={{ delay: 1.0, type: 'spring', bounce: 0.6 }}
                         >
-                          {matchData.enduranceTime}s
+                          {formatTime(matchData.enduranceTime)}
                         </motion.span>
                       </div>
                       {/* Time bar */}
@@ -382,9 +394,15 @@ export function VictoryAnalyticsScreen() {
 
               {/* Right Column - Force Over Time Chart */}
               <div>
-                <h3 className="text-white text-xl font-bold mb-4 uppercase tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                  Force Analysis
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white text-xl font-bold uppercase tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    Force Analysis
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/60 text-xs uppercase tracking-wider">Avg Force:</span>
+                    <span className={`font-bold ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', monospace" }}>{Number(matchData.avgForce || 0).toFixed(1)} KG</span>
+                  </div>
+                </div>
                 
                 <GlassCard className="p-4 border-2 border-[#00f0ff]/30 bg-black/40 h-[220px] md:h-[280px]">
                   <div className="relative h-full">
@@ -429,7 +447,7 @@ export function VictoryAnalyticsScreen() {
                         <motion.path
                           d={`
                             M 0,100
-                            ${forceData.map((d, i) => {
+                            ${forceData.map((d: { time: number, force: number }, i: number) => {
                               const x = (i / (forceData.length - 1)) * 100;
                               const y = 100 - (d.force / maxForce) * 100;
                               return `L ${x},${y}`;
@@ -446,7 +464,7 @@ export function VictoryAnalyticsScreen() {
 
                         {/* Line */}
                         <motion.polyline
-                          points={forceData.map((d, i) => {
+                          points={forceData.map((d: { time: number, force: number }, i: number) => {
                             const x = (i / (forceData.length - 1)) * 100;
                             const y = 100 - (d.force / maxForce) * 100;
                             return `${x},${y}`;
@@ -462,7 +480,7 @@ export function VictoryAnalyticsScreen() {
                         />
 
                         {/* Data points */}
-                        {forceData.map((d, i) => {
+                        {forceData.map((d: { time: number, force: number }, i: number) => {
                           const x = (i / (forceData.length - 1)) * 100;
                           const y = 100 - (d.force / maxForce) * 100;
                           const isPeak = d.force === maxForce;

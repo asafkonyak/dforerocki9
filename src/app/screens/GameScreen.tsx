@@ -12,8 +12,14 @@ import { useSocket } from '../../contexts/SocketContext';
 import { GameCanvas } from '../components/GameCanvas';
 
 export function GameScreen() {
+  // 1. Initial configuration
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Stats Tracking Refs
+  const maxForceRef = useRef<number>(0);
+  const forceHistoryRef = useRef<{time: number, force: number}[]>([]);
+  const lastForceCaptureTimeRef = useRef<number>(0);
 
   // Get game mode from location state
   const gameMode = location.state?.mode || 'normal';
@@ -135,10 +141,12 @@ export function GameScreen() {
     // We only show the countdown overlay, but don't run a local timer.
     // The "GO!" will be triggered by MAIN_RUN computer_state.
     if (isReady) {
-      setShowCountdown(true);
-      setCountdown('READY');
+      if (gameMode !== 'gauntlet' && gameMode !== 'ranked') {
+        setShowCountdown(true);
+        setCountdown('READY');
+      }
     }
-  }, [isReady]);
+  }, [isReady, gameMode]);
 
 
   // Refs to capture latest values for the navigate timeout
@@ -293,15 +301,24 @@ export function GameScreen() {
 
     // 6. Navigate
     setTimeout(() => {
+      const finalMaxForce = Math.round(maxForceRef.current * 10) / 10;
+      if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
+      
+      const avgForce = Math.round(
+        forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length * 10
+      ) / 10;
+
       if (gameMode === 'gauntlet') {
         navigate('/victory', {
           state: {
             isWin,
-            peakForce: isWin ? 68 : 42,
-            enduranceTime: isWin ? 45 : 28,
-            xpEarned: isWin ? 500 : 0,
+            peakForce: finalMaxForce,
+            avgForce: avgForce,
+            enduranceTime: durationSeconds,
+            xpEarned: earnedXp,
             stageName: stageName || 'CRUSHER X-9000',
             stageNumber: stageNumber || 1,
+            forceHistory: forceHistoryRef.current,
           }
         });
       } else {
@@ -348,16 +365,35 @@ export function GameScreen() {
 
         if (serverData.result !== undefined) {
           // Mapping according to user: resistance = result
-          setResistanceValue(Number(serverData.result));
+          const resultVal = Number(serverData.result);
+          setResistanceValue(resultVal);
+
+          // Track game statistics during active game
+          if (isGameActive && startTime) {
+            maxForceRef.current = Math.max(maxForceRef.current, resultVal);
+            
+            const now = Date.now();
+            if (now - lastForceCaptureTimeRef.current >= 1000) {
+              const elapsedSeconds = Math.floor((now - startTime) / 1000);
+              forceHistoryRef.current.push({ time: elapsedSeconds, force: resultVal });
+              lastForceCaptureTimeRef.current = now;
+            }
+          }
         }
 
-        // The user confirmed server sends MAIN_SM_RUN for game start
-        if ((serverData.computer_state === 'MAIN_SM_RUN' || serverData.computer_state === 'MAIN_RUN') && !isGameActive) {
-          console.log('[Game v19] - MAIN_SM_RUN detected. Starting game...');
+        // Check for game start via acs_state or computer_state
+        if ((serverData.acs_state === 'ACS_GAME' || serverData.computer_state === 'MAIN_SM_RUN' || serverData.computer_state === 'MAIN_RUN') && !isGameActive) {
+          console.log('[Game v21] - Game Start condition detected. Starting game...');
+          setShowCountdown(true);
           setCountdown('GO!');
           playStart();
           setIsGameActive(true);
           setStartTime(Date.now());
+          
+          // reset tracking refs
+          maxForceRef.current = 0;
+          forceHistoryRef.current = [];
+          lastForceCaptureTimeRef.current = Date.now();
           
           // Wait 800ms then fade out for snappy response
           setTimeout(() => {
@@ -365,15 +401,15 @@ export function GameScreen() {
           }, 800);
         }
 
-        if (serverData.computer_state === 'MAIN_SM_GAMEOVER_WIN') {
-          console.log('[Game v18] - WIN condition detected via computer_state');
+        if (serverData.acs_state === 'ACS_WIN') {
+          console.log('[Game v20] - WIN condition detected via acs_state');
           setIsGameActive(false);
           const winningSlot = isPlayer1 ? 'player1' : 'player2';
           setWinner(winningSlot);
           playWin();
           saveMatchResult(winningSlot);
-        } else if (serverData.computer_state === 'MAIN_SM_GAMEOVER_LOSE') {
-          console.log('[Game v18] - LOSS condition detected via computer_state');
+        } else if (serverData.acs_state === 'ACS_LOSE') {
+          console.log('[Game v20] - LOSS condition detected via acs_state');
           setIsGameActive(false);
           const losingSlot = isPlayer1 ? 'player1' : 'player2';
           const winningSlot = isPlayer1 ? 'player2' : 'player1';
@@ -531,22 +567,44 @@ export function GameScreen() {
           </div>
         </div>
 
-        {/* Player Cards - Top Section */}
-        <div className="flex items-start justify-between px-6 pb-4 flex-shrink-0">
+        {/* Player Cards - Top Section (Absolute and Massive) */}
+        <div className="absolute inset-0 pt-24 px-4 flex justify-between pointer-events-none z-0">
           {/* Player 1 - Left */}
           <motion.div
-            className="w-64"
+            className="w-[48vw] max-w-[800px] pointer-events-auto"
             animate={{
               scale: armPosition < 40 ? 1.05 : 1,
             }}
           >
-            <GlassCard className="p-4 border-2 border-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.5)]">
-              <div className="flex items-center gap-3 mb-3">
+            <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 backdrop-blur-md bg-black/60">
+              {/* Camera Feed Box */}
+              <div className="w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-black shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+                {isPlayer1 ? (
+                  <CameraFeed />
+                ) : (
+                  gameMode === 'gauntlet' ? (
+                    <video src={`/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-[#00f0ff]/50">
+                      <Video className="w-8 h-8 mb-1" />
+                      <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
+                    </div>
+                  )
+                )}
+                {/* Visual Overlays for Feed */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute bottom-2 left-2 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-white text-[8px] font-bold tracking-widest uppercase">REC</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
                 <div className="relative">
                   <AvatarDisplay
                     avatar={player1.avatar}
                     className="border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.6)]"
-                    size="lg"
+                    size="md"
                   />
                   {armPosition < 30 && (
                     <motion.div
@@ -564,10 +622,10 @@ export function GameScreen() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg text-[#00f0ff] font-bold uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <h3 className="text-lg text-[#00f0ff] font-bold uppercase leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {player1.name} {isPlayer1 && '(YOU)'}
                   </h3>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-1">
                     <p className="text-[#00f0ff]/60 text-[10px] font-bold uppercase tracking-widest">{player1.rank}</p>
                     <div className="px-1.5 py-0.5 rounded bg-[#00f0ff]/10 border border-[#00f0ff]/30">
                       <p className="text-[#00f0ff] text-[8px] font-black uppercase tracking-widest leading-none">ALPHA</p>
@@ -596,18 +654,51 @@ export function GameScreen() {
 
           {/* Player 2 - Right */}
           <motion.div
-            className="w-64"
+            className="w-[48vw] max-w-[800px] pointer-events-auto"
             animate={{
               scale: armPosition > 60 ? 1.05 : 1,
             }}
           >
-            <GlassCard className="p-4 border-2 border-[#ff006e] shadow-[0_0_30px_rgba(255,0,110,0.5)]">
-              <div className="flex items-center gap-3 mb-3">
+            <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 backdrop-blur-md bg-black/60">
+              {/* Rival Video/Camera Feed Box */}
+              <div className="w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)]">
+                {!isPlayer1 ? (
+                  <CameraFeed />
+                ) : (
+                  gameMode === 'gauntlet' ? (
+                    <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50">
+                      <Video className="w-8 h-8 mb-1" />
+                      <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
+                    </div>
+                  )
+                )}
+                {/* Visual Overlays for Feed */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute bottom-2 left-2 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#ff006e] animate-pulse" />
+                  <span className="text-white text-[8px] font-bold tracking-widest uppercase">LIVE</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 text-right">
+                <div>
+                  <h3 className="text-lg text-[#ff006e] font-bold uppercase leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    {!isPlayer1 && '(YOU) '} {player2.name} 
+                  </h3>
+                  <div className="flex items-center justify-end gap-2 mt-1">
+                    <div className="px-1.5 py-0.5 rounded bg-[#ff006e]/10 border border-[#ff006e]/30">
+                      <p className="text-[#ff006e] text-[8px] font-black uppercase tracking-widest leading-none">OMEGA</p>
+                    </div>
+                    <p className="text-[#ff006e]/60 text-[10px] font-bold uppercase tracking-widest">{player2.rank}</p>
+                  </div>
+                </div>
                 <div className="relative">
                   <AvatarDisplay
                     avatar={player2.avatar}
                     className="border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.6)]"
-                    size="lg"
+                    size="md"
                   />
                   {armPosition > 70 && (
                     <motion.div
@@ -624,25 +715,17 @@ export function GameScreen() {
                     />
                   )}
                 </div>
-                <div>
-                  <h3 className="text-lg text-[#ff006e] font-bold uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    {player2.name} {!isPlayer1 && '(YOU)'}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <p className="text-[#ff006e]/60 text-[10px] font-bold uppercase tracking-widest">{player2.rank || 'OPPONENT'}</p>
-                    <div className="px-1.5 py-0.5 rounded bg-[#ff006e]/10 border border-[#ff006e]/30">
-                      <p className="text-[#ff006e] text-[8px] font-black uppercase tracking-widest leading-none">OMEGA</p>
-                    </div>
-                  </div>
-                </div>
               </div>
-
 
               {/* Stats */}
               <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
                 <div>
+                  <p className="text-white/40 uppercase tracking-tighter text-right">AI Level</p>
+                  <p className="text-[#ff006e] font-bold text-right">Hard</p>
+                </div>
+                <div>
                   <p className="text-white/40 uppercase tracking-tighter">Round Wins</p>
-                  <div className="flex gap-1 mt-1">
+                  <div className="flex gap-1 mt-1 justify-end">
                     {[...Array(requiredWins)].map((_, i) => (
                       <div
                         key={i}
@@ -650,10 +733,6 @@ export function GameScreen() {
                       />
                     ))}
                   </div>
-                </div>
-                <div>
-                  <p className="text-white/40 uppercase tracking-tighter text-right">AI Level</p>
-                  <p className="text-[#ff006e] font-bold text-right">Hard</p>
                 </div>
               </div>
             </GlassCard>
@@ -706,11 +785,11 @@ export function GameScreen() {
         </AnimatePresence>
 
         {/* Center - Arm Wrestling Battle Area */}
-        <div className="flex-1 flex items-center justify-center px-6 min-h-0">
-          <div className="w-full max-w-4xl">
+        <div className="flex-1 flex items-end justify-center px-6 pb-32 min-h-0 relative z-10 pointer-events-none mt-40 md:mt-0">
+          <div className="w-full max-w-4xl pointer-events-auto">
             {/* HIGH-PERFORMANCE CANVAS GAUGE */}
             <motion.div
-              className="relative w-full max-w-[500px] h-[350px] mx-auto overflow-visible mb-8"
+              className="relative w-full max-w-[500px] h-[350px] mx-auto overflow-visible"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5 }}
@@ -725,7 +804,7 @@ export function GameScreen() {
               />
 
               {/* DATA UI - Digital counters (Keeping these as DOM for crisp text) */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full flex justify-center gap-8">
+              <div className="absolute -bottom-[80px] left-1/2 -translate-x-1/2 w-full flex justify-center gap-8 z-30">
                 {/* Current Angle Display */}
                 <motion.div
                   className="relative"
@@ -817,218 +896,14 @@ export function GameScreen() {
                   </motion.div>
                 </div>
 
-              {/* Zone Labels */}
-              <div className="absolute top-4 left-0 text-[#ff006e] text-sm uppercase tracking-wider font-bold opacity-60">
-                ← Opponent
-              </div>
-              <div className="absolute top-4 right-0 text-[#00f0ff] text-sm uppercase tracking-wider font-bold opacity-60">
-                You →
-              </div>
+
             </motion.div>
 
-            {/* Arm Visualization - Keep but make smaller */}
-            <motion.div
-              className="relative h-32 mb-8"
-              animate={{
-                rotate: (armPosition - 50) * 0.5,
-              }}
-            >
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-7xl filter drop-shadow-[0_0_20px_rgba(0,240,255,0.5)]">
-                  💪
-                </div>
 
-                {/* Power burst effects */}
-                {armPosition < 30 && (
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center"
-                    initial={{ scale: 0, opacity: 1 }}
-                    animate={{
-                      scale: [1, 2],
-                      opacity: [0.8, 0],
-                    }}
-                    transition={{
-                      duration: 0.5,
-                      repeat: Infinity,
-                      type: 'tween',
-                    }}
-                  >
-                    <Zap className="w-16 h-16 text-[#00f0ff]" />
-                  </motion.div>
-                )}
-
-                {armPosition > 70 && (
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center"
-                    initial={{ scale: 0, opacity: 1 }}
-                    animate={{
-                      scale: [1, 2],
-                      opacity: [0.8, 0],
-                    }}
-                    transition={{
-                      duration: 0.5,
-                      repeat: Infinity,
-                      type: 'tween',
-                    }}
-                  >
-                    <Zap className="w-16 h-16 text-[#ff006e]" />
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
           </div>
         </div>
 
-        {/* Bottom Section - Large Camera Feeds & Tap Button */}
-        {isGameActive && !winner && (
-          <div className="p-6 flex-shrink-0">
-            <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                {/* User Camera Feed (Cyan) - Large, Left */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="flex justify-center md:justify-start"
-                >
-                  <GlassCard className="w-full aspect-[3/4] max-w-[280px] border-4 border-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.6)] overflow-hidden relative">
-                    {/* Camera Grid Overlay */}
-                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-10">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="border border-[#00f0ff]/50" />
-                      ))}
-                    </div>
 
-                    {/* Live indicator */}
-                    <div className="absolute top-3 left-3 z-10">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-[#00f0ff]/90 backdrop-blur-sm rounded-full">
-                        <motion.div
-                          className="w-2 h-2 rounded-full bg-white"
-                          animate={{
-                            opacity: [1, 0.3, 1],
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            type: 'tween',
-                          }}
-                        />
-                        <span className="text-white text-sm font-bold uppercase tracking-wider">Live</span>
-                      </div>
-                    </div>
-
-                    {/* Camera Feed */}
-                    <div className="absolute inset-0">
-                      <CameraFeed />
-                    </div>
-
-                    {/* Scanning effect */}
-                    <motion.div
-                      className="absolute inset-x-0 h-2 bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent"
-                      animate={{
-                        y: ['0%', '100%', '0%'],
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "linear",
-                        type: 'tween',
-                      }}
-                    />
-
-                    {/* Player label */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent p-4">
-                      <p className="text-[#00f0ff] text-base font-bold uppercase tracking-wider text-center">
-                        {player1.name}
-                      </p>
-                      <p className="text-white/60 text-xs text-center mt-1">YOU</p>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-
-
-                {/* Opponent Camera Feed (Pink) - Large, Right */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="flex justify-center md:justify-end"
-                >
-                  <GlassCard className="w-full aspect-[3/4] max-w-[280px] border-4 border-[#ff006e] shadow-[0_0_30px_rgba(255,0,110,0.6)] overflow-hidden relative">
-                    {/* Camera Grid Overlay */}
-                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-10">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="border border-[#ff006e]/50" />
-                      ))}
-                    </div>
-
-                    {/* Live indicator */}
-                    <div className="absolute top-3 left-3 z-10">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-[#ff006e]/90 backdrop-blur-sm rounded-full">
-                        <motion.div
-                          className="w-2 h-2 rounded-full bg-white"
-                          animate={{
-                            opacity: [1, 0.3, 1],
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            type: 'tween',
-                          }}
-                        />
-                        <span className="text-white text-sm font-bold uppercase tracking-wider">Live</span>
-                      </div>
-                    </div>
-
-                    {/* Opponent Live Feed */}
-                    <div className="absolute inset-0 bg-black">
-                      <video
-                        key={stageNumber}
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="w-full h-full object-cover"
-                      >
-                        <source
-                          src={
-                            stageNumber === 1 ? '/assets/robots/stage1.mp4' :
-                              stageNumber === 2 ? '/assets/robots/stage2.mp4' :
-                                stageNumber === 5 ? '/assets/robots/bosRobot.mp4' :
-                                  `/assets/robots/stage${stageNumber}.mp4`
-                          }
-                          type="video/mp4"
-                        />
-                      </video>
-                    </div>
-
-                    {/* Scanning effect */}
-                    <motion.div
-                      className="absolute inset-x-0 h-2 bg-gradient-to-r from-transparent via-[#ff006e] to-transparent"
-                      animate={{
-                        y: ['0%', '100%', '0%'],
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "linear",
-                        type: 'tween',
-                      }}
-                    />
-
-                    {/* Player label */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent p-4">
-                      <p className="text-[#ff006e] text-base font-bold uppercase tracking-wider text-center">
-                        {player2.name}
-                      </p>
-                      <p className="text-white/60 text-xs text-center mt-1">OPPONENT</p>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Combo Popup */}
         <AnimatePresence>
@@ -1061,41 +936,26 @@ export function GameScreen() {
         <AnimatePresence>
           {winner && (
             <motion.div
-              className="absolute inset-0 bg-black/80 flex items-center justify-center z-50"
+              className={`fixed inset-0 z-[100] flex flex-col items-center justify-center pointer-events-none bg-black/60 backdrop-blur-sm`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
               <motion.div
-                className="text-center"
-                initial={{ scale: 0, rotate: -45 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", bounce: 0.5 }}
+                initial={{ scale: 0.5, y: 50 }}
+                animate={{ scale: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                className="relative w-full py-12 flex flex-col items-center justify-center overflow-hidden"
               >
-                <GlassCard className="p-12 border-4 border-[#ffff00] shadow-[0_0_80px_rgba(255,255,0,0.8)]">
-                  <Trophy className="w-24 h-24 text-[#ffff00] mx-auto mb-6" />
-
-                  <h2
-                    className="text-6xl font-bold mb-4"
-                    style={{
-                      fontFamily: "'Orbitron', sans-serif",
-                      background: 'linear-gradient(to right, #ffff00, #ff006e, #00f0ff)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      textShadow: '0 0 40px rgba(255, 255, 0, 0.8)',
-                    }}
-                  >
-                    {winner === 'player1' ? 'VICTORY!' : 'DEFEAT!'}
-                  </h2>
-
-                  <p className="text-white text-xl mb-2">
-                    {winner === 'player1' ? player1.name : player2.name} WINS!
-                  </p>
-
-                  <p className="text-white/60 text-sm uppercase tracking-wider">
-                    Heading to leaderboard...
-                  </p>
-                </GlassCard>
+                <div className={`absolute inset-0 bg-gradient-to-r ${winner === (isPlayer1 ? 'player1' : 'player2') ? 'from-transparent via-[#00f0ff]/40 to-transparent' : 'from-transparent via-[#ff006e]/40 to-transparent'}`} />
+                <div className={`absolute inset-0 border-y-2 ${winner === (isPlayer1 ? 'player1' : 'player2') ? 'border-[#00f0ff]' : 'border-[#ff006e]'}`} />
+                
+                <h2 className={`relative z-10 text-8xl font-black italic tracking-tighter ${winner === (isPlayer1 ? 'player1' : 'player2') ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  {winner === (isPlayer1 ? 'player1' : 'player2') ? 'YOU WIN!' : 'YOU LOSE!'}
+                </h2>
+                <p className={`relative z-10 mt-4 tracking-[0.5em] uppercase font-bold text-lg ${winner === (isPlayer1 ? 'player1' : 'player2') ? 'text-[#00f0ff]/80' : 'text-[#ff006e]/80'}`}>
+                  {gameMode === 'gauntlet' ? 'CONCLUDING MISSION...' : 'HEADING TO LEADERBOARD...'}
+                </p>
               </motion.div>
             </motion.div>
           )}

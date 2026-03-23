@@ -78,13 +78,13 @@ export function GameCanvas({
 
       // Left Arc (Opponent - Pink)
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255, 0, 110, 0.2)';
+      ctx.strokeStyle = 'rgba(255, 0, 110, 0.6)';
       ctx.arc(centerX, centerY, radius, Math.PI, Math.PI * 1.5);
       ctx.stroke();
 
       // Right Arc (User - Cyan)
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
       ctx.arc(centerX, centerY, radius, Math.PI * 1.5, Math.PI * 2);
       ctx.stroke();
 
@@ -97,9 +97,9 @@ export function GameCanvas({
       // Base at centerX - 40, grows left.
       const p1BaseX = centerX - 40; 
       const p1X = centerX - 40 - barWidth;
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 25;
       ctx.shadowColor = '#00f0ff';
-      ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
+      ctx.fillStyle = 'rgba(0, 240, 255, 0.4)';
       ctx.fillRect(p1X, barY, barWidth, barHeight);
       
       const p1FillWidth = (displayP1Power / 100) * barWidth;
@@ -113,8 +113,9 @@ export function GameCanvas({
       // Base at centerX + 40 + barWidth, grows left.
       const p2BaseX = centerX + 40 + barWidth; 
       const p2X = centerX + 40;
+      ctx.shadowBlur = 25;
       ctx.shadowColor = '#ff006e';
-      ctx.fillStyle = 'rgba(255, 0, 110, 0.1)';
+      ctx.fillStyle = 'rgba(255, 0, 110, 0.4)';
       ctx.fillRect(p2X, barY, barWidth, barHeight);
       
       const p2FillWidth = (displayP2Power / 100) * barWidth;
@@ -156,10 +157,10 @@ export function GameCanvas({
         const midX = centerX + Math.cos(rad) * len;
         const midY = centerY + Math.sin(rad) * len;
         
-        const opacity = (1 - i / ghostPositions.length) * 0.3;
+        const opacity = (1 - i / ghostPositions.length) * 0.7;
         ctx.beginPath();
         ctx.strokeStyle = angle >= 0 ? `rgba(0, 240, 255, ${opacity})` : `rgba(255, 0, 110, ${opacity})`;
-        ctx.lineWidth = 6 - i * 0.5;
+        ctx.lineWidth = 10 - i * 0.8;
         ctx.moveTo(centerX, centerY);
         ctx.lineTo(midX, midY);
         ctx.stroke();
@@ -173,11 +174,11 @@ export function GameCanvas({
       const y = centerY + Math.sin(rad) * len;
       const color = currentAngle >= 0 ? '#00f0ff' : '#ff006e';
 
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 25;
       ctx.shadowColor = color;
       ctx.beginPath();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 12;
       ctx.moveTo(centerX, centerY);
       ctx.lineTo(x, y);
       ctx.stroke();

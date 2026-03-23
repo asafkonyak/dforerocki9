@@ -5,14 +5,19 @@ import { GlassCard } from '../components/GlassCard';
 import { Lock, Skull, Zap, AlertTriangle, ChevronRight, Sparkles, ArrowLeft, Trophy } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useGlobalAudio } from '../../contexts/AudioContext';
+import { useSocket } from '../../contexts/SocketContext';
 
 export function GauntletScreen() {
   const navigate = useNavigate();
   const { playStageMusic, stopStageMusic, stopWinSound } = useGlobalAudio();
+  const { sendMessage, lastMessage } = useSocket();
   const [showUnlockAnimation, setShowUnlockAnimation] = useState(false);
   const [pathProgress, setPathProgress] = useState(0);
   const [gauntletProgress, setGauntletProgress] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [showRefereeVideo, setShowRefereeVideo] = useState(false);
+  const [countdown, setCountdown] = useState<string | number | null>(null);
+  const [playerHand, setPlayerHand] = useState('RIGHT');
 
   // Handle stage music and win sound
   useEffect(() => {
@@ -31,10 +36,13 @@ export function GauntletScreen() {
         let playerId: string | null = localStorage.getItem('fighter_player_id');
 
         if (user) {
-          const { data: player } = await supabase.from('players').select('id').eq('user_id', user.id).maybeSingle();
+          const { data: player } = await supabase.from('players').select('id, preferred_hand').eq('user_id', user.id).maybeSingle();
           if (player?.id) {
             playerId = player.id;
             localStorage.setItem('fighter_player_id', playerId!);
+            if (player.preferred_hand) {
+              setPlayerHand(player.preferred_hand.toUpperCase());
+            }
           } else if (playerId) {
             // LINK REPAIR: We have a user and a local playerId, but no user_id link in players table.
             // Attempt to link them now to fix the sync for future sessions.
@@ -208,9 +216,128 @@ export function GauntletScreen() {
       alert('Failed to reset progress. Please try again.');
     }
   };
+  const getStagePower = (stage: number) => {
+    switch(stage) {
+      case 1: return 7;
+      case 2: return 10;
+      case 3: return 12.5;
+      case 4: return 20;
+      case 5: return 25;
+      default: return 7;
+    }
+  };
+
+  const handleInitiateBattle = () => {
+    setShowRefereeVideo(true);
+    const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
+    sendMessage({
+      cmd: {
+        INIT: getStagePower(activeStage.id),
+        HAND: playerHand,
+        PLAYER_ID: myPlayerId
+      }
+    });
+  };
+
+  const handleVideoEnd = () => {
+    setShowRefereeVideo(false);
+    sendMessage({
+      cmd: {
+        SINGLE_PLAYER_START: 0
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!lastMessage) return;
+    const serverData = lastMessage.data || lastMessage;
+
+    let val = null;
+    if (serverData.type === 'countdown') {
+      val = serverData.value;
+    } else if (serverData.cmd && serverData.cmd.count_down !== undefined) {
+      val = serverData.cmd.count_down;
+    }
+    
+    if (val !== null) {
+      setCountdown(val);
+      if (val === 1 || val === '1' || val === 0 || val === '0' || val === 'GO' || val === 'GO!') {
+        setTimeout(() => {
+          navigate('/game', {
+            state: {
+              mode: 'gauntlet',
+              stageNumber: activeStage.id,
+              stageName: activeStage.description
+            }
+          });
+        }, 1000);
+      }
+    }
+  }, [lastMessage, navigate, activeStage]);
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
+      {/* Referee Video Overlay - Full Screen */}
+      <AnimatePresence>
+        {showRefereeVideo && (
+          <motion.div 
+            className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <video
+              src="/assets/Referee.mp4"
+              autoPlay
+              playsInline
+              onEnded={handleVideoEnd}
+              className="w-full h-full object-cover"
+            />
+            <button 
+              onClick={handleVideoEnd}
+              className="absolute top-10 right-10 text-white/40 hover:text-white uppercase text-xs tracking-[.3em] font-bold z-[110]"
+            >
+              Skip Intro
+            </button>
+            <div className="absolute top-10 left-10 flex items-center gap-2 px-3 py-1 bg-red-600 rounded-full z-[110]">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-xs uppercase font-bold tracking-widest">Live Referee</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Socket Countdown Overlay */}
+      <AnimatePresence>
+        {countdown !== null && (
+          <motion.div 
+            className="fixed inset-0 flex flex-col items-center justify-center z-[120] pointer-events-none bg-black/40 backdrop-blur-sm"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 2 }}
+          >
+            <motion.div
+              key={countdown as React.Key}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1.5, opacity: 1 }}
+              exit={{ scale: 2, opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className={`text-[15rem] font-bold italic tracking-tighter ${
+                countdown === 'GO' || countdown === 'GO!' ? 'text-[#00ff00]' : 'text-[#00f0ff]'
+              }`}
+              style={{ 
+                fontFamily: "'Orbitron', sans-serif",
+                textShadow: countdown === 'GO' || countdown === 'GO!' ? '0 0 50px #00ff00' : '0 0 50px #00f0ff'
+              }}
+            >
+              {countdown}
+            </motion.div>
+            {(countdown === 'GO' || countdown === 'GO!') && (
+              <motion.p className="text-[#00ff00] font-black uppercase tracking-[1em] text-2xl" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>FIGHT!</motion.p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Custom Confirmation Modal */}
       <AnimatePresence>
         {showResetConfirm && (
@@ -830,13 +957,7 @@ export function GauntletScreen() {
                   className="group relative overflow-hidden shrink-0 transform-gpu"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate('/game', {
-                    state: {
-                      mode: 'gauntlet',
-                      stageNumber: activeStage.id,
-                      stageName: activeStage.description
-                    }
-                  })}
+                  onClick={handleInitiateBattle}
                 >
                   <GlassCard className="px-12 py-8 border-4 border-[#00f0ff] bg-gradient-to-r from-[#00f0ff]/30 to-[#00f0ff]/10 shadow-[0_0_40px_rgba(0,240,255,0.8)]">
                     {/* Animated background sweep */}
