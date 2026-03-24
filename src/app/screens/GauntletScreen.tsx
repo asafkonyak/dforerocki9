@@ -230,9 +230,16 @@ export function GauntletScreen() {
   const handleInitiateBattle = () => {
     setShowRefereeVideo(true);
     const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
+    let initValue = getStagePower(activeStage.id);
+    if (playerHand === 'left') {
+      initValue = -initValue;
+    }
+
+    console.log(`[Gauntlet] Initiating battle with INIT: ${initValue}, HAND: ${playerHand}`);
+
     sendMessage({
       cmd: {
-        INIT: getStagePower(activeStage.id),
+        INIT: initValue,
         HAND: playerHand,
         PLAYER_ID: myPlayerId
       }
