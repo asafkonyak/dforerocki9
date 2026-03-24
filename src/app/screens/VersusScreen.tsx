@@ -16,6 +16,8 @@ export function VersusScreen() {
   const [player1, setPlayer1] = useState<any>(null);
   const [player2, setPlayer2] = useState<any>(null);
   const [showRefereeVideo, setShowRefereeVideo] = useState(true);
+  const [PlayerHand, setPlayerHand] = useState('RIGHT');
+  const [myPlayerID, setMyPlayerID] = useState<string | null>(null);
 
   const matchId = location.state?.matchId;
   const opponentData = location.state?.opponent;
@@ -67,6 +69,22 @@ export function VersusScreen() {
 
     loadPlayers();
   }, [matchId]);
+  
+  // Fetch preferred hand and ID
+  useEffect(() => {
+    async function fetchUserData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: player } = await supabase.from('players').select('preferred_hand').eq('user_id', user.id).maybeSingle();
+        if (player?.preferred_hand) {
+          setPlayerHand(player.preferred_hand.toUpperCase());
+        }
+      }
+      const storedId = localStorage.getItem('fighter_player_id');
+      setMyPlayerID(storedId);
+    }
+    fetchUserData();
+  }, []);
 
   // Handle Socket Messages (Countdown)
   useEffect(() => {
@@ -101,9 +119,14 @@ export function VersusScreen() {
   const handleVideoEnd = () => {
     setShowRefereeVideo(false);
     // Send INIT to trigger server countdown
-    const myPlayerId = localStorage.getItem('fighter_player_id');
-    if (myPlayerId) {
-      sendMessage({ cmd: { INIT: 1, player_id: myPlayerId } });
+    if (myPlayerID) {
+      sendMessage({ 
+        cmd: { 
+          INIT: 0, 
+          PLAYER_ID: myPlayerID,
+          HAND: PlayerHand
+        } 
+      });
     }
   };
 
