@@ -34,6 +34,7 @@ export function OnboardingScreen() {
   const [isValidating, setIsValidating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const avatarScrollRef = useRef<HTMLDivElement>(null);
 
   const [randomNames] = useState(() =>
     [...SUGGESTED_NAMES].sort(() => Math.random() - 0.5).slice(0, 3)
@@ -171,6 +172,24 @@ export function OnboardingScreen() {
     };
     prefillData();
   }, [isEditing]);
+
+  // Auto-scroll to selected avatar
+  useEffect(() => {
+    if (selectedAvatar && selectedAvatar > 0 && avatarScrollRef.current) {
+      const container = avatarScrollRef.current;
+      const selectedElement = container.querySelector(`[data-avatar-id="${selectedAvatar}"]`) as HTMLElement;
+      if (selectedElement) {
+        // Use a small timeout to ensure DOM is rendered (especially after random assignment)
+        setTimeout(() => {
+          selectedElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          });
+        }, 100);
+      }
+    }
+  }, [selectedAvatar]);
 
   // Real-time username validation
   useEffect(() => {
@@ -672,7 +691,11 @@ export function OnboardingScreen() {
                     <label className="block text-xs text-white/40 uppercase tracking-wider">
                       Or Choose Avatar
                     </label>
-                    <div className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory no-scrollbar scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <div
+                      ref={avatarScrollRef}
+                      className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory no-scrollbar scrollbar-hide"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
                       <style>{`
                       .no-scrollbar::-webkit-scrollbar {
                         display: none;
@@ -681,6 +704,7 @@ export function OnboardingScreen() {
                       {avatarOptions.map((avatar) => (
                         <motion.button
                           key={avatar.id}
+                          data-avatar-id={avatar.id}
                           onClick={() => setSelectedAvatar(avatar.id)}
                           className={`
                           flex-shrink-0 w-[85px] h-[85px] rounded-full border-2 p-1 snap-center
