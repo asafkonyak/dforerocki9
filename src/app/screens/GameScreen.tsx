@@ -123,11 +123,7 @@ export function GameScreen() {
   }, []);
 
   // Audio Hooks - Placeholders for actual sound files
-  const { play: playTap } = useAudio({ src: '/sounds/tap.mp3', volume: 0.5 });
-  const { play: playWin } = useAudio({ src: '/sounds/win.mp3', volume: 0.8 });
-  const { play: playLose } = useAudio({ src: '/sounds/lose.mp3', volume: 0.8 });
-  const { play: playCombo } = useAudio({ src: '/sounds/combo.mp3', volume: 0.7 });
-  const { play: playStart } = useAudio({ src: '/sounds/ready_go.mp3', volume: 0.8 });
+  // REMOVED: playTap, playWin, playLose, playCombo, playStart (Missing files)
 
   // Stage-specific robot intro sound
   const getStageAudioSrc = () => {
@@ -409,7 +405,6 @@ export function GameScreen() {
           console.log('[Game v21] - Game Start condition detected. Starting game...');
           setShowCountdown(true);
           setCountdown('GO!');
-          playStart();
           setIsGameActive(true);
           setStartTime(Date.now());
           
@@ -429,7 +424,6 @@ export function GameScreen() {
           setIsGameActive(false);
           const winningSlot = isPlayer1 ? 'player1' : 'player2';
           setWinner(winningSlot);
-          playWin();
           saveMatchResult(winningSlot);
         } else if (serverData.acs_state === 'ACS_LOSE') {
           console.log('[Game v20] - LOSS condition detected via acs_state');
@@ -437,7 +431,6 @@ export function GameScreen() {
           const losingSlot = isPlayer1 ? 'player1' : 'player2';
           const winningSlot = isPlayer1 ? 'player2' : 'player1';
           setWinner(winningSlot);
-          playLose();
           saveMatchResult(winningSlot);
         }
 
