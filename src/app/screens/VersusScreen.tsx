@@ -118,15 +118,23 @@ export function VersusScreen() {
 
   const handleVideoEnd = () => {
     setShowRefereeVideo(false);
-    // Send INIT to trigger server countdown
-    if (myPlayerID) {
+    
+    // Recovery: if state ID is null, try getting it directly from storage
+    const currentID = myPlayerID || localStorage.getItem('fighter_player_id');
+    
+    console.log('[Versus] Video Ended. Prepared ID:', currentID, 'Hand:', PlayerHand);
+    
+    if (currentID) {
+      console.log('[Versus] Sending INIT command now...');
       sendMessage({ 
         cmd: { 
           INIT: 0, 
-          PLAYER_ID: myPlayerID,
+          PLAYER_ID: currentID,
           HAND: PlayerHand
         } 
       });
+    } else {
+      console.warn('[Versus] Cannot send INIT: No player ID found.');
     }
   };
 
