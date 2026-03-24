@@ -283,10 +283,29 @@ export function GameScreen() {
     const endTime = Date.now();
     const durationSeconds = startTime ? Math.floor((endTime - startTime) / 1000) : 0;
 
+    // Calculate forces
+    let finalMaxForce = Math.round(maxForceRef.current * 10) / 10;
+    if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
+    
+    let avgForce = Math.round(
+      forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length * 10
+    ) / 10;
+
+    // Adjust for left handed
+    let forceHistory = [...forceHistoryRef.current];
+    const isLeft = profile?.preferred_hand?.toLowerCase() === 'left';
+    if (isLeft) {
+      finalMaxForce = -finalMaxForce;
+      avgForce = -avgForce;
+      forceHistory = forceHistory.map(f => ({ time: f.time, force: -f.force }));
+    }
+
     // 3. Record the match
     const scoreObj = {
       p1_rounds: finalWinner === 'player1' ? roundsWonPlayer + 1 : roundsWonPlayer,
-      p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent
+      p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent,
+      peakForce: finalMaxForce,
+      avgForce: avgForce
     };
 
     const isMeWinner = finalWinner === (isPlayer1 ? 'player1' : 'player2');
@@ -354,13 +373,7 @@ export function GameScreen() {
 
     // 6. Navigate
     setTimeout(() => {
-      const finalMaxForce = Math.round(maxForceRef.current * 10) / 10;
-      if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
-      
-      const avgForce = Math.round(
-        forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length * 10
-      ) / 10;
-
+      // Note: Force calculations are already done above and captured in closure
       if (gameMode === 'gauntlet') {
         navigate('/victory', {
           state: {
@@ -371,7 +384,7 @@ export function GameScreen() {
             xpEarned: earnedXp,
             stageName: stageName || 'CRUSHER X-9000',
             stageNumber: stageNumber || 1,
-            forceHistory: forceHistoryRef.current,
+            forceHistory: forceHistory,
           }
         });
       } else {
@@ -453,10 +466,17 @@ export function GameScreen() {
           }, 800);
         }
 
-        if (serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN' || serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_LOSE') {
-          console.log(`[Game v23] - Match result detected via multiplayer_state: ${serverData.multiplayer_state}`);
+        const isMultiWin = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN';
+        const isMultiLose = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_LOSE';
+        const isSingleWin = serverData.single_player_state === 'SINGLE_PLAYER_GAMEOVER_WIN';
+        const isSingleLose = serverData.single_player_state === 'SINGLE_PLAYER_GAMEOVER_LOSE';
+
+        if (isMultiWin || isMultiLose || isSingleWin || isSingleLose) {
+          const stateStr = isMultiWin || isMultiLose ? serverData.multiplayer_state : serverData.single_player_state;
+          console.log(`[Game v24] - Match result detected via state: ${stateStr}`);
           setIsGameActive(false);
-          const isMeWin = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN';
+          
+          const isMeWin = isMultiWin || isSingleWin;
           const roundWinnerSlot = isPlayer1 
             ? (isMeWin ? 'player1' : 'player2')
             : (isMeWin ? 'player2' : 'player1');
@@ -497,7 +517,7 @@ export function GameScreen() {
 
     socket.addEventListener('message', handleMessage);
     return () => socket.removeEventListener('message', handleMessage);
-  }, [socket, isGameActive, winner]);
+  }, [socket, isGameActive, winner, roundsWonPlayer, roundsWonOpponent, requiredWins, isPlayer1, profile]);
 
 
   return (

@@ -248,11 +248,27 @@ export function GauntletScreen() {
 
   const handleVideoEnd = () => {
     setShowRefereeVideo(false);
+    
+    const currentID = localStorage.getItem('fighter_player_id');
+    
+    console.log('[Gauntlet] Sending INIT command now...');
     sendMessage({
       cmd: {
-        SINGLE_PLAYER_START: 0
+        INIT: 0,
+        PLAYER_ID: currentID,
+        HAND: playerHand
       }
     });
+
+    // Slight delay to ensure INIT is processed before START
+    setTimeout(() => {
+      console.log('[Gauntlet] Sending SINGLE_PLAYER_START command now...');
+      sendMessage({
+        cmd: {
+          SINGLE_PLAYER_START: 0
+        }
+      });
+    }, 100);
   };
 
   useEffect(() => {
