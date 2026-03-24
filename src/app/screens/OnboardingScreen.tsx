@@ -114,7 +114,7 @@ export function OnboardingScreen() {
     const shuffledNames = [...SUGGESTED_NAMES].sort(() => 0.5 - Math.random());
     setSuggestions(shuffledNames.slice(0, 5));
 
-    // Handle Edit Mode Pre-population
+    // Handle Edit Mode Pre-population OR New Random Identity
     const prefillData = async () => {
       if (isEditing) {
         console.log("Onboarding [v2] - EDIT MODE ACTIVE");
@@ -136,6 +136,36 @@ export function OnboardingScreen() {
               setSelectedAvatar(0);
             }
           }
+        }
+      } else {
+        // NEW USER: Random Identity
+        const PREFIXES = ['Cyber', 'Neo', 'Alpha', 'Mega', 'Hyper', 'Ultra', 'Giga', 'Bit', 'Byte', 'Core'];
+        let baseName = SUGGESTED_NAMES[Math.floor(Math.random() * SUGGESTED_NAMES.length)];
+        
+        try {
+          // Check for uniqueness
+          const { data: existing } = await supabase.from('players').select('id').eq('username', baseName).maybeSingle();
+          
+          let finalName = baseName;
+          if (existing) {
+            const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
+            finalName = `${prefix}_${baseName}`;
+            
+            // Final check for prefixed name
+            const { data: existingPrefixed } = await supabase.from('players').select('id').eq('username', finalName).maybeSingle();
+            if (existingPrefixed) {
+              finalName = `${finalName}${Math.floor(Math.random() * 99)}`;
+            }
+          }
+          
+          setPlayerName(finalName);
+          
+          // Random Avatar (1-24)
+          const randomAvatarId = Math.floor(Math.random() * 24) + 1;
+          setSelectedAvatar(randomAvatarId);
+        } catch (err) {
+          console.error("Error generating random identity:", err);
+          setPlayerName(baseName);
         }
       }
     };

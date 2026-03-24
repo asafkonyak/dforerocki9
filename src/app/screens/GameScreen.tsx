@@ -40,6 +40,7 @@ export function GameScreen() {
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string } | null>(null);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const { socket, isConnected } = useSocket();
 
   // Round-based states
@@ -97,6 +98,28 @@ export function GameScreen() {
       }
     }
     fetchProfile();
+  }, []);
+
+  // Enumerate cameras on mount
+  useEffect(() => {
+    async function getDevices() {
+      try {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const vDevices = allDevices.filter(d => d.kind === 'videoinput');
+        console.log('[GameScreen] Found video devices:', vDevices);
+        setVideoDevices(vDevices);
+      } catch (err) {
+        console.error("Error enumerating devices:", err);
+      }
+    }
+    
+    // Request permission first to ensure we can see labels/IDs
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        stream.getTracks().forEach(track => track.stop());
+        getDevices();
+      })
+      .catch(() => getDevices());
   }, []);
 
   // Audio Hooks - Placeholders for actual sound files
@@ -579,8 +602,11 @@ export function GameScreen() {
             <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 backdrop-blur-md bg-black/60">
               {/* Camera Feed Box */}
               <div className="w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-black shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-                {isPlayer1 ? (
-                  <CameraFeed />
+                {/* 1V1 Dual Camera Support: Show first camera if available in Ranked; otherwise follow standard local feed logic */}
+                {isRanked && videoDevices.length >= 2 ? (
+                  <CameraFeed deviceId={videoDevices[0].deviceId} />
+                ) : isPlayer1 ? (
+                  <CameraFeed deviceId={videoDevices[0]?.deviceId} />
                 ) : (
                   gameMode === 'gauntlet' ? (
                     <video src={`/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
@@ -662,17 +688,18 @@ export function GameScreen() {
             <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 backdrop-blur-md bg-black/60">
               {/* Rival Video/Camera Feed Box */}
               <div className="w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)]">
-                {!isPlayer1 ? (
-                  <CameraFeed />
+                {/* Prioritize Gauntlet robot video; otherwise show second camera if available in Ranked */}
+                {gameMode === 'gauntlet' ? (
+                  <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                ) : isRanked && videoDevices.length >= 2 ? (
+                  <CameraFeed deviceId={videoDevices[1].deviceId} />
+                ) : !isPlayer1 ? (
+                  <CameraFeed deviceId={videoDevices[0]?.deviceId} />
                 ) : (
-                  gameMode === 'gauntlet' ? (
-                    <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50">
-                      <Video className="w-8 h-8 mb-1" />
-                      <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
-                    </div>
-                  )
+                  <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50">
+                    <Video className="w-8 h-8 mb-1" />
+                    <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
+                  </div>
                 )}
                 {/* Visual Overlays for Feed */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />

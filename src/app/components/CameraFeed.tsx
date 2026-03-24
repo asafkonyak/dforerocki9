@@ -5,9 +5,10 @@ interface CameraFeedProps {
   className?: string;
   onStreamStarted?: (stream: MediaStream) => void;
   onError?: (error: Error) => void;
+  deviceId?: string;
 }
 
-export function CameraFeed({ className = '', onStreamStarted, onError }: CameraFeedProps) {
+export function CameraFeed({ className = '', onStreamStarted, onError, deviceId }: CameraFeedProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [hasError, setHasError] = useState(false);
@@ -15,9 +16,14 @@ export function CameraFeed({ className = '', onStreamStarted, onError }: CameraF
   useEffect(() => {
     async function setupCamera() {
       try {
+        // Stop any existing tracks before starting new ones
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
-            facingMode: 'user',
+            deviceId: deviceId ? { exact: deviceId } : undefined,
             width: { ideal: 640 },
             height: { ideal: 480 }
           } 
@@ -43,7 +49,7 @@ export function CameraFeed({ className = '', onStreamStarted, onError }: CameraF
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [onStreamStarted, onError]);
+  }, [onStreamStarted, onError, deviceId]);
 
   return (
     <div className={`relative w-full h-full bg-black flex items-center justify-center ${className}`}>
