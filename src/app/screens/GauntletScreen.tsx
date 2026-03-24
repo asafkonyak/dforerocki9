@@ -44,8 +44,7 @@ export function GauntletScreen() {
               setPlayerHand(player.preferred_hand.toUpperCase());
             }
           } else if (playerId) {
-            // LINK REPAIR: We have a user and a local playerId, but no user_id link in players table.
-            // Attempt to link them now to fix the sync for future sessions.
+            // LINK REPAIR
             try {
               console.log('Gauntlet Progress Sync - Repairing broken user_id link for player:', playerId);
               await supabase.from('players').update({ 
@@ -55,6 +54,12 @@ export function GauntletScreen() {
             } catch (linkErr) {
               console.warn("Gauntlet Progress Sync - User link repair failed:", linkErr);
             }
+          }
+        } else if (playerId) {
+          // GUEST FLOW: No user, but we have a playerId from localStorage
+          const { data: player } = await supabase.from('players').select('preferred_hand').eq('id', playerId).maybeSingle();
+          if (player?.preferred_hand) {
+            setPlayerHand(player.preferred_hand.toUpperCase());
           }
         }
 
@@ -231,7 +236,7 @@ export function GauntletScreen() {
     setShowRefereeVideo(true);
     const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
     let initValue = getStagePower(activeStage.id);
-    if (playerHand === 'left') {
+    if (playerHand && playerHand.toLowerCase() === 'left') {
       initValue = -initValue;
     }
 
@@ -276,7 +281,8 @@ export function GauntletScreen() {
             state: {
               mode: 'gauntlet',
               stageNumber: activeStage.id,
-              stageName: activeStage.description
+              stageName: activeStage.description,
+              hand: playerHand
             }
           });
         }, 1000);

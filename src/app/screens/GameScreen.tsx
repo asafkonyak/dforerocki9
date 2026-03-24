@@ -293,7 +293,8 @@ export function GameScreen() {
 
     // Adjust for left handed
     let forceHistory = [...forceHistoryRef.current];
-    const isLeft = profile?.preferred_hand?.toLowerCase() === 'left';
+    const handUsed = location.state?.hand || profile?.preferred_hand || 'right';
+    const isLeft = handUsed.toLowerCase() === 'left';
     if (isLeft) {
       finalMaxForce = -finalMaxForce;
       avgForce = -avgForce;
@@ -305,7 +306,8 @@ export function GameScreen() {
       p1_rounds: finalWinner === 'player1' ? roundsWonPlayer + 1 : roundsWonPlayer,
       p2_rounds: finalWinner === 'player2' ? roundsWonOpponent + 1 : roundsWonOpponent,
       peakForce: finalMaxForce,
-      avgForce: avgForce
+      avgForce: avgForce,
+      hand: isLeft ? 'left' : 'right'
     };
 
     const isMeWinner = finalWinner === (isPlayer1 ? 'player1' : 'player2');
@@ -384,6 +386,7 @@ export function GameScreen() {
             xpEarned: earnedXp,
             stageName: stageName || 'CRUSHER X-9000',
             stageNumber: stageNumber || 1,
+            hand: isLeft ? 'left' : 'right',
             forceHistory: forceHistory,
           }
         });
@@ -448,7 +451,10 @@ export function GameScreen() {
         }
 
         // Check for game start via acs_state or multiplayer_state
-        if ((serverData.acs_state === 'ACS_GAME' || serverData.multiplayer_state === 'MAIN_SM_RUN' || serverData.multiplayer_state === 'MAIN_RUN') && !isGameActive) {
+        if ((serverData.acs_state === 'ACS_GAME' || 
+             serverData.multiplayer_state === 'MAIN_SM_RUN' || 
+             serverData.multiplayer_state === 'MAIN_RUN' ||
+             serverData.multiplayer_state === 'MULTIPLAYER_SM_RUN') && !isGameActive) {
           console.log('[Game v21] - Game Start condition detected. Starting game...');
           setShowCountdown(true);
           setCountdown('GO!');
@@ -466,10 +472,10 @@ export function GameScreen() {
           }, 800);
         }
 
-        const isMultiWin = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN';
-        const isMultiLose = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_LOSE';
-        const isSingleWin = serverData.single_player_state === 'SINGLE_PLAYER_GAMEOVER_WIN';
-        const isSingleLose = serverData.single_player_state === 'SINGLE_PLAYER_GAMEOVER_LOSE';
+        const isMultiWin = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN' || serverData.multiplayer_state === 'MULTIPLAYER_SM_GAMEOVER_WIN';
+        const isMultiLose = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_LOSE' || serverData.multiplayer_state === 'MULTIPLAYER_SM_GAMEOVER_LOSE';
+        const isSingleWin = serverData.single_player_state === 'SINGLE_PLAYER_GAMEOVER_WIN' || serverData.single_player_state === 'SINGLE_PLAYER_WIN';
+        const isSingleLose = serverData.single_player_state === 'SINGLE_PLAYER_GAMEOVER_LOSE' || serverData.single_player_state === 'SINGLE_PLAYER_LOSE';
 
         if (isMultiWin || isMultiLose || isSingleWin || isSingleLose) {
           const stateStr = isMultiWin || isMultiLose ? serverData.multiplayer_state : serverData.single_player_state;

@@ -79,6 +79,14 @@ export function VersusScreen() {
         if (player?.preferred_hand) {
           setPlayerHand(player.preferred_hand.toUpperCase());
         }
+      } else {
+        const storedId = localStorage.getItem('fighter_player_id');
+        if (storedId) {
+          const { data: player } = await supabase.from('players').select('preferred_hand').eq('id', storedId).maybeSingle();
+          if (player?.preferred_hand) {
+            setPlayerHand(player.preferred_hand.toUpperCase());
+          }
+        }
       }
       const storedId = localStorage.getItem('fighter_player_id');
       setMyPlayerID(storedId);
@@ -95,10 +103,17 @@ export function VersusScreen() {
       const val = serverData.value;
       setCountdown(val);
       
-      if (val === 1 || val === '1' || val === 'GO' || val === 'GO!') {
+      if (val === 1 || val === '1' || val === 0 || val === '0' || val === 'GO' || val === 'GO!') {
         setTimeout(() => {
           navigate('/game', { 
-            state: { matchId, mode: 'ranked', opponent: isPlayer1 ? player2 : player1, isPlayer1, gameType } 
+            state: { 
+              matchId, 
+              mode: 'ranked', 
+              opponent: isPlayer1 ? player2 : player1, 
+              isPlayer1, 
+              gameType,
+              hand: PlayerHand
+            } 
           });
         }, 1000);
       }
@@ -109,7 +124,14 @@ export function VersusScreen() {
       if (val === 1 || val === '1' || val === 0 || val === '0' || val === 'GO' || val === 'GO!') {
         setTimeout(() => {
           navigate('/game', { 
-            state: { matchId, mode: 'ranked', opponent: isPlayer1 ? player2 : player1, isPlayer1, gameType } 
+            state: { 
+              matchId, 
+              mode: 'ranked', 
+              opponent: isPlayer1 ? player2 : player1, 
+              isPlayer1, 
+              gameType,
+              hand: PlayerHand
+            } 
           });
         }, 1000);
       }
