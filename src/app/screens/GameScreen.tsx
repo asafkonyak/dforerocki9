@@ -39,7 +39,7 @@ export function GameScreen() {
   const [resistanceValue, setResistanceValue] = useState(60); // Default KG
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
-  const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string } | null>(null);
+  const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const { socket, isConnected } = useSocket();
 
@@ -49,6 +49,7 @@ export function GameScreen() {
   const [roundsWonOpponent, setRoundsWonOpponent] = useState(0);
   const [currentRound, setCurrentRound] = useState(1);
   const [roundWinner, setRoundWinner] = useState<string | null>(null);
+  const [intermissionTime, setIntermissionTime] = useState<number | null>(null);
 
   const getRequiredWins = () => {
     if (gameType === 'bo3') return 2;
@@ -74,7 +75,7 @@ export function GameScreen() {
       if (playerId) {
         const { data, error } = await supabase
           .from('players')
-          .select('username, avatar_url, xp, rank')
+          .select('username, avatar_url, xp, rank, preferred_hand')
           .eq('id', playerId)
           .maybeSingle();
 
@@ -84,7 +85,8 @@ export function GameScreen() {
             username: data.username || 'YOU',
             avatar_url: data.avatar_url || '👤',
             xp: data.xp || 0,
-            rank: data.rank || 'Bronze'
+            rank: data.rank || 'Bronze',
+            preferred_hand: data.preferred_hand || 'right'
           });
         }
       } else {
@@ -220,9 +222,41 @@ export function GameScreen() {
   // The user requested to remove win/loss logic for now.
   // The game will remain active until manually exited.
   useEffect(() => {
-    // This effect is now empty to ensure no win/loss navigation occurs.
-    console.log('[Game v16] - Win/Loss checks are disabled.');
+    // This effect is now empty to ensure no win/loss navigation occurs automatically on armPosition.
+    console.log('[Game v22] - Win/Loss checks via armPosition are disabled.');
   }, [armPosition, isGameActive]);
+
+  // Handle Intermission Timer
+  useEffect(() => {
+    if (intermissionTime !== null && intermissionTime > 0 && !winner) {
+      const timer = setInterval(() => {
+        setIntermissionTime(prev => prev! - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (intermissionTime === 0 && !winner) {
+      // Intermission ended
+      console.log('[Game v22] Intermission ended. Sending INIT: 0');
+      setIntermissionTime(null);
+      setRoundWinner(null);
+      setCurrentRound(prev => prev + 1);
+      setArmPosition(50);
+      setPlayer1Power(100);
+      setPlayer2Power(100);
+      setAngleValue(0); 
+      
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const myPlayerId = profile?.id || localStorage.getItem('fighter_player_id') || 'GUEST';
+        const playerHand = (profile?.preferred_hand || 'right').toUpperCase();
+        socket.send(JSON.stringify({
+          cmd: {
+            INIT: 0,
+            PLAYER_ID: myPlayerId,
+            HAND: playerHand
+          }
+        }));
+      }
+    }
+  }, [intermissionTime, winner, socket, profile]);
 
   const resetRound = () => {
     setArmPosition(50);
@@ -400,8 +434,8 @@ export function GameScreen() {
           }
         }
 
-        // Check for game start via acs_state or computer_state
-        if ((serverData.acs_state === 'ACS_GAME' || serverData.computer_state === 'MAIN_SM_RUN' || serverData.computer_state === 'MAIN_RUN') && !isGameActive) {
+        // Check for game start via acs_state or multiplayer_state
+        if ((serverData.acs_state === 'ACS_GAME' || serverData.multiplayer_state === 'MAIN_SM_RUN' || serverData.multiplayer_state === 'MAIN_RUN') && !isGameActive) {
           console.log('[Game v21] - Game Start condition detected. Starting game...');
           setShowCountdown(true);
           setCountdown('GO!');
@@ -419,19 +453,37 @@ export function GameScreen() {
           }, 800);
         }
 
-        if (serverData.acs_state === 'ACS_WIN') {
-          console.log('[Game v20] - WIN condition detected via acs_state');
+        if (serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN' || serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_LOSE') {
+          console.log(`[Game v23] - Match result detected via multiplayer_state: ${serverData.multiplayer_state}`);
           setIsGameActive(false);
-          const winningSlot = isPlayer1 ? 'player1' : 'player2';
-          setWinner(winningSlot);
-          saveMatchResult(winningSlot);
-        } else if (serverData.acs_state === 'ACS_LOSE') {
-          console.log('[Game v20] - LOSS condition detected via acs_state');
-          setIsGameActive(false);
-          const losingSlot = isPlayer1 ? 'player1' : 'player2';
-          const winningSlot = isPlayer1 ? 'player2' : 'player1';
-          setWinner(winningSlot);
-          saveMatchResult(winningSlot);
+          const isMeWin = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN';
+          const roundWinnerSlot = isPlayer1 
+            ? (isMeWin ? 'player1' : 'player2')
+            : (isMeWin ? 'player2' : 'player1');
+            
+          setRoundWinner(roundWinnerSlot);
+          
+          let p1Wins = roundsWonPlayer;
+          let p2Wins = roundsWonOpponent;
+
+          if (roundWinnerSlot === 'player1') {
+            p1Wins++;
+            setRoundsWonPlayer(p1Wins);
+          } else {
+            p2Wins++;
+            setRoundsWonOpponent(p2Wins);
+          }
+
+          if (p1Wins >= requiredWins) {
+            setWinner('player1');
+            saveMatchResult('player1');
+          } else if (p2Wins >= requiredWins) {
+            setWinner('player2');
+            saveMatchResult('player2');
+          } else {
+            // Initiate Intermission
+            setIntermissionTime(90);
+          }
         }
 
         // Optionally map force/power if available in this message
@@ -789,16 +841,34 @@ export function GameScreen() {
               exit={{ opacity: 0, scale: 1.2 }}
               className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
             >
-              <div className="bg-black/80 backdrop-blur-xl border-y border-white/10 w-full py-20 flex flex-col items-center">
+              <div className="bg-black/80 backdrop-blur-xl border-y border-[#00f0ff]/30 w-full py-20 flex flex-col items-center shadow-[0_0_50px_rgba(0,240,255,0.2)]">
                 <motion.div
                   initial={{ y: 20 }}
                   animate={{ y: 0 }}
-                  className={`text-6xl font-black italic tracking-tighter mb-4 ${roundWinner === 'player1' ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`}
-                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                  className={`text-7xl font-black italic tracking-tighter mb-8 glow-text ${roundWinner === 'player1' ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`}
+                  style={{ fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 20px ${roundWinner === 'player1' ? '#00f0ff' : '#ff006e'}` }}
                 >
                   {roundWinner === 'player1' ? 'ROUND WON' : 'ROUND LOST'}
                 </motion.div>
-                <div className="text-white/40 tracking-[0.5em] uppercase text-xl">Preparing Next Round...</div>
+                
+                {intermissionTime !== null && (
+                  <GlassCard className="px-12 py-6 border-2 border-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.4)] flex flex-col items-center bg-black/60 relative overflow-hidden pointer-events-auto">
+                     <div className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/10 to-transparent pointer-events-none" />
+                     
+                     {/* Progress border indicator */}
+                     <motion.div
+                       className="absolute bottom-0 left-0 h-1 bg-[#00f0ff] shadow-[0_0_10px_#00f0ff]"
+                       initial={{ width: '100%' }}
+                       animate={{ width: `${(intermissionTime / 90) * 100}%` }}
+                       transition={{ duration: 1, ease: 'linear' }}
+                     />
+
+                     <p className="text-white/60 text-xs uppercase tracking-[0.3em] font-bold mb-2 z-10">Next Round In</p>
+                     <div className="text-6xl font-black text-[#00f0ff] tracking-widest z-10" style={{ fontFamily: "'Orbitron', monospace", textShadow: '0 0 20px rgba(0,240,255,0.6)' }}>
+                       {intermissionTime}s
+                     </div>
+                  </GlassCard>
+                )}
               </div>
             </motion.div>
           )}

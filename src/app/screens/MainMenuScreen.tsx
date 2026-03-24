@@ -24,7 +24,7 @@ export function MainMenuScreen() {
     loss_count: number;
     last_results: string;
   } | null>(null);
-  const [selectedGameType, setSelectedGameType] = useState<'1_round' | 'bo3' | 'bo5' | null>(null);
+  const [selectedGameType, setSelectedGameType] = useState<'1_round' | '3_round' | '5_round' | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const bossVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -336,8 +336,8 @@ export function MainMenuScreen() {
                   <div className="flex gap-2 w-full mt-auto pt-6 border-t border-white/10">
                     {[
                       { id: '1_round', label: '1 Round', icon: <Zap className="w-5 h-5" />, color: '#00f0ff' },
-                      { id: 'bo3', label: 'Best of 3', icon: <Trophy className="w-5 h-5" />, color: '#ff006e' },
-                      { id: 'bo5', label: 'Best of 5', icon: <Swords className="w-5 h-5" />, color: '#ffff00' },
+                      { id: '3_round', label: 'Best of 3', icon: <Trophy className="w-5 h-5" />, color: '#ff006e' },
+                      { id: '5_round', label: 'Best of 5', icon: <Swords className="w-5 h-5" />, color: '#ffff00' },
                     ].map((type) => (
                       <button
                         key={type.id}
