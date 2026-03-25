@@ -281,7 +281,7 @@ export function GameScreen() {
 
     // 2. Calculate duration
     const endTime = Date.now();
-    const durationSeconds = startTime ? Math.floor((endTime - startTime) / 1000) : 0;
+    const durationSeconds = startTime ? (endTime - startTime) / 1000 : 0;
 
     // Calculate forces
     let finalMaxForce = Math.round(maxForceRef.current * 10) / 10;

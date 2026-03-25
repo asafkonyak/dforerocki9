@@ -4,8 +4,9 @@ import { useGlobalAudio } from '../../contexts/AudioContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { NeonButton } from '../components/NeonButton';
 import { useEffect, useState, useRef } from 'react';
-import { Settings, X, Video, VideoOff, Camera, Download, AlertCircle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Settings, X, Video, VideoOff, Camera, Download, AlertCircle, Copy, Check } from 'lucide-react';
+import QRCode from 'react-qr-code';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Switch } from '../components/ui/switch';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
@@ -38,6 +39,7 @@ export function ThemeSelector() {
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [sharingLink, setSharingLink] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
   const [videoTestError, setVideoTestError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -128,18 +130,51 @@ export function ThemeSelector() {
   const startRecording = async () => {
     setVideoTestError(null);
     recordedChunksRef.current = [];
-    try {
-      const constraints = {
-        video: {
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-          aspectRatio: { ideal: 9/16 },
-          frameRate: { ideal: 30 }
-        },
-        audio: true
-      };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const getStream = async () => {
+      // 1. Try Vertical (9:16) WITHOUT Audio (User Priority)
+      try {
+        console.log('[Camera] Attempting vertical (9:16) WITHOUT audio...');
+        return await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            aspectRatio: { ideal: 9/16 },
+            frameRate: { ideal: 30 }
+          },
+          audio: false
+        });
+      } catch (err) {
+        console.warn('[Camera] Vertical WITHOUT audio failed, trying vertical WITH audio...', err);
+      }
+
+      // 2. Try Vertical (9:16) WITH Audio
+      try {
+        console.log('[Camera] Attempting vertical (9:16) WITH audio...');
+        return await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            aspectRatio: { ideal: 9/16 }
+          },
+          audio: true
+        });
+      } catch (err) {
+        console.warn('[Camera] Vertical WITH audio failed, trying basic video...', err);
+      }
+
+      // 3. Try Basic Video only
+      try {
+        console.log('[Camera] Attempting basic video constraints...');
+        return await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (err) {
+        console.error('[Camera] All constraints failed:', err);
+        throw err;
+      }
+    };
+
+    try {
+      const stream = await getStream();
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = stream;
       }
@@ -301,6 +336,9 @@ export function ThemeSelector() {
                 <DialogTitle className="text-2xl font-black italic tracking-wider text-[#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                   SYSTEM SETTINGS
                 </DialogTitle>
+                <DialogDescription className="text-white/40 uppercase text-[10px] tracking-widest">
+                  Configure your arena experience and peripheral connections.
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6 py-4">
@@ -412,12 +450,40 @@ export function ThemeSelector() {
 
                       {sharingLink && (
                         <motion.div 
-                          className="p-3 bg-white/5 border border-white/10 rounded-lg text-center"
-                          initial={{ opacity: 0, y: 5 }}
+                          className="p-4 bg-white/5 border border-white/10 rounded-lg flex flex-col items-center gap-4"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                         >
-                          <div className="text-[8px] text-[#00f0ff] font-bold uppercase tracking-widest mb-1">Shareable Link Generated</div>
-                          <div className="text-[10px] text-white/60 font-mono truncate px-2">{sharingLink}</div>
+                          <div className="text-[10px] text-[#00f0ff] font-bold uppercase tracking-widest text-center">Scan to Share Reel</div>
+                          
+                          {/* QR Code Display */}
+                          <div className="p-2 bg-white rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                            <QRCode 
+                              value={sharingLink} 
+                              size={120}
+                              level="H"
+                              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                            />
+                          </div>
+
+                          <div className="w-full space-y-2">
+                            <div className="text-[8px] text-white/40 uppercase tracking-widest font-bold px-1">Shareable Link</div>
+                            <div className="flex items-center gap-2 bg-black/40 p-2 rounded border border-white/5 overflow-hidden">
+                              <div className="text-[10px] text-white/80 font-mono truncate flex-1">{sharingLink}</div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-[#00f0ff] hover:bg-[#00f0ff]/10"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(sharingLink);
+                                  setIsCopied(true);
+                                  setTimeout(() => setIsCopied(false), 2000);
+                                }}
+                              >
+                                {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                              </Button>
+                            </div>
+                          </div>
                         </motion.div>
                       )}
 

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
 import { Skull, Zap, Clock, TrendingUp, Award, ChevronRight, Sparkles } from 'lucide-react';
 import { useGlobalAudio } from '../../contexts/AudioContext';
+import QRCode from 'react-qr-code';
 
 export function VictoryAnalyticsScreen() {
   const navigate = useNavigate();
@@ -27,10 +28,10 @@ export function VictoryAnalyticsScreen() {
   const isWin = matchData.isWin ?? true;
 
   const formatTime = (totalSeconds: number) => {
-    if (!totalSeconds || isNaN(totalSeconds)) return "00.00";
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = Math.floor(totalSeconds % 60);
-    return `${mins.toString().padStart(2, '0')}.${secs.toString().padStart(2, '0')}`;
+    if (!totalSeconds || isNaN(totalSeconds)) return "00.000";
+    const secs = Math.floor(totalSeconds);
+    const ms = Math.floor((totalSeconds % 1) * 1000);
+    return `${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
   };
 
   useEffect(() => {
@@ -527,6 +528,29 @@ export function VictoryAnalyticsScreen() {
                     <span className="text-white/60">Current</span>
                   </div>
                 </div>
+
+                {/* dforce.fit QR Code Section */}
+                <motion.div 
+                  className="mt-6 flex flex-col items-center gap-3"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={animateCharts ? { opacity: 1, y: 0 } : {}}
+                  transition={{ delay: 1.2, duration: 0.8 }}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                    <QRCode 
+                      value="https://dforce.fit" 
+                      size={80} 
+                      level="H"
+                      style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[10px] text-[#00f0ff] font-bold uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      SCAN & SHARE YOUR VICTORY
+                    </p>
+                    <p className="text-[8px] text-white/40 uppercase tracking-widest mt-1">dforce.fit</p>
+                  </div>
+                </motion.div>
               </div>
             </div>
           </GlassCard>
