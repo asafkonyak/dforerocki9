@@ -4,7 +4,7 @@ import { useGlobalAudio } from '../../contexts/AudioContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { NeonButton } from '../components/NeonButton';
 import { useEffect, useState, useRef } from 'react';
-import { Settings, X, Video, VideoOff } from 'lucide-react';
+import { Settings, X, Video, VideoOff, Camera, Download, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Switch } from '../components/ui/switch';
 import { Label } from '../components/ui/label';
@@ -32,6 +32,17 @@ export function ThemeSelector() {
   const otherVideoRef = useRef<HTMLVideoElement>(null);
   const peerRef = useRef<any>(null);
   const socketRef = useRef<any>(null);
+
+  // Video Test & Recording State
+  const [isVideoTestEnabled, setIsVideoTestEnabled] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [sharingLink, setSharingLink] = useState<string | null>(null);
+  const [videoTestError, setVideoTestError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const playbackVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     // Attempt to start music on mount (may be blocked by autoplay)
@@ -112,6 +123,101 @@ export function ThemeSelector() {
       socketRef.current = null;
     }
     setIsTestingWebRTC(false);
+  };
+
+  const startRecording = async () => {
+    setVideoTestError(null);
+    recordedChunksRef.current = [];
+    try {
+      const constraints = {
+        video: {
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
+          aspectRatio: { ideal: 9/16 },
+          frameRate: { ideal: 30 }
+        },
+        audio: true
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp8,opus'
+      });
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        
+        // 1. Local Download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        a.href = url;
+        a.download = `rehearsal_${timestamp}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        // 2. Upload to Port 8088 API
+        setIsUploading(true);
+        try {
+          const formData = new FormData();
+          formData.append('video', blob, `rehearsal_${timestamp}.webm`);
+          formData.append('upload_to_supabase', 'true');
+          
+          const response = await fetch('http://localhost:8088/process-video', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!response.ok) throw new Error('Upload failed');
+          
+          const data = await response.json();
+          // The API returns the sharing link or ID
+          setSharingLink(typeof data === 'string' ? data : data.url || data.id);
+          
+          // Set playback source to the recorded blob for local preview
+          if (playbackVideoRef.current) {
+            playbackVideoRef.current.src = url;
+          }
+        } catch (uploadErr: any) {
+          console.error('Upload Error:', uploadErr);
+          setVideoTestError('Failed to upload video for processing');
+        } finally {
+          setIsUploading(false);
+        }
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+        if (videoPreviewRef.current) {
+          videoPreviewRef.current.srcObject = null;
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err: any) {
+      console.error('Recording error:', err);
+      setVideoTestError(err.message || 'Failed to access camera');
+    }
+  };
+
+  const stopAndSave = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   return (
@@ -223,6 +329,128 @@ export function ThemeSelector() {
                     className="data-[state=checked]:bg-[#ff006e]"
                   />
                 </div>
+
+                {/* Video Test Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-bold tracking-widest text-white/80 uppercase">Video Test</Label>
+                    <p className="text-[10px] text-white/40 uppercase">Test vertical recording (9:16)</p>
+                  </div>
+                  <Switch 
+                    checked={isVideoTestEnabled} 
+                    onCheckedChange={(checked) => {
+                      setIsVideoTestEnabled(checked);
+                      if (!checked && isRecording) stopAndSave();
+                    }}
+                    className="data-[state=checked]:bg-[#fbff00]"
+                  />
+                </div>
+
+                {/* Video Test Section */}
+                <AnimatePresence>
+                  {isVideoTestEnabled && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4 pt-2"
+                    >
+                      <div className="flex gap-4 items-start justify-center">
+                        {/* Recording Preview */}
+                        <div className="relative w-full max-w-[160px] aspect-[9/16] rounded-xl overflow-hidden bg-black/40 border-2 border-dashed border-white/10 flex flex-col items-center justify-center">
+                          <video 
+                            ref={videoPreviewRef} 
+                            autoPlay 
+                            muted 
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          {!isRecording && !videoTestError && (
+                            <Camera className="w-8 h-8 text-white/20 mb-2 relative z-10" />
+                          )}
+                          {videoTestError && (
+                            <div className="p-4 text-center relative z-10">
+                              <AlertCircle className="w-6 h-6 text-[#ff006e] mx-auto mb-2" />
+                              <p className="text-[8px] text-white/60 uppercase">{videoTestError}</p>
+                            </div>
+                          )}
+                          {isRecording && (
+                            <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
+                              <motion.div 
+                                className="w-1.5 h-1.5 rounded-full bg-red-600"
+                                animate={{ opacity: [1, 0.4, 1] }}
+                                transition={{ duration: 1, repeat: Infinity }}
+                              />
+                              <span className="text-[6px] font-bold text-white uppercase tracking-tighter">REC</span>
+                            </div>
+                          )}
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[6px] text-white/40 uppercase tracking-widest font-bold">Live Preview</div>
+                        </div>
+
+                        {/* Player Back (Playback) */}
+                        <div className="relative w-full max-w-[160px] aspect-[9/16] rounded-xl overflow-hidden bg-black/60 border-2 border-white/10 flex flex-col items-center justify-center">
+                          <video 
+                            ref={playbackVideoRef} 
+                            controls
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          {!sharingLink && !isUploading && (
+                            <div className="text-center p-4">
+                              <Video className="w-8 h-8 text-white/10 mx-auto mb-2" />
+                              <span className="text-[6px] text-white/20 uppercase font-black italic">Player Back</span>
+                            </div>
+                          )}
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 z-10">
+                              <div className="w-6 h-6 border-2 border-[#00f0ff]/30 border-t-[#00f0ff] rounded-full animate-spin" />
+                              <span className="text-[6px] text-[#00f0ff] font-bold uppercase tracking-widest">Processing...</span>
+                            </div>
+                          )}
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[6px] text-white/40 uppercase tracking-widest font-bold">Replay</div>
+                        </div>
+                      </div>
+
+                      {sharingLink && (
+                        <motion.div 
+                          className="p-3 bg-white/5 border border-white/10 rounded-lg text-center"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <div className="text-[8px] text-[#00f0ff] font-bold uppercase tracking-widest mb-1">Shareable Link Generated</div>
+                          <div className="text-[10px] text-white/60 font-mono truncate px-2">{sharingLink}</div>
+                        </motion.div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          onClick={startRecording}
+                          disabled={isRecording || isUploading}
+                          className="bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 hover:bg-[#00f0ff]/30 py-6 uppercase font-black italic text-xs tracking-widest"
+                          style={{ fontFamily: "'Orbitron', sans-serif" }}
+                        >
+                          <Camera className="w-4 h-4 mr-2" /> Start
+                        </Button>
+                        <Button
+                          onClick={stopAndSave}
+                          disabled={!isRecording || isUploading}
+                          className="bg-[#fbff00]/20 text-[#fbff00] border border-[#fbff00]/50 hover:bg-[#fbff00]/30 py-6 uppercase font-black italic text-xs tracking-widest"
+                          style={{ fontFamily: "'Orbitron', sans-serif" }}
+                        >
+                          {isUploading ? (
+                             <div className="flex items-center gap-2">
+                               <div className="w-3 h-3 border-2 border-[#fbff00]/30 border-t-[#fbff00] rounded-full animate-spin" />
+                               <span>Uploading</span>
+                             </div>
+                          ) : (
+                            <>
+                              <Download className="w-4 h-4 mr-2" /> Save & Share
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* WebRTC Test Section */}
                 <AnimatePresence>
