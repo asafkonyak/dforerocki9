@@ -16,10 +16,6 @@ import { ExplosiveBattleScreen } from "./screens/ExplosiveBattleScreen";
 import { StrengthBattleScreen } from "./screens/StrengthBattleScreen";
 import { GauntletScreen } from "./screens/GauntletScreen";
 import { VictoryAnalyticsScreen } from "./screens/VictoryAnalyticsScreen";
-import { SFWelcomeScreen } from "./screens/sf/SFWelcomeScreen";
-import { SFOnboardingScreen } from "./screens/sf/SFOnboardingScreen";
-import { SFMainMenuScreen } from "./screens/sf/SFMainMenuScreen";
-import { SFMatchmakingScreen } from "./screens/sf/SFMatchmakingScreen";
 
 export const router = createBrowserRouter([
   {
@@ -90,22 +86,5 @@ export const router = createBrowserRouter([
   {
     path: "/victory",
     Component: VictoryAnalyticsScreen,
-  },
-  // Street Fighter themed routes
-  {
-    path: "/sf",
-    Component: SFWelcomeScreen,
-  },
-  {
-    path: "/sf/onboarding",
-    Component: SFOnboardingScreen,
-  },
-  {
-    path: "/sf/menu",
-    Component: SFMainMenuScreen,
-  },
-  {
-    path: "/sf/matchmaking",
-    Component: SFMatchmakingScreen,
   },
 ]);

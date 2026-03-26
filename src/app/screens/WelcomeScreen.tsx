@@ -98,21 +98,6 @@ export function WelcomeScreen() {
 
         {/* Buttons */}
         <div className="w-full space-y-4">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-          >
-            <NeonButton
-              variant="primary"
-              color="cyan"
-              onClick={() => navigate('/login')}
-              className="w-full"
-              size="lg"
-            >
-              Login to Player
-            </NeonButton>
-          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -136,23 +121,6 @@ export function WelcomeScreen() {
         </div>
 
         {/* Leaderboard button */}
-        <motion.div
-          className="mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-        >
-          <button
-            onClick={() => navigate('/leaderboard')}
-            className="flex flex-col items-center gap-2 text-[#ffff00] hover:text-[#ffff00]/80 transition-colors group"
-          >
-            <div className="relative">
-              <Trophy className="w-10 h-10" />
-              <div className="absolute inset-0 bg-[#ffff00] blur-xl opacity-50 group-hover:opacity-70 transition-opacity" />
-            </div>
-            <span className="text-xs uppercase tracking-widest font-bold">Leaderboard</span>
-          </button>
-        </motion.div>
       </motion.div>
     </div>
   );

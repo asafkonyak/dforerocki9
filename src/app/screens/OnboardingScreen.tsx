@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { GlassCard } from '../components/GlassCard';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, RotateCcw, Zap, User, Weight, ArrowLeft } from 'lucide-react';
+import { Camera, RotateCcw, Zap, User, Video as VideoIcon, ArrowLeft, Mic, ChevronLeft, ChevronRight, Edit3, Focus } from 'lucide-react';
 import { NeonButton } from '../components/NeonButton';
 import { supabase } from '../../lib/supabase';
 
@@ -35,6 +35,8 @@ export function OnboardingScreen() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const avatarScrollRef = useRef<HTMLDivElement>(null);
+  const [avatarPage, setAvatarPage] = useState(0);
+  const AVATARS_PER_PAGE = 6;
 
   const [randomNames] = useState(() =>
     [...SUGGESTED_NAMES].sort(() => Math.random() - 0.5).slice(0, 3)
@@ -339,7 +341,7 @@ export function OnboardingScreen() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between">
           {/* Left: Back Button */}
           <motion.button
             onClick={() => navigate(-1)}
@@ -371,115 +373,245 @@ export function OnboardingScreen() {
               className="text-4xl font-bold text-[#00f0ff]"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
-              {isEditing ? 'UPDATE IDENTITY' : 'CREATE YOUR IDENTITY'}
+              {isEditing ? 'RE-SYNC CHAMPION' : 'STEP INTO THE RING'}
             </h1>
           </motion.div>
 
-          {/* Right: Hardware Sync Badge */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <GlassCard className={`px-4 py-2 border-2 bg-gradient-to-r ${isConnected ? 'border-[#00ff00]/40 from-[#00ff00]/10 to-[#00ff00]/5 shadow-[0_0_20px_rgba(0,255,0,0.4)]' :
-                isError ? 'border-[#ff0000]/40 from-[#ff0000]/10 to-[#ff0000]/5 shadow-[0_0_20px_rgba(255,0,0,0.4)]' :
-                  'border-white/10 from-white/5 to-transparent'
-              }`}>
-              <div className="flex items-center gap-3">
-                {/* Pulsing Dot */}
-                <motion.div
-                  className="relative"
-                  animate={{
-                    scale: (isConnected || isError) ? [1, 1.2, 1] : 1,
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    type: 'tween',
-                  }}
-                >
-                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${isConnected ? 'bg-[#00ff00] text-[#00ff00]' :
-                      isError ? 'bg-[#ff0000] text-[#ff0000]' :
-                        'bg-[#888888] text-[#888888]'
-                    }`} />
-                  {/* Outer glow ring */}
-                  <motion.div
-                    className={`absolute inset-0 rounded-full border-2 ${isConnected ? 'border-[#00ff00]' :
-                        isError ? 'border-[#ff0000]' :
-                          'border-[#888888]'
-                      }`}
-                    animate={{
-                      scale: [1, 2, 1],
-                      opacity: [0.8, 0, 0.8],
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      type: 'tween',
-                    }}
-                  />
-                </motion.div>
-
-                {/* Badge Text */}
-                <div className="text-sm">
-                  <div className={`font-bold uppercase tracking-wider ${isConnected ? 'text-[#00ff00]' :
-                      isError ? 'text-[#ff0000]' :
-                        'text-white/40'
-                    }`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    ROCKY: {isConnected ? 'CONNECTED' : isError ? 'ERROR' : 'OFFLINE'}
-                  </div>
-                  <div className="text-white/40 text-xs uppercase tracking-wider">
-                    {isConnected ? 'Hardware Synced' : isError ? 'Link Failure' : 'No Connection'}
-                  </div>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
+          {/* Right: Spacer for layout balance */}
+          <div className="w-48" />
         </div>
       </motion.div>
 
       {/* Main Content - Scrollable if needed */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0 relative z-10">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Three Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Card 1: Identity (Name) - LEFT */}
+        <div className="w-full max-w-[1600px] mx-auto space-y-6">
+          {/* Refined Layout Swapped: Video Protocol (Left) + Identity (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Video Tutorial Card - LEFT (Col Span 2) - Fills card, no title */}
             <motion.div
+              className="lg:col-span-2"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
             >
-              <GlassCard className="p-6 h-full">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#00f0ff]/20 flex items-center justify-center">
-                      <User className="w-5 h-5 text-[#00f0ff]" />
+              <GlassCard className="h-full overflow-hidden p-0 border-2 border-[#ffff00]/20 relative group">
+                {/* Scan Overlay */}
+                <div className="absolute inset-0 grid grid-cols-8 grid-rows-8 opacity-[0.05] pointer-events-none z-10">
+                  {Array.from({ length: 64 }).map((_, i) => (
+                    <div key={i} className="border border-white" />
+                  ))}
+                </div>
+                
+                <video
+                  src="/assets/reffer_onboarding.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                
+                <div className="absolute bottom-12 left-12 right-12 z-20">
+                  <div className="flex flex-col gap-4">
+                    <p className="text-[#ffff00] text-3xl font-black italic tracking-widest uppercase [text-shadow:0_0_20px_#ffff0060]" style={{ fontFamily: "'Orbitron', sans-serif" }}>SET UP YOUR PROFILE</p>
+                    <p className="text-white text-lg leading-relaxed uppercase tracking-[0.1em] max-w-2xl font-bold [text-shadow:0_2px_10px_rgba(0,0,0,0.8)]">Take a photo or choose an avatar, pick your dominant hand, and enter your fighter name to get started.</p>
+                  </div>
+                </div>
+
+                {/* Gradient vignette */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 pointer-events-none" />
+              </GlassCard>
+            </motion.div>
+
+            {/* Combined Identity Card - RIGHT (Col Span 1) - Single stack */}
+            <motion.div
+              className="lg:col-span-1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+            >
+              <GlassCard className="p-8 h-full border-white/10 bg-black/40 backdrop-blur-xl flex flex-col justify-between">
+                <div className="space-y-8">
+                  {/* 1. Preferences Stance (Now Top) */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-[#ffff00]" />
+                        <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PREFERENCES STANCE</p>
+                      </div>
                     </div>
-                    <h2 className="text-2xl text-white">Identity</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        onClick={() => setPreferredHand('left')}
+                        className={`group relative py-4 rounded-xl border-2 transition-all text-[10px] font-black tracking-[0.2em] uppercase italic ${preferredHand === 'left'
+                            ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
+                            : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
+                          }`}
+                        style={{ fontFamily: "'Orbitron', sans-serif" }}
+                      >
+                        LEFT HANDED
+                      </button>
+                      <button
+                        onClick={() => setPreferredHand('right')}
+                        className={`group relative py-4 rounded-xl border-2 transition-all text-[10px] font-black tracking-[0.2em] uppercase italic ${preferredHand === 'right'
+                            ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
+                            : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
+                          }`}
+                        style={{ fontFamily: "'Orbitron', sans-serif" }}
+                      >
+                        RIGHT HANDED
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Name Input with Glowing Cursor */}
-                  <div className="relative">
-                    <label className="block text-sm text-[#00f0ff] mb-2 uppercase tracking-wider">
-                      Player Name
-                    </label>
-                    <div className="relative">
+                  {/* 2. Player Image Group (Middle) */}
+                  <div className="space-y-6 pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2">
+                      <User className="w-5 h-5 text-[#ff006e]" />
+                      <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER IMAGE</p>
+                    </div>
+
+                    {/* Subsection: Photo */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] ml-1">TAKE A PHOTO</p>
+                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-white/10 bg-black/60 shadow-inner group/camera">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className={`w-full h-full object-cover transition-opacity duration-700 ${(selectedAvatar === 0 && photoDataUrl && cameraCountdown === null) ? 'opacity-20' : 'opacity-100'}`}
+                          />
+                          {selectedAvatar === 0 && photoDataUrl && cameraCountdown === null && (
+                            <motion.img 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              src={photoDataUrl} 
+                              alt="Scan" 
+                              className="absolute inset-0 w-full h-full object-cover z-10" 
+                            />
+                          )}
+                          
+                          {/* Scan Line Animation */}
+                          <motion.div 
+                            className="absolute inset-x-0 h-[2px] bg-[#ff006e] z-30 shadow-[0_0_15px_#ff006e]"
+                            animate={{ top: ['0%', '100%', '0%'] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                          />
+                          
+                          {/* Countdown (No Blur) */}
+                          {cameraCountdown !== null && (
+                            <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/20">
+                              <motion.span 
+                                key={cameraCountdown}
+                                initial={{ scale: 0.5, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="text-6xl font-black italic text-white drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                                style={{ fontFamily: "'Orbitron', sans-serif" }}
+                              >
+                                {cameraCountdown}
+                              </motion.span>
+                            </div>
+                          )}
+
+                          {/* Face Target Reticle (Only when no photo and no countdown) */}
+                          {!photoDataUrl && cameraCountdown === null && (
+                            <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none opacity-40">
+                              <Focus className="w-24 h-24 text-white animate-pulse" />
+                            </div>
+                          )}
+
+                          {/* Bottom-Middle Capture/Re-capture Button */}
+                          {cameraCountdown === null && (
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
+                               <motion.button
+                                onClick={startCameraCountdown}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className="px-8 py-3 bg-[#ff006e] text-white rounded-xl font-black italic uppercase text-xs tracking-widest
+                                         shadow-[0_0_30px_#ff006e80] hover:bg-[#ff006e] transition-all duration-300"
+                                style={{ fontFamily: "'Orbitron', sans-serif" }}
+                              >
+                                {photoDataUrl ? 'RE-CAPTURE' : 'CAPTURE'}
+                              </motion.button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Subsection: Avatar (One Row) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] ml-1">OR SELECT AVATAR</p>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => setAvatarPage(p => Math.max(0, p - 1))}
+                            disabled={avatarPage === 0}
+                            className="p-1 hover:bg-white/10 rounded-md transition-colors disabled:opacity-20"
+                          >
+                            <ChevronLeft className="w-4 h-4 text-[#00f0ff]" />
+                          </button>
+                          <button 
+                            onClick={() => setAvatarPage(p => Math.min(Math.floor(avatarOptions.length / AVATARS_PER_PAGE), p + 1))}
+                            disabled={avatarPage >= Math.floor(avatarOptions.length / AVATARS_PER_PAGE)}
+                            className="p-1 hover:bg-white/10 rounded-md transition-colors disabled:opacity-20"
+                          >
+                            <ChevronRight className="w-4 h-4 text-[#00f0ff]" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 p-1 overflow-hidden">
+                        {avatarOptions.slice(avatarPage * AVATARS_PER_PAGE, (avatarPage + 1) * AVATARS_PER_PAGE).map((avatar) => (
+                          <motion.button
+                            key={avatar.id}
+                            onClick={() => setSelectedAvatar(avatar.id)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`
+                            flex-1 aspect-square rounded-xl border-2 p-1 overflow-hidden transition-all duration-300
+                            ${selectedAvatar === avatar.id
+                                ? 'border-[#ff006e] bg-[#ff006e]/10 shadow-[0_0_15px_#ff006e40]'
+                                : 'border-white/10 bg-white/5 hover:border-white/20'
+                              }
+                          `}
+                          >
+                            <img src={avatar.url} alt="Profile" className="w-full h-full object-cover rounded-lg" />
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Player Name (Bottom) */}
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2">
+                        <Edit3 className="w-5 h-5 text-[#00f0ff]" />
+                        <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER NAME</p>
+                    </div>
+                    <div className="relative group">
                       <input
                         type="text"
                         value={playerName}
                         onChange={(e) => setPlayerName(e.target.value)}
-                        placeholder="Enter your name..."
+                        placeholder="ENTER PLAYER NAME..."
                         maxLength={20}
-                        className="w-full px-4 py-3 bg-black/40 border-2 border-[#00f0ff]/30 rounded-lg
-                                 text-white placeholder-white/30 outline-none
-                                 focus:border-[#00f0ff] focus:shadow-[0_0_20px_#00f0ff40]
-                                 transition-all duration-300 caret-[#00f0ff]"
-                        style={{
-                          fontFamily: 'var(--font-family-heading)',
-                        }}
+                        className="w-full px-12 py-5 bg-white/5 border-2 border-white/10 rounded-2xl
+                                 text-white placeholder-white/20 outline-none
+                                 focus:border-[#00f0ff] focus:bg-[#00f0ff]/5 focus:shadow-[0_0_30px_#00f0ff20]
+                                 transition-all duration-300 caret-[#00f0ff] text-base font-black tracking-widest uppercase italic"
+                        style={{ fontFamily: 'var(--font-family-heading)' }}
                       />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-[#00f0ff] transition-colors" />
+                      
+                      <button className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Mic className="w-5 h-5 text-white/20 hover:text-[#00f0ff] transition-colors" />
+                      </button>
+
                       {isValidating && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="absolute right-14 top-1/2 -translate-y-1/2">
                           <motion.div
                             className="w-4 h-4 border-2 border-[#00f0ff] border-t-transparent rounded-full"
                             animate={{ rotate: 360 }}
@@ -487,396 +619,7 @@ export function OnboardingScreen() {
                           />
                         </div>
                       )}
-                      <AnimatePresence>
-                        {nameError && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="absolute -bottom-6 left-0 text-xs text-[#ff006e] font-bold uppercase tracking-wider"
-                          >
-                            {nameError}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
-                      <motion.div
-                        className="absolute inset-0 rounded-lg pointer-events-none"
-                        animate={{
-                          boxShadow: playerName
-                            ? ['0 0 0px #00f0ff', '0 0 20px #00f0ff40', '0 0 0px #00f0ff']
-                            : '0 0 0px #00f0ff',
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          type: "tween"
-                        }}
-                      />
                     </div>
-                  </div>
-
-                  {/* Suggestion Chips */}
-                  <div className="space-y-2">
-                    <label className="block text-xs text-white/40 uppercase tracking-wider">
-                      Quick Suggestions
-                    </label>
-                    <div className="flex flex-col gap-2">
-                      {suggestions.map((name, index) => (
-                        <motion.button
-                          key={name}
-                          onClick={() => setPlayerName(name)}
-                          className="px-4 py-2 bg-gradient-to-r from-[#ff006e]/20 to-[#ffff00]/20
-                                   border border-[#ff006e]/50 rounded-full text-sm text-white
-                                   hover:from-[#ff006e]/30 hover:to-[#ffff00]/30 
-                                   hover:shadow-[0_0_15px_#ff006e40]
-                                   transition-all duration-300"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.2 + index * 0.1 }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          {name}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Immediate CTA removed as requested */}
-                </div>
-              </GlassCard>
-            </motion.div>
-
-            {/* Card 2: Avatar & Camera - MIDDLE */}
-            <motion.div
-              id="avatar-section"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
-              <GlassCard className="p-6 h-full">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#ff006e]/20 flex items-center justify-center">
-                      <Camera className="w-5 h-5 text-[#ff006e]" />
-                    </div>
-                    <h2 className="text-2xl text-white">Avatar</h2>
-                  </div>
-
-                  {/* Live Camera Placeholder */}
-                  <div className="relative">
-                    <label className="block text-sm text-[#ff006e] mb-2 uppercase tracking-wider">
-                      Camera Photo
-                    </label>
-                    <div className="relative aspect-square w-full">
-                      {/* Camera Frame */}
-                      <motion.div
-                        className={`relative w-full h-full rounded-2xl overflow-hidden
-                                border-4 bg-black/60
-                                shadow-[0_0_30px_#ff006e40]
-                                ${selectedAvatar === 0 ? 'border-[#ff006e]' : 'border-white/10'}`}
-                        animate={{
-                          boxShadow: cameraCountdown !== null
-                            ? ['0 0 30px #ff006e40', '0 0 50px #ff006e80', '0 0 30px #ff006e40']
-                            : '0 0 30px #ff006e40',
-                        }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          type: "tween"
-                        }}
-                      >
-                        {/* Camera Grid Overlay */}
-                        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-20">
-                          {Array.from({ length: 9 }).map((_, i) => (
-                            <div key={i} className="border border-[#ff006e]/50" />
-                          ))}
-                        </div>
-
-                        {/* Countdown Overlay */}
-                        <AnimatePresence>
-                          {cameraCountdown !== null && cameraCountdown > 0 && (
-                            <motion.div
-                              className="absolute inset-0 flex items-center justify-center z-10"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              <motion.div
-                                className="text-8xl text-[#ffff00]"
-                                style={{ fontFamily: 'var(--font-family-heading)' }}
-                                key={cameraCountdown}
-                                initial={{ scale: 0.5, opacity: 0 }}
-                                animate={{ scale: 1.5, opacity: 1 }}
-                                exit={{ scale: 2, opacity: 0 }}
-                                transition={{ duration: 0.8 }}
-                              >
-                                {cameraCountdown}
-                              </motion.div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Camera Content */}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-                          {/* Always show video feed unless a photo is finalized and we aren't counting down */}
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted /* Important to prevent feedback loop */
-                            className={`w-full h-full object-cover ${(selectedAvatar === 0 && photoDataUrl && cameraCountdown === null) ? 'opacity-0 absolute' : 'opacity-100 relative'}`}
-                          />
-
-                          {/* Show standard camera icon if video isn't loaded yet */}
-                          {!streamRef.current && cameraCountdown === null && selectedAvatar !== 0 && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-                              <Camera className="w-16 h-16 text-[#ff006e]/40 mx-auto mb-2" />
-                              <p className="text-white/40 text-sm">Initializing Camera...</p>
-                            </div>
-                          )}
-
-                          {/* Show captured photo on top if selected */}
-                          {selectedAvatar === 0 && photoDataUrl && cameraCountdown === null && (
-                            <motion.img
-                              src={photoDataUrl}
-                              alt="Captured Avatar"
-                              className="absolute inset-0 w-full h-full object-cover z-20"
-                              initial={{ scale: 0.8, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ type: "spring", duration: 0.8 }}
-                            />
-                          )}
-                        </div>
-
-                        {/* Retake Button */}
-                        {selectedAvatar === 0 && (
-                          <motion.button
-                            onClick={startCameraCountdown}
-                            className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-sm
-                                   border border-[#ff006e]/50 rounded-lg
-                                   hover:bg-[#ff006e]/20 transition-all"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <RotateCcw className="w-5 h-5 text-[#ff006e]" />
-                          </motion.button>
-                        )}
-                      </motion.div>
-
-                      {/* Take Photo Button */}
-                      {cameraCountdown === null && (
-                        <motion.button
-                          onClick={startCameraCountdown}
-                          className="absolute bottom-4 left-1/2 -translate-x-1/2
-                                 px-6 py-3 bg-[#ff006e] text-white rounded-full
-                                 hover:bg-[#ff006e]/80 hover:shadow-[0_0_20px_#ff006e80]
-                                 transition-all duration-300 z-30"
-                          style={{ fontFamily: 'var(--font-family-heading)' }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          {photoDataUrl ? 'Retake Photo' : 'CAPTURE'}
-                        </motion.button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Avatar Thumbnails */}
-                  <div className="space-y-2">
-                    <label className="block text-xs text-white/40 uppercase tracking-wider">
-                      Or Choose Avatar
-                    </label>
-                    <div
-                      ref={avatarScrollRef}
-                      className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory no-scrollbar scrollbar-hide"
-                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                    >
-                      <style>{`
-                      .no-scrollbar::-webkit-scrollbar {
-                        display: none;
-                      }
-                    `}</style>
-                      {avatarOptions.map((avatar) => (
-                        <motion.button
-                          key={avatar.id}
-                          data-avatar-id={avatar.id}
-                          onClick={() => setSelectedAvatar(avatar.id)}
-                          className={`
-                          flex-shrink-0 w-[85px] h-[85px] rounded-full border-2 p-1 snap-center
-                          transition-all duration-300
-                          ${selectedAvatar === avatar.id
-                              ? 'border-[#ff006e] bg-[#ff006e]/10 shadow-[0_0_20px_#ff006e60] scale-110'
-                              : 'border-white/10 bg-black/40 hover:border-white/30'
-                            }
-                        `}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <div className="w-full h-full rounded-full overflow-hidden">
-                            <img
-                              src={avatar.url}
-                              alt={`Avatar ${avatar.id}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
-
-            {/* Card 3: Physical Stats (Weight) - RIGHT */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              <GlassCard className="p-6 h-full">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#ffff00]/20 flex items-center justify-center">
-                      <Weight className="w-5 h-5 text-[#ffff00]" />
-                    </div>
-                    <h2 className="text-2xl text-white">Physical Stats</h2>
-                  </div>
-
-                  {/* Weight Input and Auto-Sync */}
-                  <div className="space-y-3">
-                    <label className="block text-sm text-[#ffff00] mb-2 uppercase tracking-wider">
-                      Physical Stats
-                    </label>
-
-                    {/* Handedness Selection - MANDATORY */}
-                    <div className="space-y-2 mb-4">
-                      <p className="text-xs text-white/40 uppercase tracking-widest">Preferred Stance</p>
-                      <div className="flex gap-4">
-                        <button
-                          onClick={() => setPreferredHand('right')}
-                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${preferredHand === 'right'
-                              ? 'border-[#00f0ff] bg-[#00f0ff]/20 text-[#00f0ff] shadow-[0_0_15px_#00f0ff40]'
-                              : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
-                            }`}
-                        >
-                          RIGHT HANDED
-                        </button>
-                        <button
-                          onClick={() => setPreferredHand('left')}
-                          className={`flex-1 py-3 rounded-lg border-2 transition-all font-bold ${preferredHand === 'left'
-                              ? 'border-[#ff006e] bg-[#ff006e]/20 text-[#ff006e] shadow-[0_0_15px_#ff006e40]'
-                              : 'border-white/10 bg-white/5 text-white/40 hover:border-white/20'
-                            }`}
-                        >
-                          LEFT HANDED
-                        </button>
-                      </div>
-                    </div>
-
-                    <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
-                      Weight (kg) - Optional
-                    </label>
-                    <div className="space-y-3">
-                      {/* Manual Input */}
-                      <div>
-                        <input
-                          type="number"
-                          value={weight}
-                          onChange={(e) => setWeight(e.target.value)}
-                          placeholder="Enter weight..."
-                          min="30"
-                          max="200"
-                          className="w-full px-4 py-3 bg-black/40 border-2 border-[#ffff00]/30 rounded-lg
-                                   text-white placeholder-white/30 outline-none
-                                   focus:border-[#ffff00] focus:shadow-[0_0_20px_#ffff0040]
-                                   transition-all duration-300"
-                          style={{
-                            fontFamily: 'var(--font-family-heading)',
-                          }}
-                        />
-                      </div>
-
-                      {/* Auto-Sync Button */}
-                      <motion.button
-                        onClick={handleAutoSync}
-                        disabled={isSyncing}
-                        className="relative w-full px-6 py-3 bg-gradient-to-r from-[#ffff00]/20 to-[#00f0ff]/20
-                                 border-2 border-[#ffff00] rounded-lg
-                                 text-[#ffff00] hover:shadow-[0_0_25px_#ffff0060]
-                                 disabled:opacity-50 disabled:cursor-not-allowed
-                                 transition-all duration-300 overflow-hidden group"
-                        style={{ fontFamily: 'var(--font-family-heading)' }}
-                        whileHover={{ scale: isSyncing ? 1 : 1.05 }}
-                        whileTap={{ scale: isSyncing ? 1 : 0.95 }}
-                      >
-                        <div className="flex items-center justify-center gap-2 relative z-10">
-                          <Zap className="w-5 h-5" />
-                          <span className="whitespace-nowrap">
-                            {isSyncing ? 'SYNCING...' : 'AUTO-SYNC'}
-                          </span>
-                        </div>
-
-                        {/* Biometric Scan Animation */}
-                        {isSyncing && (
-                          <>
-                            {/* Sweeping Laser Effect */}
-                            <motion.div
-                              className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ffff00]/40 to-transparent"
-                              animate={{
-                                x: ['-100%', '200%'],
-                              }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                ease: "linear",
-                                type: "tween"
-                              }}
-                            />
-
-                            {/* Digital Data Stream */}
-                            <motion.div
-                              className="absolute inset-0 opacity-30"
-                              style={{
-                                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #ffff00 2px, #ffff00 4px)',
-                              }}
-                              animate={{
-                                y: ['0%', '100%'],
-                              }}
-                              transition={{
-                                duration: 0.8,
-                                repeat: Infinity,
-                                ease: "linear",
-                                type: "tween"
-                              }}
-                            />
-                          </>
-                        )}
-                      </motion.button>
-                    </div>
-
-                    {/* Biometric Info */}
-                    {isSyncing && (
-                      <motion.div
-                        className="flex items-center gap-2 text-sm text-[#ffff00]/60 px-4 py-2
-                                 bg-[#ffff00]/5 border border-[#ffff00]/20 rounded-lg"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear", type: "tween" }}
-                        >
-                          <Zap className="w-4 h-4" />
-                        </motion.div>
-                        <span>Connecting to health app...</span>
-                      </motion.div>
-                    )}
                   </div>
                 </div>
               </GlassCard>

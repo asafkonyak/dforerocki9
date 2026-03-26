@@ -103,84 +103,16 @@ export function MainMenuScreen() {
         transition={{ duration: 0.5 }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Left: Player Info Card (Restyled as Stories/HUD) */}
-          <motion.div
-            className="flex items-center gap-4"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+          {/* Left: Logout Button (same glass-pill style as Onboarding back button) */}
+          <motion.button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <GlassCard className="p-4 border-2 border-[#00f0ff]/20 bg-black/60 shadow-[0_0_25px_rgba(0,0,0,0.5)] flex items-center gap-5 min-w-[340px]">
-              {/* Avatar with Hub-Style Edit Icon */}
-              <div className="relative flex-shrink-0 group">
-                <div className="p-0.5 rounded-full bg-gradient-to-br from-[#00f0ff] to-[#ff006e] shadow-[0_0_20px_rgba(0,240,255,0.3)]">
-                  <AvatarDisplay 
-                    avatar={playerData?.avatar_url || '👤'} 
-                    size="lg" 
-                    className="w-20 h-20 border-2 border-black" 
-                  />
-                </div>
-                {/* Visible edit trigger - Moved to bottom-left as requested */}
-                <button 
-                  onClick={() => navigate('/onboarding', { state: { isEditing: true } })}
-                  className="absolute bottom-0 left-0 w-8 h-8 bg-[#1a0a2e] border border-[#00f0ff]/50 rounded-full flex items-center justify-center text-[#00f0ff] hover:bg-[#00f0ff] hover:text-black hover:shadow-[0_0_15px_#00f0ff] transition-all z-10"
-                  title="Edit Profile"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Player Info & Stats */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-4 mb-3">
-                  <h3 className="text-2xl text-white font-bold truncate tracking-tight" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    {playerData?.username || 'PLAYER'}
-                  </h3>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-white/30 uppercase tracking-widest leading-none mb-1">XP Points</span>
-                    <span className="text-[#ffff00] text-sm font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                      {playerData?.xp || 0}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-6 h-12">
-                  {/* Win Ratio */}
-                  <div className="flex flex-col justify-center h-full">
-                    <span className="text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Win Ratio</span>
-                    <div className="flex items-center gap-1 leading-none">
-                      <span className="text-xl text-[#00ff00] font-bold italic leading-none">
-                        {playerData ? Math.round((playerData.win_count / (Math.max(1, playerData.win_count + playerData.loss_count))) * 100) : 0}
-                      </span>
-                      <span className="text-[10px] text-[#00ff00]/60 font-bold leading-none">%</span>
-                    </div>
-                  </div>
-                  
-                  {/* Vertical Divider */}
-                  <div className="self-center w-px h-8 bg-white/10" />
-
-                  {/* Recent Match History */}
-                  <div className="flex flex-col justify-center h-full">
-                    <span className="text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Recent Flow</span>
-                    <div className="flex gap-1.5 items-center h-[20px]">
-                      {(playerData?.last_results || '').split(',').filter(Boolean).slice(-5).map((res, i) => (
-                        <motion.div 
-                          key={i} 
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: i * 0.1 }}
-                          className={`w-2.5 h-2.5 rounded-full ${res === 'W' ? 'bg-[#00ff00] shadow-[0_0_8px_#00ff00]' : 'bg-[#ff006e] shadow-[0_0_8px_#ff006e]'}`}
-                        />
-                      ))}
-                      {/* Placeholders */}
-                      {Array.from({ length: Math.max(0, 5 - (playerData?.last_results || '').split(',').filter(Boolean).length) }).map((_, i) => (
-                        <div key={`p-${i}`} className="w-2.5 h-2.5 rounded-full bg-white/5 border border-white/5" />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
+            <LogOut className="w-5 h-5 text-[#ff006e]" />
+            <span className="text-white/60 text-sm uppercase tracking-wider">Logout</span>
+          </motion.button>
 
           {/* Center: Glowing Title */}
           <motion.div
@@ -206,258 +138,104 @@ export function MainMenuScreen() {
             </h1>
           </motion.div>
 
-          {/* Right: Hardware Sync Badge */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <GlassCard className="px-4 py-2 border-2 border-[#00ff00]/40 bg-gradient-to-r from-[#00ff00]/10 to-[#00ff00]/5 shadow-[0_0_20px_rgba(0,255,0,0.4)]">
-              <div className="flex items-center gap-3">
-                {/* Pulsing Green Dot */}
-                <motion.div
-                  className="relative"
-                  animate={{
-                    scale: [1, 1.2, 1],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    type: 'tween',
-                  }}
-                >
-                  <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentcolor] ${
-                    isConnected ? 'bg-[#00ff00] text-[#00ff00]' : 
-                    isError ? 'bg-[#ff0000] text-[#ff0000]' : 
-                    'bg-[#888888] text-[#888888]'
-                  }`} />
-                  {/* Outer glow ring */}
-                  <motion.div
-                    className={`absolute inset-0 rounded-full border-2 ${
-                      isConnected ? 'border-[#00ff00]' : 
-                      isError ? 'border-[#ff0000]' : 
-                      'border-[#888888]'
-                    }`}
-                    animate={{
-                      scale: [1, 2, 1],
-                      opacity: [0.8, 0, 0.8],
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      type: 'tween',
-                    }}
-                  />
-                </motion.div>
-
-                {/* Badge Text */}
-                <div className="text-sm">
-                  <div className={`font-bold uppercase tracking-wider ${
-                    isConnected ? 'text-[#00ff00]' : 
-                    isError ? 'text-[#ff0000]' : 
-                    'text-white/60'
-                  }`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    ROCKY: {isConnected ? 'CONNECTED' : isError ? 'ERROR' : 'OFFLINE'}
-                  </div>
-                  <div className="text-white/40 text-xs uppercase tracking-wider">
-                    Hardware Synced
-                  </div>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
+          {/* Right: Hardware Sync Badge (Hidden for now as requested) */}
+          <div className="hidden">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {/* Former hardware sync GlassCard was here */}
+            </motion.div>
+          </div>
         </div>
       </motion.div>
 
-      {/* Main Content - Scrollable if needed */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
-        <div className="max-w-7xl mx-auto space-y-6">
+      {/* Main Content - Vertically Centered */}
+      <div className="flex-1 flex items-center justify-center px-6 pb-6 min-h-0">
+        <div className="max-w-7xl w-full mx-auto">
           {/* Game Mode Cards - Horizontal Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Global Tournament - Disabled */}
+            {/* Merged Cinema Card (Slots 1 & 2) */}
             <motion.div
+              className="lg:col-span-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
             >
-              <GlassCard className="p-6 relative h-full min-h-[520px]" disabled>
-                <div className="flex flex-col items-center text-center gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-[#ffff00]/10 flex items-center justify-center">
-                    <Trophy className="w-8 h-8 text-[#ffff00]" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl text-white/50 mb-2">Global Tournament</h3>
-                    <p className="text-sm text-white/30">Compete worldwide</p>
+              <GlassCard className="p-6 relative overflow-hidden h-full min-h-[520px]">
+                {/* Video Background */}
+                <div className="absolute inset-0 z-0">
+                  <video
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-full h-full object-cover"
+                  >
+                    <source src="/assets/reffer_menu.mp4" type="video/mp4" />
+                  </video>
+                  {/* Styling overlays */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/80 via-transparent to-[#0a0515]/40" />
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
+                </div>
+                
+                <div className="absolute bottom-12 left-12 right-12 z-20">
+                  <div className="flex flex-col gap-4">
+                    <p className="text-[#ffff00] text-3xl font-black italic tracking-widest uppercase [text-shadow:0_0_20px_#ffff0060]" style={{ fontFamily: "'Orbitron', sans-serif" }}>READY TO FIGHT?</p>
+                    <p className="text-white text-lg leading-relaxed uppercase tracking-[0.1em] max-w-2xl font-bold [text-shadow:0_2px_10px_rgba(0,0,0,0.8)]">Train against robots or challenge a real opponent</p>
                   </div>
                 </div>
-                {/* Coming Soon Badge */}
-                <div className="absolute top-4 right-4 px-3 py-1 bg-[#ffff00]/20 border border-[#ffff00] rounded-full">
-                  <span className="text-[#ffff00] text-xs uppercase tracking-wider">Coming Soon</span>
-                </div>
+
+                {/* Gradient vignette */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 pointer-events-none" />
               </GlassCard>
             </motion.div>
 
-            {/* Online 1v1 - Active */}
+            {/* Online 1v1 - Simplified (Slot 3) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <GlassCard 
-                className="p-6 relative overflow-hidden h-full flex flex-col min-h-[520px]" 
+                className="p-6 relative overflow-hidden h-full flex flex-col min-h-[520px] cursor-pointer group hover:scale-[1.02] transition-transform" 
+                onClick={() => navigate('/matchmaking', { state: { gameType: '1_round' } })}
               >
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0">
-                  <video
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="w-full h-full object-cover"
-                  >
+                  <video autoPlay muted loop playsInline className="w-full h-full object-cover">
                     <source src="/assets/1v1.mp4" type="video/mp4" />
                   </video>
-                  {/* Dark overlay for text readability */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center text-center gap-4 flex-1">
-                  <div className="w-16 h-16 rounded-xl bg-[#00f0ff]/20 flex items-center justify-center shadow-[0_0_20px_#00f0ff80] backdrop-blur-sm">
+                  <div className="w-16 h-16 rounded-xl bg-[#00f0ff]/20 flex items-center justify-center shadow-[0_0_20px_#00f0ff80] backdrop-blur-sm group-hover:shadow-[0_0_40px_#00f0ff]">
                     <Swords className="w-8 h-8 text-[#00f0ff]" />
                   </div>
                   <div>
-                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg">Online 1v1</h3>
-                    <p className="text-sm text-[#00f0ff] drop-shadow-lg font-bold">Real-time battles</p>
+                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Online 1v1</h3>
+                    <p className="text-sm text-[#00f0ff] drop-shadow-lg font-bold">1 Round Challenge</p>
                   </div>
                   
-                  <div className="mt-4 text-xs text-white/40 uppercase tracking-widest font-bold">Select Mode to Play</div>
-
-                  {/* Game Type Selection - Box Style triggers navigation */}
-                  <div className="flex gap-2 w-full mt-auto pt-6 border-t border-white/10">
-                    {[
-                      { id: '1_round', label: '1 Round', icon: <Zap className="w-5 h-5" />, color: '#00f0ff' },
-                      { id: '3_round', label: 'Best of 3', icon: <Trophy className="w-5 h-5" />, color: '#ff006e' },
-                      { id: '5_round', label: 'Best of 5', icon: <Swords className="w-5 h-5" />, color: '#ffff00' },
-                    ].map((type) => (
-                      <button
-                        key={type.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedGameType(type.id as any);
-                          navigate('/matchmaking', { state: { gameType: type.id } });
-                        }}
-                        className={`
-                          flex-1 h-[100px] flex flex-col items-center justify-center gap-2 px-1 rounded-xl border transition-all group/btn backdrop-blur-sm
-                          ${selectedGameType === type.id 
-                            ? `bg-opacity-40 border-opacity-100 shadow-[0_0_15px_rgba(0,240,255,0.4)]` 
-                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
-                          }
-                        `}
-                        style={{
-                          borderColor: selectedGameType === type.id ? type.color : undefined,
-                          color: selectedGameType === type.id ? type.color : undefined,
-                          backgroundColor: selectedGameType === type.id ? `${type.color}20` : undefined,
-                        }}
-                      >
-                        <div className={`transition-transform duration-300 group-hover/btn:scale-110 ${selectedGameType === type.id ? 'scale-110' : ''}`}>
-                          {type.icon}
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-tighter whitespace-nowrap">
-                          {type.label}
-                        </span>
-                      </button>
-                    ))}
+                  <div className="mt-auto w-full pt-6">
+                     <div className="px-6 py-4 bg-[#00f0ff]/10 border border-[#00f0ff]/30 rounded-xl group-hover:bg-[#00f0ff]/20 transition-colors text-center">
+                        <span className="text-sm text-[#00f0ff] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>FIND OPPONENT</span>
+                     </div>
                   </div>
                 </div>
               </GlassCard>
             </motion.div>
 
+            {/* Training Mode - Rebranded Boss Progression (Slot 4 - Color Red) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
             >
               <GlassCard 
-                className="p-6 h-full flex flex-col relative overflow-hidden min-h-[520px]" 
-              >
-                {/* Video Background */}
-                <div className="absolute inset-0 z-0">
-                  <video
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="w-full h-full object-cover"
-                  >
-                    <source src="/assets/training.mp4" type="video/mp4" />
-                  </video>
-                  {/* Dark overlay for text readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center text-center gap-4 flex-1">
-                  <div className="w-16 h-16 rounded-xl bg-[#ff006e]/20 flex items-center justify-center shadow-[0_0_20px_#ff006e80] backdrop-blur-sm">
-                    <Bot className="w-8 h-8 text-[#ff006e]" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg">Training Mode</h3>
-                    <p className="text-sm text-[#ff006e] drop-shadow-lg font-bold">Vs Computer</p>
-                  </div>
-
-                  <div className="mt-4 text-xs text-white/40 uppercase tracking-widest font-bold">Select Difficulty</div>
-                  
-                  {/* Difficulty Selection - Box Style */}
-                  <div className="flex gap-2 w-full mt-auto pt-6 border-t border-white/10">
-                    {[
-                      { id: 'easy', label: 'ROOKIE', icon: '🥉', color: '#00f0ff' },
-                      { id: 'medium', label: 'FIGHTER', icon: '🥈', color: '#ff006e' },
-                      { id: 'hard', label: 'MASTER', icon: '🥇', color: '#ffff00' },
-                    ].map((diff) => (
-                      <button
-                        key={diff.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/training');
-                        }}
-                        className={`
-                          flex-1 h-[100px] flex flex-col items-center justify-center gap-2 px-1 rounded-xl border transition-all group/btn backdrop-blur-sm
-                          bg-white/5 border-white/10 text-white/40 hover:bg-white/10
-                        `}
-                        style={{
-                          '--hover-color': diff.color,
-                        } as any}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = diff.color;
-                          e.currentTarget.style.color = diff.color;
-                          e.currentTarget.style.backgroundColor = `${diff.color}20`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '';
-                          e.currentTarget.style.color = '';
-                          e.currentTarget.style.backgroundColor = '';
-                        }}
-                      >
-                        <div className="text-2xl transition-transform duration-300 group-hover/btn:scale-110 leading-none">
-                          {diff.icon}
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-tighter">
-                          {diff.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
-
-            {/* Defeat the Robot */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-            >
-              <GlassCard 
-                className="p-6 h-full relative overflow-hidden min-h-[520px]" 
+                className="p-6 h-full relative overflow-hidden min-h-[520px] cursor-pointer group hover:scale-[1.02] transition-transform" 
                 onClick={() => navigate('/gauntlet')}
               >
                 {/* Video Background */}
@@ -470,19 +248,19 @@ export function MainMenuScreen() {
                     playsInline
                     className="w-full h-full object-cover"
                   />
-                  {/* Dark overlay for text readability */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center text-center gap-4 h-full">
-                  <div className="w-16 h-16 rounded-xl bg-[#ffff00]/20 flex items-center justify-center backdrop-blur-sm">
-                    <Zap className="w-8 h-8 text-[#ffff00]" />
+                  <div className="w-16 h-16 rounded-xl bg-[#ff006e]/20 flex items-center justify-center shadow-[0_0_20px_#ff006e80] backdrop-blur-sm group-hover:shadow-[0_0_40px_#ff006e]">
+                    <Bot className="w-8 h-8 text-[#ff006e]" />
                   </div>
                   <div>
-                    <h3 className="text-xl text-white mb-2 drop-shadow-lg">Defeat the Robot</h3>
-                    <p className="text-sm text-[#ffff00] drop-shadow-lg">Boss progression</p>
+                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Training Mode</h3>
+                    <p className="text-sm text-[#ff006e] drop-shadow-lg font-bold uppercase italic">Vs Computer</p>
                   </div>
-                            {/* Progression Pyramid */}
+                  
+                  {/* Progression Pyramid - Theme Red */}
                   <div className="mt-auto pt-4 border-t border-white/10 w-full">
                     <div className="flex flex-col items-center gap-2">
                       {[...Array(PROGRESSION_LEVELS)].map((_, index) => {
@@ -499,16 +277,16 @@ export function MainMenuScreen() {
                               h-6 rounded flex items-center justify-center text-xs
                               transition-all duration-300
                               ${isCompleted 
-                                ? 'bg-[#ffff00]/30 border border-[#ffff00]' 
+                                ? 'bg-[#ff006e]/30 border border-[#ff006e]' 
                                 : isCurrent
-                                ? 'bg-[#ffff00]/50 border-2 border-[#ffff00] animate-pulse'
+                                ? 'bg-[#ff006e]/50 border-2 border-[#ff006e] animate-pulse'
                                 : 'bg-white/5 border border-white/10'
                               }
                             `}
                             style={{ width: `${width}%` }}
                           >
-                            {index === 0 && <span className="text-[#ffff00] drop-shadow-lg">👑 BOSS</span>}
-                            {isCurrent && <span className="text-[#ffff00]">⚡</span>}
+                            {index === 0 && <span className="text-[#ff006e] drop-shadow-lg font-bold">👑 BOSS</span>}
+                            {isCurrent && <span className="text-[#ff006e]">⚡</span>}
                           </div>
                         );
                       })}
@@ -516,7 +294,7 @@ export function MainMenuScreen() {
                     <p className="text-center text-xs text-white/60 mt-3 drop-shadow-lg">
                       {playerData?.gauntlet_progress && playerData.gauntlet_progress > 5 
                         ? 'Gauntlet Conquered! 🏆' 
-                        : `Level ${playerData?.gauntlet_progress || 1}/5 • ${5 - (playerData?.gauntlet_progress || 1)} to Boss`}
+                        : `Progress: Level ${playerData?.gauntlet_progress || 1}/5`}
                     </p>
                   </div>
                 </div>
@@ -524,28 +302,6 @@ export function MainMenuScreen() {
             </motion.div>
           </div>
 
-          {/* Footer Navigation */}
-          <motion.div
-            className="pt-4 flex justify-center gap-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-          >
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className="text-white/40 hover:text-[#ff006e] transition-colors text-sm uppercase tracking-wider flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4" /> Logout
-            </button>
-
-            <span className="text-white/30">|</span>
-            <button
-              onClick={() => navigate('/leaderboard')}
-              className="text-white/60 hover:text-[#ffd700] transition-colors text-sm uppercase tracking-wider"
-            >
-              Leaderboard 🏆
-            </button>
-          </motion.div>
         </div>
       </div>
 
