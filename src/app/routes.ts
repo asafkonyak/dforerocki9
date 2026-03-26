@@ -26,7 +26,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: ThemeSelector,
   },
-  // Cyberpunk themed routes
+  // Cyberpunk themed routes 
   {
     path: "/cyber",
     Component: WelcomeScreen,
