@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 
 import { useSocket } from '../../contexts/SocketContext';
 import { SUGGESTED_NAMES } from '../data/suggestedNames';
+import { CameraFeed } from '../components/CameraFeed';
 
 const CHARACTER_AVATARS = Array.from({ length: 24 }, (_, i) => `/assets/avatars/cyber_${i + 1}.png`);
 
@@ -42,27 +43,7 @@ export function OnboardingScreen() {
     [...SUGGESTED_NAMES].sort(() => Math.random() - 0.5).slice(0, 3)
   );
 
-  // Auto-start camera on mount
-  useEffect(() => {
-    const initCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.error("Camera access denied or unavailable", err);
-      }
-    };
-    initCamera();
-
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
+  // Camera is now handled by the CameraFeed component
 
   // Camera countdown effect
   const startCameraCountdown = () => {
@@ -476,14 +457,9 @@ export function OnboardingScreen() {
                       <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] ml-1">TAKE A PHOTO</p>
                       <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-white/10 bg-black/60 shadow-inner group/camera">
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className={`w-full h-full object-cover transition-opacity duration-700 ${(selectedAvatar === 0 && photoDataUrl && cameraCountdown === null) ? 'opacity-20' : 'opacity-100'}`}
-                          />
-                          {selectedAvatar === 0 && photoDataUrl && cameraCountdown === null && (
+                          {!photoDataUrl || cameraCountdown !== null ? (
+                            <CameraFeed ref={videoRef} className="w-full h-full" />
+                          ) : (
                             <motion.img 
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -492,13 +468,6 @@ export function OnboardingScreen() {
                               className="absolute inset-0 w-full h-full object-cover z-10" 
                             />
                           )}
-                          
-                          {/* Scan Line Animation */}
-                          <motion.div 
-                            className="absolute inset-x-0 h-[2px] bg-[#ff006e] z-30 shadow-[0_0_15px_#ff006e]"
-                            animate={{ top: ['0%', '100%', '0%'] }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                          />
                           
                           {/* Countdown (No Blur) */}
                           {cameraCountdown !== null && (
@@ -512,13 +481,6 @@ export function OnboardingScreen() {
                               >
                                 {cameraCountdown}
                               </motion.span>
-                            </div>
-                          )}
-
-                          {/* Face Target Reticle (Only when no photo and no countdown) */}
-                          {!photoDataUrl && cameraCountdown === null && (
-                            <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none opacity-40">
-                              <Focus className="w-24 h-24 text-white animate-pulse" />
                             </div>
                           )}
 

@@ -236,7 +236,7 @@ export function MainMenuScreen() {
             >
               <GlassCard 
                 className="p-6 h-full relative overflow-hidden min-h-[520px] cursor-pointer group hover:scale-[1.02] transition-transform" 
-                onClick={() => navigate('/gauntlet')}
+                onClick={() => navigate('/practice')}
               >
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0">
@@ -292,9 +292,9 @@ export function MainMenuScreen() {
                       })}
                     </div>
                     <p className="text-center text-xs text-white/60 mt-3 drop-shadow-lg">
-                      {playerData?.gauntlet_progress && playerData.gauntlet_progress > 5 
-                        ? 'Gauntlet Conquered! 🏆' 
-                        : `Progress: Level ${playerData?.gauntlet_progress || 1}/5`}
+                      {playerData?.gauntlet_progress && playerData.gauntlet_progress > 3 
+                        ? 'Practice Conquered! 🏆' 
+                        : `Progress: Level ${playerData?.gauntlet_progress || 1}/3`}
                     </p>
                   </div>
                 </div>

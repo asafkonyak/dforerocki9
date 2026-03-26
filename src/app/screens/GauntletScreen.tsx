@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
-import { Lock, Skull, Zap, AlertTriangle, ChevronRight, Sparkles, ArrowLeft, Trophy } from 'lucide-react';
+import { Lock, Skull, Zap, AlertTriangle, ChevronRight, Sparkles, ArrowLeft, Trophy, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useGlobalAudio } from '../../contexts/AudioContext';
 import { useSocket } from '../../contexts/SocketContext';
@@ -110,62 +110,40 @@ export function GauntletScreen() {
   useEffect(() => {
     if (loading) return;
     const timer = setTimeout(() => {
-      // If stage is 3, progress is between node 2 and 3. Max stages 5.
-      // So path lengths: 1-2, 2-3, 3-4, 4-5. 
-      // We fill path lines based on progress.
       setPathProgress(100);
     }, 500);
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // Raw Stages data
   const baseStages = [
     {
       id: 1,
       name: 'STAGE 01',
       robot: '🤖',
       image: '/assets/robots/stage1.jpg',
-      difficulty: 'Easy',
-      description: 'TRAINING DROID',
+      difficulty: 'Warm Up',
+      description: 'CALIBRATION PROTOCOL',
     },
     {
       id: 2,
       name: 'STAGE 02',
       robot: '🦾',
       image: '/assets/robots/stage2.png',
-      difficulty: 'Medium',
-      description: 'MECH BRAWLER',
+      difficulty: 'Endurance',
+      description: 'LIMIT BREAKER',
     },
     {
       id: 3,
-      name: 'STAGE 03',
-      robot: '⚙️',
-      image: '/assets/robots/stage3.jpg',
-      difficulty: 'Hard',
-      description: 'STEEL ASSASSIN',
-    },
-    {
-      id: 4,
-      name: 'STAGE 04',
-      robot: '🔥',
-      image: '/assets/robots/stage4.jpg',
-      difficulty: 'Extreme',
-      description: 'CRUSHER X-9000',
-    },
-    {
-      id: 5,
-      name: 'FINAL BOSS',
+      name: 'FINAL STAGE',
       robot: '💀',
-      image: '/assets/robots/stage5.png',
-      difficulty: 'LETHAL',
-      description: 'ANNIHILATOR PRIME',
+      image: '/assets/robots/stage3.jpg',
+      difficulty: 'Mastery',
+      description: 'ARENA OVERLORD',
     },
   ];
 
-  // Map status dynamically based on DB progress
   const stages = baseStages.map(stage => {
     let status = 'locked';
-    // If progress is 6, all 5 are cleared
     if (stage.id < gauntletProgress || gauntletProgress > 5) {
       status = 'cleared';
     } else if (stage.id === gauntletProgress) {
@@ -174,11 +152,9 @@ export function GauntletScreen() {
     return { ...stage, status, cleared: status === 'cleared' };
   });
 
-  // Find current active stage for the bottom panel
-  const activeStageIndex = Math.min(gauntletProgress - 1, 4);
+  const activeStageIndex = Math.min(gauntletProgress - 1, 2);
   const activeStage = baseStages[activeStageIndex];
 
-  // Generate glass fragments for shatter effect
   const generateFragments = (count: number) => {
     return Array.from({ length: count }, (_, i) => ({
       id: i,
@@ -194,7 +170,6 @@ export function GauntletScreen() {
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Handle progress reset
   const handleResetProgress = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -221,6 +196,7 @@ export function GauntletScreen() {
       alert('Failed to reset progress. Please try again.');
     }
   };
+
   const getStagePower = (stage: number) => {
     switch(stage) {
       case 1: return 7;
@@ -233,28 +209,17 @@ export function GauntletScreen() {
   };
 
   const handleInitiateBattle = () => {
-    setShowRefereeVideo(true);
-    const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
-    let initValue = getStagePower(activeStage.id);
-    if (playerHand && playerHand.toLowerCase() === 'left') {
-      initValue = -initValue;
-    }
-
-    console.log(`[Gauntlet] Initiating battle with INIT: ${initValue}, HAND: ${playerHand}`);
-
-    sendMessage({
-      cmd: {
-        INIT: initValue,
-        HAND: playerHand,
-        PLAYER_ID: myPlayerId
+    navigate('/pregame', {
+      state: {
+        stageNumber: activeStage.id,
+        stageName: activeStage.description,
+        hand: playerHand
       }
     });
   };
 
   const handleVideoEnd = () => {
     setShowRefereeVideo(false);
-    
-    console.log('[Gauntlet] Sending SINGLE_PLAYER_START command now...');
     sendMessage({
       cmd: {
         SINGLE_PLAYER_START: 0
@@ -288,11 +253,25 @@ export function GauntletScreen() {
         }, 1000);
       }
     }
-  }, [lastMessage, navigate, activeStage]);
+  }, [lastMessage, navigate, activeStage, playerHand]);
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
-      {/* Referee Video Overlay - Full Screen */}
+      {/* Referee Video Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <video
+          src="/assets/referee_practice.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-[#0a0515]/20" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0515]/60 via-transparent to-[#0a0515]/40" />
+      </div>
+
       <AnimatePresence>
         {showRefereeVideo && (
           <motion.div 
@@ -308,21 +287,10 @@ export function GauntletScreen() {
               onEnded={handleVideoEnd}
               className="w-full h-full object-cover"
             />
-            <button 
-              onClick={handleVideoEnd}
-              className="absolute top-10 right-10 text-white/40 hover:text-white uppercase text-xs tracking-[.3em] font-bold z-[110]"
-            >
-              Skip Intro
-            </button>
-            <div className="absolute top-10 left-10 flex items-center gap-2 px-3 py-1 bg-red-600 rounded-full z-[110]">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              <span className="text-white text-xs uppercase font-bold tracking-widest">Live Referee</span>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Socket Countdown Overlay */}
       <AnimatePresence>
         {countdown !== null && (
           <motion.div 
@@ -353,7 +321,7 @@ export function GauntletScreen() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Custom Confirmation Modal */}
+
       <AnimatePresence>
         {showResetConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
@@ -381,7 +349,7 @@ export function GauntletScreen() {
                       RESET PROGRESS?
                     </h2>
                     <p className="text-white/60">
-                      This will reset your Gauntlet progress to Stage 1.
+                      This will reset your Practice progress to Stage 1.
                       <br />
                       <span className="text-[#ff006e] font-bold">This action cannot be undone.</span>
                     </p>
@@ -411,68 +379,7 @@ export function GauntletScreen() {
           </div>
         )}
       </AnimatePresence>
-      {/* Animated Background Gradient */}
-      <div className="absolute inset-0">
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-[#00f0ff]/10 via-[#0a0515] to-[#ff006e]/10"
-          animate={{
-            opacity: [0.5, 0.8, 0.5],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            type: 'tween',
-          }}
-        />
 
-        {/* Dynamic energy blobs */}
-        <motion.div
-          className="absolute w-96 h-96 bg-[#00f0ff] rounded-full blur-[120px]"
-          animate={{
-            x: ['-10%', '10%', '-10%'],
-            y: ['0%', '20%', '0%'],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            type: 'tween',
-          }}
-          style={{ top: '20%', left: '10%' }}
-        />
-
-        <motion.div
-          className="absolute w-96 h-96 bg-[#ff006e] rounded-full blur-[120px]"
-          animate={{
-            x: ['10%', '-10%', '10%'],
-            y: ['0%', '-20%', '0%'],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            type: 'tween',
-            delay: 1,
-          }}
-          style={{ bottom: '20%', right: '10%' }}
-        />
-
-        <motion.div
-          className="absolute w-96 h-96 bg-[#ffaa00] rounded-full blur-[120px]"
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.1, 0.3, 0.1],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            type: 'tween',
-          }}
-          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
-        />
-      </div>
-
-      {/* Grid overlay */}
       <div
         className="absolute inset-0 opacity-5"
         style={{
@@ -484,10 +391,8 @@ export function GauntletScreen() {
         }}
       />
 
-      {/* Header */}
       <div className="relative z-10 py-8 px-6 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Left: Redo Button */}
           <div className="flex items-center gap-4">
             <motion.button
               onClick={() => navigate('/menu')}
@@ -496,107 +401,64 @@ export function GauntletScreen() {
               whileTap={{ scale: 0.95 }}
             >
               <ArrowLeft className="w-5 h-5 text-[#00f0ff]" />
-              <span className="text-white/60 text-sm uppercase tracking-wider">Back</span>
+              <span className="text-white/60 text-sm uppercase tracking-wider">Back to Menu</span>
             </motion.button>
 
             <motion.button
               onClick={() => setShowResetConfirm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#ff006e]/10 border border-[#ff006e]/30 rounded-lg hover:bg-[#ff006e]/20 hover:border-[#ff006e]/50 transition-all z-20"
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all z-20 group"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Zap className="w-5 h-5 text-[#ff006e]" />
-              <span className="text-[#ff006e]/80 text-sm uppercase tracking-wider font-bold">Redo</span>
+              <RotateCcw className="w-5 h-5 text-white/40 group-hover:rotate-180 transition-transform duration-500" />
+              <span className="text-white/60 text-sm uppercase tracking-wider font-bold">RESET</span>
             </motion.button>
           </div>
 
-          {/* Center: Glowing Title */}
           <motion.div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            animate={{
+              textShadow: [
+                '0 0 20px rgba(0, 240, 255, 0.6)',
+                '0 0 40px rgba(0, 240, 255, 0.8)',
+                '0 0 20px rgba(0, 240, 255, 0.6)',
+              ],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              type: 'tween',
+            }}
           >
-            <motion.h1
-              className="text-4xl font-bold"
-              style={{
-                fontFamily: "'Orbitron', sans-serif",
-                background: 'linear-gradient(to right, #00f0ff, #ffaa00, #ff006e)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 20px rgba(0, 240, 255, 0.4)',
-              }}
-              animate={{
-                textShadow: [
-                  '0 0 20px rgba(0, 240, 255, 0.4)',
-                  '0 0 40px rgba(255, 170, 0, 0.6)',
-                  '0 0 20px rgba(0, 240, 255, 0.4)',
-                ],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                type: 'tween',
-              }}
+            <h1 
+              className="text-5xl font-black italic tracking-tight text-[#00f0ff] mb-1"
+              style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
-              THE GAUNTLET: SURVIVE 5 STAGES
-            </motion.h1>
-            <p className="text-white/40 uppercase tracking-widest text-[10px] mt-1">
-              Defeat All Robots to Claim Victory
+              PRACTICE MODE
+            </h1>
+            <p className="text-white/40 font-bold uppercase tracking-[0.4em] text-[10px]">
+              ELEVATE YOUR COMBAT DATA
             </p>
           </motion.div>
 
-          {/* Spacer for right side symmetry */}
           <div className="w-32" />
         </div>
       </div>
 
-      {/* Main Content - Progression Path */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-12 min-h-0">
-        <div className="w-full max-w-7xl">
+      <div className="relative z-10 flex-1 flex items-end justify-end pr-24 pb-24 min-h-0">
+        <div className="w-full max-w-sm">
           <div className="relative">
-            {/* Connection Lines Container */}
-            <div className="absolute top-1/2 left-0 right-0 h-1 -translate-y-1/2 flex items-center justify-between px-24">
-              {[1, 2, 3, 4].map((lineIndex) => {
-                const isCleared = lineIndex < gauntletProgress;
-                const isAnimating = lineIndex === gauntletProgress - 1 && gauntletProgress <= 5;
+            <div className="flex flex-col-reverse items-center justify-between min-h-[500px] relative">
+              <div className="absolute left-1/2 -translate-x-1/2 top-10 bottom-10 w-1 bg-white/5 overflow-hidden">
+                <motion.div 
+                  className="absolute bottom-0 left-0 right-0 bg-[#00f0ff] shadow-[0_0_15px_#00f0ff]"
+                  initial={{ height: '0%' }}
+                  animate={{ height: `${(gauntletProgress / 3) * 100}%` }}
+                />
+              </div>
 
-                if (isCleared) {
-                  return (
-                    <div key={lineIndex} className="flex-1 h-1 bg-gradient-to-r from-[#00f0ff] to-[#00f0ff] shadow-[0_0_10px_#00f0ff] mx-4" />
-                  );
-                }
-
-                if (isAnimating) {
-                  return (
-                    <div key={lineIndex} className="flex-1 relative mx-4 h-1 bg-white/10">
-                      <motion.div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#00f0ff] to-[#ffaa00] shadow-[0_0_20px_#ffaa00]"
-                        initial={{ width: '0%' }}
-                        animate={{ width: `${pathProgress}%` }}
-                        transition={{ duration: 1.5, ease: 'easeInOut' }}
-                      />
-                      {pathProgress < 100 && (
-                        <motion.div
-                          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#ffaa00] shadow-[0_0_15px_#ffaa00]"
-                          style={{ left: `${pathProgress}%` }}
-                          animate={{ scale: [1, 1.5, 1], opacity: [1, 0.6, 1] }}
-                          transition={{ duration: 0.5, repeat: Infinity, type: 'tween' }}
-                        />
-                      )}
-                    </div>
-                  );
-                }
-
-                // Locked Line
-                return <div key={lineIndex} className="flex-1 h-1 bg-white/10 mx-4" />
-              })}
-            </div>
-
-            {/* Nodes */}
-            <div className="flex items-center justify-between relative">
               {stages.map((stage, index) => {
-                const isBoss = stage.id === 5;
+                const isBoss = stage.id === 3;
                 const isUnlocking = stage.status === 'unlocking';
                 const isCleared = stage.status === 'cleared';
                 const isLocked = stage.status === 'locked';
@@ -610,18 +472,16 @@ export function GauntletScreen() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: index * 0.2, duration: 0.5 }}
                   >
-                    {/* Cleared Nodes */}
                     {isCleared && (
                       <motion.div
                         className="relative"
                         whileHover={{ scale: 1.1 }}
                       >
-                        {/* Lit Glow Effect for Cleared Stages */}
                         <motion.div
-                          className="absolute inset-0 rounded-xl bg-[#00f0ff]/20 blur-xl"
+                          className="absolute inset-0 rounded-full bg-[#00f0ff]/20 blur-2xl"
                           animate={{
-                            scale: [1, 1.2, 1],
-                            opacity: [0.5, 0.8, 0.5],
+                            scale: [1, 1.3, 1],
+                            opacity: [0.3, 0.6, 0.3],
                           }}
                           transition={{
                             duration: 2,
@@ -629,53 +489,42 @@ export function GauntletScreen() {
                           }}
                         />
 
-                        <GlassCard className="w-32 h-32 border-2 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/30 to-[#00f0ff]/10 shadow-[0_0_40px_rgba(0,240,255,0.8)] flex items-center justify-center relative overflow-hidden">
-                          {/* Inner light pulse */}
+                        <div className="w-40 h-40 rounded-full border-4 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group">
                           <motion.div
-                            className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/20 to-transparent"
-                            animate={{
-                              opacity: [0.3, 0.6, 0.3],
-                            }}
-                            transition={{
-                              duration: 1.5,
-                              repeat: Infinity,
-                            }}
+                            className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/30 to-transparent"
+                            animate={{ opacity: [0.2, 0.5, 0.2] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
                           />
 
-                          {/* Robot Image (Lit) */}
                           <img
                             src={stage.image}
                             alt={stage.name}
-                            className="w-full h-full object-cover opacity-80 drop-shadow-[0_0_10px_#00f0ff]"
+                            className="w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-500"
                           />
 
-                          {/* Checkmark badge */}
-                          <div className="absolute top-2 right-2 w-6 h-6 bg-[#00f0ff] rounded-full flex items-center justify-center shadow-[0_0_15px_#00f0ff]">
-                            <span className="text-black font-bold text-xs">✓</span>
+                          <div className="absolute top-2 right-2 w-10 h-10 bg-[#00f0ff] rounded-full flex items-center justify-center shadow-[0_0_20px_#00f0ff] z-10 border-2 border-[#0a0515]">
+                            <span className="text-black font-black text-sm">✓</span>
                           </div>
-                        </GlassCard>
+                        </div>
 
-                        {/* Label */}
                         <div className="text-center mt-3">
-                          <p className="text-[#00f0ff] text-sm font-bold drop-shadow-[0_0_5px_#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                          <p className="text-[#00f0ff] text-base font-bold drop-shadow-[0_0_10px_#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                             {stage.name}
                           </p>
-                          <p className="text-white/60 text-[10px] uppercase font-bold tracking-tighter">SUCCESS</p>
+                          <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">SUCCESS</p>
                         </div>
                       </motion.div>
                     )}
 
-                    {/* Unlocking Node (Current Stage) */}
                     {isUnlocking && (
                       <div className="relative">
-                        {/* Glass Fragments Shatter Animation */}
                         <AnimatePresence>
                           {showUnlockAnimation && fragments.map((fragment) => (
                             <motion.div
                               key={fragment.id}
-                              className="absolute top-1/2 left-1/2 w-6 h-6 bg-gradient-to-br from-[#ffaa00] to-[#ff006e] rounded-sm"
+                              className="absolute top-1/2 left-1/2 w-8 h-8 bg-gradient-to-br from-[#ffaa00] to-[#ff006e] rounded-sm"
                               style={{
-                                boxShadow: '0 0 15px rgba(255, 170, 0, 0.8)',
+                                boxShadow: '0 0 20px rgba(255, 170, 0, 0.8)',
                               }}
                               initial={{
                                 x: 0,
@@ -701,7 +550,6 @@ export function GauntletScreen() {
                           ))}
                         </AnimatePresence>
 
-                        {/* Shattering Padlock (fades out) */}
                         {showUnlockAnimation && (
                           <motion.div
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
@@ -714,146 +562,78 @@ export function GauntletScreen() {
                             transition={{ duration: 1 }}
                             onAnimationComplete={() => setShowUnlockAnimation(false)}
                           >
-                            <Lock className="w-20 h-20 text-[#ffaa00]" strokeWidth={2} />
+                            <Lock className="w-24 h-24 text-[#ffaa00]" strokeWidth={2} />
                           </motion.div>
                         )}
 
-                        {/* Unlocking Card - Scales up and pops forward */}
                         <motion.div
+                          className="w-56 h-56 rounded-full border-4 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer"
                           initial={{ scale: 0.5, opacity: 0 }}
-                          animate={{
-                            scale: 1.1,
-                            opacity: 1,
-                          }}
-                          transition={{
-                            delay: 0.8,
-                            duration: 0.6,
-                            type: 'spring',
-                            stiffness: 200,
-                          }}
+                          animate={{ scale: 1.1, opacity: 1 }}
                           whileHover={{ scale: 1.15 }}
                         >
-                          <GlassCard className="w-40 h-40 border-4 border-[#ffaa00] bg-gradient-to-br from-[#ffaa00]/30 to-[#ff006e]/20 shadow-[0_0_60px_rgba(255,170,0,1)] flex items-center justify-center relative overflow-hidden cursor-pointer">
-                            {/* Bright flash effect */}
-                            <motion.div
-                              className="absolute inset-0 bg-gradient-to-br from-[#ffaa00] to-transparent"
-                              initial={{ opacity: 0 }}
-                              animate={{
-                                opacity: [0, 1, 0],
-                              }}
-                              transition={{
-                                duration: 0.8,
-                                delay: 0.8,
-                                type: 'tween',
-                              }}
-                            />
-
-                            {/* Radiating rings */}
-                            <motion.div
-                              className="absolute inset-0 border-4 border-[#ffaa00] rounded-xl"
-                              animate={{
-                                scale: [1, 1.5, 1],
-                                opacity: [0.8, 0, 0.8],
-                              }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                type: 'tween',
-                              }}
-                            />
-
-                            {/* Robot Image */}
-                            <div className="relative z-10 w-full h-full">
-                              <motion.img
-                                src={stage.image}
-                                alt={stage.name}
-                                className="w-full h-full object-cover"
-                                animate={{
-                                  scale: [1, 1.05, 1],
-                                }}
-                                transition={{
-                                  duration: 3,
-                                  repeat: Infinity,
-                                  ease: "easeInOut"
-                                }}
-                              />
-                            </div>
-
-                            {/* "ACTIVE" badge */}
-                            <motion.div
-                              className="absolute top-2 right-2 px-3 py-1 bg-[#ffaa00] rounded-full shadow-[0_0_10px_#ffaa00]"
-                              animate={{
-                                scale: [1, 1.1, 1],
-                              }}
-                              transition={{
-                                duration: 1,
-                                repeat: Infinity,
-                                type: 'tween',
-                              }}
-                            >
-                              <span className="text-black text-[10px] font-bold uppercase tracking-tighter">Current</span>
-                            </motion.div>
-                          </GlassCard>
-                        </motion.div>
-
-                        {/* Label */}
-                        <motion.div
-                          className="text-center mt-4"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 1.2 }}
-                        >
-                          <p className="text-[#ffaa00] text-base font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                            {stage.name}
-                          </p>
-                          <p className="text-white text-sm font-bold mt-1">{stage.description}</p>
-                          <motion.p
-                            className="text-[#ffaa00] text-xs uppercase mt-1 font-bold"
-                            animate={{
-                              opacity: [0.6, 1, 0.6],
-                            }}
-                            transition={{
-                              duration: 1.5,
-                              repeat: Infinity,
-                              type: 'tween',
-                            }}
-                          >
-                            SELECT MISSION
-                          </motion.p>
-                        </motion.div>
-                      </div>
-                    )}
-
-                    {/* Locked Node */}
-                    {isLocked && (
-                      <motion.div
-                        className="relative"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        <GlassCard className={`w-32 h-32 border-2 border-white/5 bg-black/40 shadow-none flex items-center justify-center relative overflow-hidden grayscale opacity-40`}>
-                          {/* Locked overlay */}
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                            <Lock className="w-12 h-12 text-white/40" strokeWidth={1.5} />
-                          </div>
-
-                          {/* Robot Image (dimmed) */}
+                          <motion.div
+                            className="absolute inset-0 bg-white/10"
+                            animate={{ opacity: [0, 0.2, 0] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
                           <img
                             src={stage.image}
                             alt={stage.name}
                             className="w-full h-full object-cover"
                           />
-                        </GlassCard>
+                        </motion.div>
 
-                        {/* Label */}
-                        <div className="text-center mt-4 opacity-30">
-                          <p className="text-white text-xs font-bold" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                        {isUnlocking && !showUnlockAnimation && (
+                          <motion.div
+                            className="absolute right-[calc(100%+4rem)] top-1/2 -translate-y-1/2 whitespace-nowrap"
+                            initial={{ opacity: 0, x: 50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 1 }}
+                          >
+                            <motion.button
+                              onClick={handleInitiateBattle}
+                              className="px-12 py-6 bg-[#ffff00] text-black font-black italic rounded-2xl shadow-[0_0_50px_rgba(255,255,0,0.6)] hover:scale-105 transition-all flex items-center gap-5 relative overflow-hidden group"
+                            >
+                              <div className="absolute inset-0 bg-white/40 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                              <Zap className="w-8 h-8 fill-current" />
+                              <span className="text-3xl tracking-tighter uppercase">Engage Target</span>
+                              <ChevronRight className="w-8 h-8" />
+                            </motion.button>
+                          </motion.div>
+                        )}
+
+                        <motion.div
+                          className="text-center mt-6"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 1.2 }}
+                        >
+                          <p className="text-[#ffff00] text-xl font-bold drop-shadow-[0_0_15px_rgba(255,255,0,0.5)]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                             {stage.name}
                           </p>
-                          <p className="text-white/40 text-[10px] uppercase mt-1 flex items-center justify-center gap-1 font-bold">
-                            ENCRYPTED
+                          <p className="text-white text-xs uppercase font-bold tracking-[0.3em] mt-1">{stage.description}</p>
+                        </motion.div>
+                      </div>
+                    )}
+
+                    {isLocked && (
+                      <div className="relative">
+                        <div className="w-32 h-32 rounded-full border-2 border-white/10 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-30">
+                          <Lock className="w-10 h-10 text-white/20" strokeWidth={1.5} />
+                          <img
+                            src={stage.image}
+                            alt={stage.name}
+                            className="w-full h-full object-cover opacity-20"
+                          />
+                        </div>
+
+                        <div className="text-center mt-3 opacity-20">
+                          <p className="text-white text-xs font-bold uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                            {stage.name}
                           </p>
                         </div>
-                      </motion.div>
+                      </div>
                     )}
                   </motion.div>
                 );
@@ -861,169 +641,6 @@ export function GauntletScreen() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Action Panel */}
-      <div className="relative z-10 p-6 flex-shrink-0">
-        <motion.div
-          className="max-w-4xl mx-auto"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.5, duration: 0.6 }}
-        >
-          {gauntletProgress > 5 ? (
-            <GlassCard className="p-8 border-4 border-[#ffaa00] bg-gradient-to-br from-[#ffaa00]/20 to-[#0a0515] shadow-[0_0_60px_rgba(255,170,0,0.6)] text-center relative overflow-hidden">
-              {/* Animated scanning lines */}
-              <motion.div
-                className="absolute inset-0 opacity-20 pointer-events-none"
-                style={{
-                  backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #ffaa00 2px, #ffaa00 4px)',
-                  backgroundSize: '100% 4px'
-                }}
-                animate={{
-                  backgroundPositionY: ['0px', '40px']
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'linear'
-                }}
-              />
-
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={{ scale: [0.9, 1, 0.9] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <div className="flex justify-center mb-4">
-                  <div className="p-4 bg-[#ffaa00] rounded-full shadow-[0_0_30px_#ffaa00]">
-                    <Trophy className="w-12 h-12 text-black" />
-                  </div>
-                </div>
-                <h3 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                  GAUNTLET CONQUERED
-                </h3>
-                <p className="text-[#ffaa00] uppercase tracking-[0.3em] font-bold text-lg mb-4">
-                  Ultimate Victor Confirmed
-                </p>
-                <div className="h-px w-full bg-gradient-to-r from-transparent via-[#ffaa00] to-transparent mb-6" />
-                <p className="text-white/80 text-xl font-bold italic">
-                  "NEW CHALLENGE ON THE WAY..."
-                </p>
-              </motion.div>
-            </GlassCard>
-          ) : (
-            <GlassCard className="p-6 border-2 border-[#00f0ff] bg-gradient-to-r from-[#00f0ff]/10 to-[#ffaa00]/10 shadow-[0_0_40px_rgba(0,240,255,0.6)]">
-              <div className="flex items-center justify-between gap-6">
-                {/* Stage Info */}
-                <div className="flex items-center gap-6">
-                  <div className={`w-32 h-32 rounded-xl flex items-center justify-center overflow-hidden
-                    ${activeStage.id === 5
-                      ? 'bg-gradient-to-br from-[#ff006e] to-black shadow-[0_0_30px_rgba(255,0,110,0.8)] border-2 border-[#ff006e]'
-                      : 'bg-gradient-to-br from-[#ffaa00] to-[#ff006e] shadow-[0_0_20px_rgba(255,170,0,0.8)] border-2 border-[#ffaa00]'}`}
-                  >
-                    <video
-                      key={activeStage.id}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover scale-110"
-                    >
-                      <source
-                        src={
-                          activeStage.id === 1 ? '/assets/robots/stage1_prefight.mp4' :
-                            activeStage.id === 2 ? '/assets/robots/stage2_prefight.mp4' :
-                              activeStage.id === 3 ? '/assets/robots/stage3.mp4' :
-                                activeStage.id === 4 ? '/assets/robots/stage4.mp4' :
-                                  activeStage.id === 5 ? '/assets/robots/stage5_prefight.mp4' :
-                                    '/assets/training.mp4'
-                        }
-                        type="video/mp4"
-                      />
-                    </video>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <p className="text-[#ffaa00] text-sm font-bold tracking-[0.2em] uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                      {activeStage.name}
-                    </p>
-                    <h3 className="text-3xl font-black text-white italic tracking-tighter" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                      {activeStage.name}: {activeStage.description}
-                    </h3>
-
-                    <div className="flex flex-col gap-2 mt-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white/40 text-xs uppercase tracking-widest font-bold">Difficulty:</span>
-                        <span className={`${activeStage.id === 5 ? 'text-[#ff006e]' : 'text-[#ffaa00]'} font-bold uppercase text-sm tracking-wider`}>
-                          {activeStage.difficulty}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white/40 text-xs uppercase tracking-widest font-bold">Reward:</span>
-                        <span className="text-[#00f0ff] font-bold text-sm">+{activeStage.id * 200} XP</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA Button */}
-                <motion.button
-                  className="group relative overflow-hidden shrink-0 transform-gpu"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleInitiateBattle}
-                >
-                  <GlassCard className="px-12 py-8 border-4 border-[#00f0ff] bg-gradient-to-r from-[#00f0ff]/30 to-[#00f0ff]/10 shadow-[0_0_40px_rgba(0,240,255,0.8)]">
-                    {/* Animated background sweep */}
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00f0ff]/40 to-transparent"
-                      animate={{
-                        x: ['-100%', '200%'],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: 'linear',
-                        type: 'tween',
-                      }}
-                    />
-
-                    <div className="relative flex flex-col items-center gap-1">
-                      <span
-                        className="text-3xl font-black text-white italic"
-                        style={{
-                          fontFamily: "'Orbitron', sans-serif",
-                          textShadow: '0 0 20px rgba(0, 240, 255, 1)',
-                        }}
-                      >
-                        ENGAGE TARGET
-                      </span>
-                      <div className="flex items-center gap-2 text-[#00f0ff]">
-                        <span className="text-[10px] font-bold tracking-[0.5em] uppercase">Initialize Battle</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </GlassCard>
-
-                  {/* Pulsing outer ring */}
-                  <motion.div
-                    className="absolute inset-0 border-4 border-[#00f0ff] rounded-2xl"
-                    animate={{
-                      scale: [1, 1.1, 1],
-                      opacity: [0.5, 0, 0.5],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      type: 'tween',
-                    }}
-                  />
-                </motion.button>
-              </div>
-            </GlassCard>
-          )}
-        </motion.div>
       </div>
     </div>
   );

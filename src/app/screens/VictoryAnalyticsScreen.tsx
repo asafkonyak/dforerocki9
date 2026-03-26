@@ -570,7 +570,7 @@ export function VictoryAnalyticsScreen() {
             className="w-full group relative overflow-hidden"
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            onClick={() => navigate('/gauntlet')}
+            onClick={() => navigate('/practice')}
           >
             <GlassCard className="p-4 border-2 border-[#00f0ff]/50 bg-gradient-to-r from-[#00f0ff]/10 to-transparent shadow-[0_0_30px_rgba(0,240,255,0.4)]">
               {/* Animated background sweep */}

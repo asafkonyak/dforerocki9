@@ -377,7 +377,7 @@ export function GameScreen() {
     setTimeout(() => {
       // Note: Force calculations are already done above and captured in closure
       if (gameMode === 'gauntlet') {
-        navigate('/victory', {
+        navigate('/practice', {
           state: {
             isWin,
             peakForce: finalMaxForce,
