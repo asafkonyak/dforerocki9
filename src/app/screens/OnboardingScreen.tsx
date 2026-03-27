@@ -354,7 +354,7 @@ export function OnboardingScreen() {
               className="text-4xl font-bold text-[#00f0ff]"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
-              {isEditing ? 'RE-SYNC CHAMPION' : 'STEP INTO THE RING'}
+              {isEditing ? 'RE-SYNC CHAMPION' : 'STEP INTO THE CHALLENGE'}
             </h1>
           </motion.div>
 
@@ -367,7 +367,7 @@ export function OnboardingScreen() {
       <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0 relative z-10">
         <div className="w-full max-w-[1600px] mx-auto space-y-6">
           {/* Refined Layout Swapped: Video Protocol (Left) + Identity (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             {/* Video Tutorial Card - LEFT (Col Span 2) - Fills card, no title */}
             <motion.div
               className="lg:col-span-2"
@@ -424,7 +424,7 @@ export function OnboardingScreen() {
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         onClick={() => setPreferredHand('left')}
-                        className={`group relative py-4 rounded-xl border-2 transition-all text-[10px] font-black tracking-[0.2em] uppercase italic ${preferredHand === 'left'
+                        className={`group relative py-4 rounded-xl border-2 transition-all text-base font-black tracking-[0.2em] uppercase italic ${preferredHand === 'left'
                             ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
                             : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
                           }`}
@@ -434,7 +434,7 @@ export function OnboardingScreen() {
                       </button>
                       <button
                         onClick={() => setPreferredHand('right')}
-                        className={`group relative py-4 rounded-xl border-2 transition-all text-[10px] font-black tracking-[0.2em] uppercase italic ${preferredHand === 'right'
+                        className={`group relative py-4 rounded-xl border-2 transition-all text-base font-black tracking-[0.2em] uppercase italic ${preferredHand === 'right'
                             ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
                             : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
                           }`}
@@ -446,9 +446,9 @@ export function OnboardingScreen() {
                   </div>
 
                   {/* 2. Player Image Group (Middle) */}
-                  <div className="space-y-6 pt-4 border-t border-white/5">
+                  <div className="space-y-4 pt-4 border-t border-white/5">
                     <div className="flex items-center gap-2">
-                      <User className="w-5 h-5 text-[#ff006e]" />
+                      <User className="w-5 h-5 text-[#ffff00]" />
                       <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER IMAGE</p>
                     </div>
 
@@ -491,10 +491,11 @@ export function OnboardingScreen() {
                                 onClick={startCameraCountdown}
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
-                                className="px-8 py-3 bg-[#ff006e] text-white rounded-xl font-black italic uppercase text-xs tracking-widest
-                                         shadow-[0_0_30px_#ff006e80] hover:bg-[#ff006e] transition-all duration-300"
+                                className="px-8 py-3 bg-[#ffff00] text-black rounded-xl font-black italic uppercase text-xs tracking-widest
+                                         shadow-[0_0_30px_#ffff0080] hover:bg-[#ffff00] transition-all duration-300 flex items-center gap-2"
                                 style={{ fontFamily: "'Orbitron', sans-serif" }}
                               >
+                                <Camera className="w-4 h-4" />
                                 {photoDataUrl ? 'RE-CAPTURE' : 'CAPTURE'}
                               </motion.button>
                             </div>
@@ -535,7 +536,7 @@ export function OnboardingScreen() {
                             className={`
                             flex-1 aspect-square rounded-xl border-2 p-1 overflow-hidden transition-all duration-300
                             ${selectedAvatar === avatar.id
-                                ? 'border-[#ff006e] bg-[#ff006e]/10 shadow-[0_0_15px_#ff006e40]'
+                                ? 'border-[#ffff00] bg-[#ffff00]/10 shadow-[0_0_15px_#ffff0040]'
                                 : 'border-white/10 bg-white/5 hover:border-white/20'
                               }
                           `}
@@ -563,10 +564,10 @@ export function OnboardingScreen() {
                         className="w-full px-12 py-5 bg-white/5 border-2 border-white/10 rounded-2xl
                                  text-white placeholder-white/20 outline-none
                                  focus:border-[#00f0ff] focus:bg-[#00f0ff]/5 focus:shadow-[0_0_30px_#00f0ff20]
-                                 transition-all duration-300 caret-[#00f0ff] text-base font-black tracking-widest uppercase italic"
+                                 transition-all duration-300 caret-[#ffff00] text-base font-black tracking-widest uppercase italic"
                         style={{ fontFamily: 'var(--font-family-heading)' }}
                       />
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-[#00f0ff] transition-colors" />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#ffff00]/40 group-focus-within:text-[#ffff00] transition-colors" />
                       
                       <button className="absolute right-4 top-1/2 -translate-y-1/2">
                         <Mic className="w-5 h-5 text-white/20 hover:text-[#00f0ff] transition-colors" />

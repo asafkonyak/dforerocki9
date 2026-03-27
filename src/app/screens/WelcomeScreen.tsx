@@ -81,19 +81,11 @@ export function WelcomeScreen() {
             D-FORCE
           </motion.h1>
           <motion.div
-            className="h-1 bg-gradient-to-r from-transparent via-[#ff006e] to-transparent w-full mt-4"
+            className="h-1 bg-gradient-to-r from-transparent via-[#ffff00] to-transparent w-full mt-4"
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ delay: 0.5, duration: 1 }}
           />
-          <motion.p 
-            className="text-white/60 text-xs uppercase tracking-[0.4em] font-medium mt-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 1 }}
-          >
-            POWER BEYOND BORDERS
-          </motion.p>
         </div>
 
         {/* Buttons */}
@@ -105,8 +97,8 @@ export function WelcomeScreen() {
             transition={{ delay: 0.4, duration: 0.5 }}
           >
             <NeonButton
-              variant="outline"
-              color="pink"
+              variant="secondary"
+              color="yellow"
               onClick={() => {
                 const playerId = crypto.randomUUID();
                 localStorage.setItem('fighter_player_id', playerId);

@@ -211,12 +211,8 @@ export function MainMenuScreen() {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center text-center gap-4 flex-1">
-                  <div className="w-16 h-16 rounded-xl bg-[#00f0ff]/20 flex items-center justify-center shadow-[0_0_20px_#00f0ff80] backdrop-blur-sm group-hover:shadow-[0_0_40px_#00f0ff]">
-                    <Swords className="w-8 h-8 text-[#00f0ff]" />
-                  </div>
                   <div>
                     <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Online 1v1</h3>
-                    <p className="text-sm text-[#00f0ff] drop-shadow-lg font-bold">1 Round Challenge</p>
                   </div>
                   
                   <div className="mt-auto w-full pt-6">
@@ -252,12 +248,8 @@ export function MainMenuScreen() {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center text-center gap-4 h-full">
-                  <div className="w-16 h-16 rounded-xl bg-[#ff006e]/20 flex items-center justify-center shadow-[0_0_20px_#ff006e80] backdrop-blur-sm group-hover:shadow-[0_0_40px_#ff006e]">
-                    <Bot className="w-8 h-8 text-[#ff006e]" />
-                  </div>
                   <div>
-                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Training Mode</h3>
-                    <p className="text-sm text-[#ff006e] drop-shadow-lg font-bold uppercase italic">Vs Computer</p>
+                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Training challenge</h3>
                   </div>
                   
                   {/* Progression Pyramid - Theme Red */}
@@ -277,16 +269,16 @@ export function MainMenuScreen() {
                               h-6 rounded flex items-center justify-center text-xs
                               transition-all duration-300
                               ${isCompleted 
-                                ? 'bg-[#ff006e]/30 border border-[#ff006e]' 
+                                ? 'bg-[#ffff00]/30 border border-[#ffff00]' 
                                 : isCurrent
-                                ? 'bg-[#ff006e]/50 border-2 border-[#ff006e] animate-pulse'
+                                ? 'bg-[#ffff00]/50 border-2 border-[#ffff00] animate-pulse'
                                 : 'bg-white/5 border border-white/10'
                               }
                             `}
                             style={{ width: `${width}%` }}
                           >
-                            {index === 0 && <span className="text-[#ff006e] drop-shadow-lg font-bold">👑 BOSS</span>}
-                            {isCurrent && <span className="text-[#ff006e]">⚡</span>}
+                            {index === 0 && <span className="text-[#ffff00] drop-shadow-lg font-bold">👑 BOSS</span>}
+                            {isCurrent && <span className="text-[#ffff00]">⚡</span>}
                           </div>
                         );
                       })}
@@ -296,6 +288,11 @@ export function MainMenuScreen() {
                         ? 'Practice Conquered! 🏆' 
                         : `Progress: Level ${playerData?.gauntlet_progress || 1}/3`}
                     </p>
+                    <div className="mt-auto w-full pt-6">
+                       <div className="px-6 py-4 bg-[#ffff00]/10 border border-[#ffff00]/30 rounded-xl group-hover:bg-[#ffff00]/20 transition-colors text-center">
+                          <span className="text-sm text-[#ffff00] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>START TRAINING</span>
+                       </div>
+                    </div>
                   </div>
                 </div>
               </GlassCard>

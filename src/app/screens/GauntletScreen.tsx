@@ -118,27 +118,27 @@ export function GauntletScreen() {
   const baseStages = [
     {
       id: 1,
-      name: 'STAGE 01',
+      name: 'Marco',
       robot: '🤖',
       image: '/assets/robots/stage1.jpg',
       difficulty: 'Warm Up',
-      description: 'CALIBRATION PROTOCOL',
+      description: 'LEVEL 1',
     },
     {
       id: 2,
-      name: 'STAGE 02',
+      name: 'Kamila',
       robot: '🦾',
       image: '/assets/robots/stage2.png',
       difficulty: 'Endurance',
-      description: 'LIMIT BREAKER',
+      description: 'LEVEL 2',
     },
     {
       id: 3,
-      name: 'FINAL STAGE',
+      name: 'Jeck',
       robot: '💀',
       image: '/assets/robots/stage3.jpg',
       difficulty: 'Mastery',
-      description: 'ARENA OVERLORD',
+      description: 'LEVEL 3',
     },
   ];
 
@@ -412,11 +412,8 @@ export function GauntletScreen() {
               className="text-5xl font-black italic tracking-tight text-[#00f0ff] mb-1"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
-              PRACTICE MODE
+              PRACTICE CHALLENGE
             </h1>
-            <p className="text-white/40 font-bold uppercase tracking-[0.4em] text-[10px]">
-              ELEVATE YOUR COMBAT DATA
-            </p>
           </motion.div>
 
           <div className="w-32" />
