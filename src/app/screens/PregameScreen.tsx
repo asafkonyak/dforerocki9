@@ -52,11 +52,11 @@ export function PregameScreen() {
 
   const getRobotData = (stage: number) => {
     const robots = [
-      { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.jpg' },
-      { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png' },
-      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.jpg' },
-      { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg' },
-      { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png' }
+      { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
+      { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png', prefight: '/assets/robots/stage2_prefight.mp4' },
+      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
+      { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
+      { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png', prefight: '/assets/robots/stage5_prefight.mp4' }
     ];
     return robots[Math.min(stage - 1, 4)] || robots[0];
   };
@@ -131,30 +131,55 @@ export function PregameScreen() {
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
-      {/* Background Layer 1: Training Video (Wait Phase) */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <video
-          ref={videoRef}
-          src="/assets/referee_practice.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-[#0a0515]/40" />
+      {/* Background Layer 1: Static Cyber Background (Wait Phase) */}
+      <div className="absolute inset-0 z-0 overflow-hidden bg-[#0a0515]">
+        {/* Dynamic Lightning Background */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-30 mix-blend-screen">
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
+            style={{ width: '1200px', height: '1200px' }}
+          >
+            <Lightning
+              hue={220}
+              xOffset={0.5}
+              speed={1.0}
+              intensity={1.2}
+              size={1.8}
+            />
+          </div>
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
+            style={{ width: '1200px', height: '1200px' }}
+          >
+            <Lightning
+              hue={0}
+              xOffset={-0.5}
+              speed={1.2}
+              intensity={1.5}
+              size={1.8}
+            />
+          </div>
+        </div>
+        
+        {/* Dark Overlay for depth */}
+        <div className="absolute inset-0 bg-[#0a0515]/60 backdrop-blur-[2px]" />
+        
+        {/* Grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
       </div>
 
-      {/* Background Layer 2: Rules Video (Action Phase - Fades In) */}
+      {/* Background Layer 2: Referee Video (Action Phase - Plays on Ready) */}
       <div className="absolute inset-0 z-[5] overflow-hidden">
         <video
           ref={rulesVideoRef}
-          src="/assets/Referee.mp4"
-          muted
+          src="/assets/referee_rules.mp4"
           playsInline
           preload="auto"
-          className="w-full h-full object-cover transition-opacity duration-1000"
-          style={{ opacity: phase === 'action' ? 1 : 0 }}
+          className="w-full h-full object-cover transition-opacity duration-700"
+          style={{ 
+            opacity: phase === 'action' ? 1 : 0,
+            visibility: phase === 'action' ? 'visible' : 'hidden'
+          }}
         />
         <div className={`absolute inset-0 bg-black/20 transition-opacity duration-1000 ${phase === 'action' ? 'opacity-100' : 'opacity-0'}`} />
       </div>
@@ -200,7 +225,7 @@ export function PregameScreen() {
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#00f0ff]/50 relative group">
                 <CameraFeed className="w-full h-full" />
                 <div className="absolute top-4 left-4 bg-[#00f0ff] text-black px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase">
-                  LIVE FEED
+                  LIVE
                 </div>
               </div>
               
@@ -211,7 +236,7 @@ export function PregameScreen() {
                   </h2>
                   <p className="text-[#00f0ff] text-xs font-bold mt-1 uppercase tracking-[0.2em]">{playerHand} HAND</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right opacity-0 pointer-events-none">
                   <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">COMBAT DATA</p>
                   <p className="text-[#00f0ff] font-black italic text-lg">{profile?.xp || 0} XP</p>
                 </div>
@@ -254,26 +279,29 @@ export function PregameScreen() {
           <GlassCard className="p-4 border-[#ff006e]/30 bg-black/40 overflow-hidden">
             <div className="space-y-4 text-right">
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#ff006e]/50 relative bg-black/40">
-                <img 
-                  src={rivalData.avatar} 
-                  alt={rivalData.name} 
+                <video 
+                  src={rivalData.prefight} 
+                  autoPlay 
+                  muted 
+                  loop 
+                  playsInline
                   className="w-full h-full object-cover grayscale brightness-125"
                 />
                 <div className="absolute top-4 right-4 bg-[#ff006e] text-white px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase">
-                  RIVAL UNIT
+                  LIVE
                 </div>
               </div>
               
-              <div className="flex items-center justify-between flex-row-reverse">
-                <div>
+              <div className="flex items-center justify-between">
+                <div className="text-left">
                   <h2 className="text-2xl font-black italic text-white tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {rivalData.name}
                   </h2>
-                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em]">{stageName}</p>
+                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em] opacity-0">{stageName}</p>
                 </div>
-                <div className="text-left">
-                  <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">THREAT LEVEL</p>
-                  <p className="text-[#ff006e] font-black italic text-lg">CLASS {stageNumber}</p>
+                <div className="text-right">
+                  <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">LEVEL</p>
+                  <p className="text-[#ff006e] font-black italic text-lg">STAGE {stageNumber}</p>
                 </div>
               </div>
             </div>

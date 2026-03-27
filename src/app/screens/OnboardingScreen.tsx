@@ -384,7 +384,7 @@ export function OnboardingScreen() {
                 </div>
                 
                 <video
-                  src="/assets/reffer_onboarding.mp4"
+                  src="/assets/referee_onboarding.mp4"
                   autoPlay
                   muted
                   loop

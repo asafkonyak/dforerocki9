@@ -173,7 +173,7 @@ export function MainMenuScreen() {
                     playsInline
                     className="w-full h-full object-cover"
                   >
-                    <source src="/assets/reffer_menu.mp4" type="video/mp4" />
+                    <source src="/assets/referee_menu.mp4" type="video/mp4" />
                   </video>
                   {/* Styling overlays */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/80 via-transparent to-[#0a0515]/40" />
