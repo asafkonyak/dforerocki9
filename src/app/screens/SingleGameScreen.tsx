@@ -11,7 +11,7 @@ import { CameraFeed } from '../components/CameraFeed';
 import { useSocket } from '../../contexts/SocketContext';
 import { GameCanvas } from '../components/GameCanvas';
 
-export function GameScreen() {
+export function SingleGameScreen() {
   // 1. Initial configuration
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,9 +23,10 @@ export function GameScreen() {
 
   // Get game mode from location state
   const gameMode = location.state?.mode || 'normal';
-  const stageNumber = location.state?.stageNumber;
-  const stageName = location.state?.stageName;
-
+  const stageNumber = location.state?.stageNumber || 1;
+  const stageName = location.state?.stageName || 'STAGE 01';
+  const hand = location.state?.hand || 'RIGHT';
+  const { sendMessage, lastMessage } = useSocket();
   const [armPosition, setArmPosition] = useState(50);
   const [player1Power, setPlayer1Power] = useState(100);
   const [player2Power, setPlayer2Power] = useState(100);
@@ -33,11 +34,12 @@ export function GameScreen() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState<number | string | null>(null);
   const [showCountdown, setShowCountdown] = useState(false);
-  const [isBlurred, setIsBlurred] = useState(true);
+  const [isBlurred, setIsBlurred] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(true);
+  const [commandsSent, setCommandsSent] = useState(false);
   const [angleValue, setAngleValue] = useState(0);
-  const [resistanceValue, setResistanceValue] = useState(60); // Default KG
+  const [resistanceValue, setResistanceValue] = useState(0); // Default KG, now initialized to 0
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string } | null>(null);
@@ -146,30 +148,29 @@ export function GameScreen() {
   });
 
   // Check if both players are ready
+  // 1. Initialize match and send START command once component is ready and connected
   useEffect(() => {
-    if (gameMode !== 'ranked') {
-      setIsReady(true);
-      return;
-    }
-    
-    // For ranked, ensure we have opponent info
-    if (location.state?.opponent) {
-      setIsReady(true);
-    }
-  }, [gameMode, location.state]);
+    if (isConnected && isReady && !commandsSent) {
+      console.log('[SingleGame] Socket connected. Initializing match commands...');
+      // SINGLE_PLAYER_START is sent after navigating to the game page (as per user flow)
+      console.log('[SingleGame] Sending SINGLE_PLAYER_START: 0');
+      sendMessage({
+        cmd: {
+          SINGLE_PLAYER_START: 0
+        }
+      });
 
-  // Fight Countdown Logic
-  useEffect(() => {
-    if (isReady && !isGameActive) {
-      setShowCountdown(true);
-      if (gameMode === 'gauntlet') {
-        setIsBlurred(true);
-        setCountdown('READY');
-      } else if (gameMode !== 'ranked') {
-        setCountdown('READY');
-      }
+      setCommandsSent(true);
     }
-  }, [isReady, gameMode, isGameActive]);
+  }, [isConnected, isReady, commandsSent, sendMessage, stageNumber, hand]);
+
+  // Fight Countdown UI State
+  useEffect(() => {
+    if (isReady && !isGameActive && !winner) {
+      setShowCountdown(true);
+      if (countdown === null) setCountdown('READY');
+    }
+  }, [isReady, isGameActive, winner]);
 
 
   // Refs to capture latest values for the navigate timeout
@@ -452,7 +453,7 @@ export function GameScreen() {
           }
         }
 
-        // --- NEW: Socket Driven Countdown Logic ---
+        // --- Socket Driven Countdown Logic ---
         let cdVal = null;
         if (serverData.type === 'countdown') {
           cdVal = serverData.value;
@@ -465,32 +466,29 @@ export function GameScreen() {
         }
 
         if (cdVal !== null) {
+          console.log('[SingleGame] Countdown updated:', cdVal);
           setCountdown(cdVal);
           setShowCountdown(true);
-          // Remove blur when countdown reaches 3
-          if (Number(cdVal) === 3) {
-            setIsBlurred(false);
-          }
+          
+          // Blur removal logic removed as per user request
         }
 
         // Check for game start strictly via acs_state: 'ACS_GAME'
         if (serverData.acs_state === 'ACS_GAME' && !isGameActive) {
-          console.log('[Game v21] - Game Start condition detected (ACS_GAME). Starting game...');
+          console.log('[SingleGame] Game Start (ACS_GAME).');
           setShowCountdown(true);
           setCountdown('GO!');
           setIsGameActive(true);
           setStartTime(Date.now());
-          setIsBlurred(false); // Ensure blur is gone
           
           // reset tracking refs
           maxForceRef.current = 0;
           forceHistoryRef.current = [];
           lastForceCaptureTimeRef.current = Date.now();
           
-          // Wait 800ms then fade out for snappy response
           setTimeout(() => {
             setShowCountdown(false);
-          }, 800);
+          }, 1000);
         }
 
         const isMultiWin = serverData.multiplayer_state === 'MAIN_SM_GAMEOVER_WIN' || serverData.multiplayer_state === 'MULTIPLAYER_SM_GAMEOVER_WIN';
@@ -502,6 +500,8 @@ export function GameScreen() {
           const stateStr = isMultiWin || isMultiLose ? serverData.multiplayer_state : serverData.single_player_state;
           console.log(`[Game v24] - Match result detected via state: ${stateStr}`);
           setIsGameActive(false);
+          setShowCountdown(false); // Clear countdown when game ends
+          setCountdown(null); // Clear countdown when game ends
           
           const isMeWin = isMultiWin || isSingleWin;
           const roundWinnerSlot = isPlayer1 
@@ -608,7 +608,7 @@ export function GameScreen() {
         </video>
 
         {/* Color Overlay - Animated based on arm position */}
-        <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all duration-700 ${isBlurred ? 'backdrop-blur-[20px] bg-black/60' : ''}`} />
+        <div className={`absolute inset-0 bg-black/40 transition-all duration-300 ${isBlurred ? 'bg-black/60' : ''}`} />
 
         <motion.div
           className="absolute inset-0 bg-gradient-to-tr from-[#00f0ff]/20 via-transparent to-transparent"
@@ -691,9 +691,9 @@ export function GameScreen() {
               scale: armPosition < 40 ? 1.05 : 1,
             }}
           >
-            <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 backdrop-blur-md bg-black/60">
+            <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 bg-black/60">
               {/* Camera Feed Box */}
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-black shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-700 ${isBlurred ? 'blur-xl' : ''}`}>
+              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-black shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-300 ${isBlurred ? '' : ''}`}>
                 {/* 1V1 Dual Camera Support: Show first camera if available in Ranked; otherwise follow standard local feed logic */}
                 {isRanked && videoDevices.length >= 2 ? (
                   <CameraFeed deviceId={videoDevices[0].deviceId} />
@@ -777,9 +777,9 @@ export function GameScreen() {
               scale: armPosition > 60 ? 1.05 : 1,
             }}
           >
-            <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 backdrop-blur-md bg-black/60">
+            <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 bg-black/60">
               {/* Rival Video/Camera Feed Box */}
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-all duration-700 ${isBlurred ? 'blur-xl' : ''}`}>
+              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-all duration-700 ${isBlurred ? '' : ''}`}>
                 {/* Prioritize Gauntlet robot video; otherwise show second camera if available in Ranked */}
                 {gameMode === 'gauntlet' ? (
                   <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
@@ -863,7 +863,7 @@ export function GameScreen() {
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="px-6 py-2 bg-black/40 border border-white/10 backdrop-blur-md rounded-full flex flex-col items-center shadow-2xl"
+            className="px-6 py-2 bg-black/40 border border-white/10 rounded-full flex flex-col items-center shadow-2xl"
           >
             <span className="text-[10px] text-[#00f0ff] font-bold tracking-[0.3em] uppercase mb-0.5">Round {currentRound}</span>
             <div className="flex items-center gap-4">
@@ -888,7 +888,7 @@ export function GameScreen() {
               exit={{ opacity: 0, scale: 1.2 }}
               className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
             >
-              <div className="bg-black/80 backdrop-blur-xl border-y border-[#00f0ff]/30 w-full py-20 flex flex-col items-center shadow-[0_0_50px_rgba(0,240,255,0.2)]">
+              <div className="bg-black/80 border-y border-[#00f0ff]/30 w-full py-20 flex flex-col items-center shadow-[0_0_50px_rgba(0,240,255,0.2)]">
                 <motion.div
                   initial={{ y: 20 }}
                   animate={{ y: 0 }}
@@ -1073,7 +1073,7 @@ export function GameScreen() {
         <AnimatePresence>
           {winner && (
             <motion.div
-              className={`fixed inset-0 z-[100] flex flex-col items-center justify-center pointer-events-none bg-black/60 backdrop-blur-sm`}
+              className={`fixed inset-0 z-[100] flex flex-col items-center justify-center pointer-events-none bg-black/60`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1102,7 +1102,7 @@ export function GameScreen() {
         <AnimatePresence>
           {showCountdown && (
             <motion.div
-              className="absolute inset-0 z-[200] flex items-center justify-center bg-black/20 backdrop-blur-sm"
+              className="absolute inset-0 z-[200] flex items-center justify-center bg-black/20"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

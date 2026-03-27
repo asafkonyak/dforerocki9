@@ -220,40 +220,18 @@ export function GauntletScreen() {
 
   const handleVideoEnd = () => {
     setShowRefereeVideo(false);
-    sendMessage({
-      cmd: {
-        SINGLE_PLAYER_START: 0
+    navigate('/single-game', {
+      state: {
+        mode: 'gauntlet',
+        stageNumber: activeStage.id,
+        stageName: activeStage.description,
+        hand: playerHand
       }
     });
   };
 
-  useEffect(() => {
-    if (!lastMessage) return;
-    const serverData = lastMessage.data || lastMessage;
-
-    let val = null;
-    if (serverData.type === 'countdown') {
-      val = serverData.value;
-    } else if (serverData.cmd && serverData.cmd.count_down !== undefined) {
-      val = serverData.cmd.count_down;
-    }
-    
-    if (val !== null) {
-      setCountdown(val);
-      if (val === 1 || val === '1' || val === 0 || val === '0' || val === 'GO' || val === 'GO!') {
-        setTimeout(() => {
-          navigate('/game', {
-            state: {
-              mode: 'gauntlet',
-              stageNumber: activeStage.id,
-              stageName: activeStage.description,
-              hand: playerHand
-            }
-          });
-        }, 1000);
-      }
-    }
-  }, [lastMessage, navigate, activeStage, playerHand]);
+  // Removed socket countdown logic from GauntletScreen. 
+  // It is now handled in SingleGameScreen.
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">

@@ -23,7 +23,7 @@ export function PregameScreen() {
   const stageName = location.state?.stageName || 'STAGE 01';
   const playerHand = location.state?.hand || 'RIGHT';
 
-  const { sendMessage } = useSocket();
+  const { sendMessage, isConnected, lastMessage } = useSocket();
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
   const [rulesShown, setRulesShown] = useState<string[]>([]);
@@ -69,7 +69,7 @@ export function PregameScreen() {
       rulesVideoRef.current.play();
     }
 
-    // Initialize the match (Socket INIT)
+    // Initialize the match (Socket INIT) when user presses READY
     const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
     
     // Calculate power based on stage
@@ -89,13 +89,24 @@ export function PregameScreen() {
       initValue = -initValue;
     }
 
+    const handUpper = (playerHand || 'RIGHT').toUpperCase();
+
+    console.log('[Pregame] handleReady called. isConnected:', isConnected);
+    console.log('[Pregame] Variables:', { initValue, handUpper, myPlayerId });
+
+    if (!isConnected) {
+      console.warn('[Pregame] Socket not connected. Cannot send INIT.');
+    }
+
     sendMessage({
       cmd: {
         INIT: initValue,
-        HAND: playerHand,
+        HAND: handUpper,
         PLAYER_ID: myPlayerId
       }
     });
+
+    // Match rules sequence...
     
     // Start rule sequence
     let ruleIdx = 0;
@@ -108,15 +119,10 @@ export function PregameScreen() {
       } else {
         clearInterval(interval);
         
-        // Finalize match start (Socket SINGLE_PLAYER_START)
-        sendMessage({
-          cmd: {
-            SINGLE_PLAYER_START: 0
-          }
-        });
+        // Finalize match start moved to SingleGameScreen
 
         setTimeout(() => {
-          navigate('/game', {
+          navigate('/single-game', {
             state: {
               mode: 'gauntlet',
               stageNumber,
@@ -162,7 +168,7 @@ export function PregameScreen() {
         </div>
         
         {/* Dark Overlay for depth */}
-        <div className="absolute inset-0 bg-[#0a0515]/60 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-[#0a0515]/60" />
         
         {/* Grid pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
@@ -194,7 +200,7 @@ export function PregameScreen() {
                   key={idx}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-black/40 backdrop-blur-xl border border-white/10 px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                  className="bg-black/70 border border-white/10 px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.8)]"
                 >
                   <h3 
                     className="text-white text-3xl font-black italic tracking-tight"
@@ -220,7 +226,7 @@ export function PregameScreen() {
           animate={{ x: 0, opacity: 1 }}
           className="w-[400px]"
         >
-          <GlassCard className="p-4 border-[#00f0ff]/30 bg-black/40 overflow-hidden">
+          <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 bg-black/60">
             <div className="space-y-4">
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#00f0ff]/50 relative group">
                 <CameraFeed className="w-full h-full" />
@@ -255,7 +261,7 @@ export function PregameScreen() {
                 exit={{ scale: 1.2, opacity: 0 }}
                 className="relative group"
               >
-                <div className="absolute inset-0 bg-[#00f0ff] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                <div className="absolute inset-0 bg-[#00f0ff] opacity-20 group-hover:opacity-40 transition-opacity" />
                 <motion.button
                   onClick={handleReady}
                   whileHover={{ scale: 1.05 }}

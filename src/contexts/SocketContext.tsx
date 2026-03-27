@@ -108,6 +108,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, socket
 
   const sendMessage = useCallback((msg: any) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      console.log('[SocketContext] Sending message:', msg);
       socketRef.current.send(JSON.stringify(msg));
     } else {
       console.warn('[SocketContext] Cannot send message: Socket not connected');

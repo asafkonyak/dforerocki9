@@ -17,6 +17,7 @@ import { StrengthBattleScreen } from "./screens/StrengthBattleScreen";
 import { GauntletScreen } from "./screens/GauntletScreen";
 import { VictoryAnalyticsScreen } from "./screens/VictoryAnalyticsScreen";
 import { PregameScreen } from "./screens/PregameScreen";
+import { SingleGameScreen } from "./screens/SingleGameScreen";
 
 export const router = createBrowserRouter([
   {
@@ -59,6 +60,10 @@ export const router = createBrowserRouter([
   {
     path: "/game",
     Component: GameScreen,
+  },
+  {
+    path: "/single-game",
+    Component: SingleGameScreen,
   },
   {
     path: "/leaderboard",
