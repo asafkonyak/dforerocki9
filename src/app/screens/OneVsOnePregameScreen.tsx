@@ -61,18 +61,12 @@ export function OneVsOnePregameScreen() {
     const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
     const handUpper = (playerHand || 'RIGHT').toUpperCase();
 
-    // For 1v1, use a default power value
-    let initValue = 10;
-    if (handUpper === 'LEFT') {
-      initValue = -initValue;
-    }
-
     console.log('[1v1Pregame] Sending INIT after referee video ended.');
     sendMessage({
       cmd: {
-        INIT: initValue,
-        HAND: handUpper,
-        PLAYER_ID: myPlayerId
+        INIT: 0,
+        PLAYER_ID: myPlayerId,
+        HAND: handUpper
       }
     });
 
