@@ -130,13 +130,32 @@ export function OneVsOneGameScreen() {
     }
   }, [isConnected, isReady, commandsSent]);
 
-  // Fight Countdown UI State
+  // Local 5-second countdown on mount
   useEffect(() => {
-    if (isReady && !isGameActive && !winner) {
-      setShowCountdown(true);
-      if (countdown === null) setCountdown('READY');
-    }
-  }, [isReady, isGameActive, winner]);
+    if (!isReady || isGameActive || winner) return;
+    
+    setShowCountdown(true);
+    setCountdown(5);
+
+    let count = 5;
+    const timer = setInterval(() => {
+      count--;
+      if (count > 0) {
+        setCountdown(count);
+      } else if (count === 0) {
+        setCountdown('GO!');
+        setIsGameActive(true);
+        setStartTime(Date.now());
+        maxForceRef.current = 0;
+        forceHistoryRef.current = [];
+        lastForceCaptureTimeRef.current = Date.now();
+        setTimeout(() => setShowCountdown(false), 1000);
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isReady, winner]);
 
   const comboRef = useRef(0);
 
