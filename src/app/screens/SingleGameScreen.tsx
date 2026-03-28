@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
@@ -45,6 +45,13 @@ export function SingleGameScreen() {
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const { socket, isConnected } = useSocket();
+  
+  // Video Recording State
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const videoUrlRef = useRef<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   // Round-based states
   const gameType = location.state?.gameType || '1_round';
@@ -229,6 +236,37 @@ export function SingleGameScreen() {
     console.log('[Game v22] - Win/Loss checks via armPosition are disabled.');
   }, [armPosition, isGameActive]);
 
+  // Video Recording Logic
+  useEffect(() => {
+    if (isGameActive && stream && !mediaRecorderRef.current) {
+      console.log('[Recording] Starting Match Recording...');
+      recordedChunksRef.current = [];
+      try {
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            recordedChunksRef.current.push(e.data);
+          }
+        };
+        recorder.onstop = () => {
+          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          console.log('[Recording] Video ready:', url);
+          videoUrlRef.current = url;
+          setVideoUrl(url);
+        };
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+      } catch (err) {
+        console.error('[Recording] Failed to start recorder:', err);
+      }
+    } else if (!isGameActive && mediaRecorderRef.current) {
+      console.log('[Recording] Stopping Match Recording...');
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+  }, [isGameActive, stream]);
+
   // Handle Intermission Timer
   useEffect(() => {
     if (intermissionTime !== null && intermissionTime > 0 && !winner) {
@@ -378,34 +416,22 @@ export function SingleGameScreen() {
 
     // 6. Navigate
     setTimeout(() => {
-      // Note: Force calculations are already done above and captured in closure
-      if (gameMode === 'gauntlet') {
-        navigate('/victory', {
-          state: {
-            isWin,
-            peakForce: finalMaxForce,
-            avgForce: avgForce,
-            enduranceTime: durationSeconds,
-            xpEarned: earnedXp,
-            stageName: stageName || 'CRUSHER X-9000',
-            stageNumber: stageNumber || 1,
-            hand: isLeft ? 'left' : 'right',
-            forceHistory: forceHistory,
-          }
-        });
-      } else {
-        navigate('/leaderboard', {
-          state: {
-            result: isWin ? 'win' : 'loss',
-            scoreChange: isWin ? 300 : -100,
-            rankChange: isWin ? 2 : -1,
-            combo: comboRef.current,
-            matchId: location.state?.matchId,
-            gameMode: gameMode,
-            gameType: gameType
-          }
-        });
-      }
+      navigate('/victory', {
+        state: {
+          isWin,
+          peakForce: finalMaxForce,
+          avgForce: avgForce,
+          enduranceTime: durationSeconds,
+          xpEarned: earnedXp,
+          stageName: stageName || 'OPPONENT',
+          stageNumber: stageNumber || 1,
+          hand: isLeft ? 'left' : 'right',
+          forceHistory: forceHistory,
+          mode: gameMode,
+          opponent: opponentInfo,
+          videoUrl: videoUrlRef.current // Use the ref for the most current URL
+        }
+      });
     }, 3000);
   };
 
@@ -546,6 +572,11 @@ export function SingleGameScreen() {
     return () => socket.removeEventListener('message', handleMessage);
   }, [socket, isGameActive, winner, roundsWonPlayer, roundsWonOpponent, requiredWins, isPlayer1, profile]);
 
+
+  // Memoize stream callback to prevent CameraFeed from restarting
+  const handleStreamStarted = useCallback((s: MediaStream) => {
+    setStream(s);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0515] relative overflow-hidden">
@@ -691,9 +722,9 @@ export function SingleGameScreen() {
                 )}
                 <div className="w-full h-full relative z-10">
                   {isRanked && videoDevices.length >= 2 ? (
-                    <CameraFeed deviceId={videoDevices[0].deviceId} transparent={true} />
+                    <CameraFeed deviceId={videoDevices[0].deviceId} transparent={true} onStreamStarted={handleStreamStarted} />
                   ) : isPlayer1 ? (
-                    <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} />
+                    <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} onStreamStarted={handleStreamStarted} />
                   ) : (
                     gameMode === 'gauntlet' ? (
                       <video src={`/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
@@ -906,7 +937,7 @@ export function SingleGameScreen() {
                   {winner === (isPlayer1 ? 'player1' : 'player2') ? 'YOU WIN!' : 'YOU LOSE!'}
                 </h2>
                 <p className={`relative z-10 mt-4 tracking-[0.5em] uppercase font-bold text-lg ${winner === (isPlayer1 ? 'player1' : 'player2') ? 'text-[#00f0ff]/80' : 'text-[#ff006e]/80'}`}>
-                  {gameMode === 'gauntlet' ? 'CONCLUDING MISSION...' : 'HEADING TO LEADERBOARD...'}
+                  HEADING TO VICTORY SCREEN...
                 </p>
               </motion.div>
             </motion.div>

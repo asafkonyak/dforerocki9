@@ -382,15 +382,17 @@ export function GauntletScreen() {
               <span className="text-white/60 text-sm uppercase tracking-wider">Back to Menu</span>
             </motion.button>
 
-            <motion.button
-              onClick={() => setShowResetConfirm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all z-20 group"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <RotateCcw className="w-5 h-5 text-white/40 group-hover:rotate-180 transition-transform duration-500" />
-              <span className="text-white/60 text-sm uppercase tracking-wider font-bold">RESET</span>
-            </motion.button>
+            {gauntletProgress === 1 && (
+              <motion.button
+                onClick={() => setShowResetConfirm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all z-20 group"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <RotateCcw className="w-5 h-5 text-white/40 group-hover:rotate-180 transition-transform duration-500" />
+                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">RESET</span>
+              </motion.button>
+            )}
           </div>
 
           <motion.div
@@ -568,12 +570,12 @@ export function GauntletScreen() {
                           >
                             <motion.button
                               onClick={handleInitiateBattle}
-                              className="px-12 py-6 bg-[#ffff00] text-black font-black italic rounded-2xl shadow-[0_0_50px_rgba(255,255,0,0.6)] hover:scale-105 transition-all flex items-center gap-5 relative overflow-hidden group"
+                              className="px-12 py-6 bg-white/10 backdrop-blur-xl border-2 border-white/20 text-white font-black italic rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:bg-white/20 hover:border-white/40 hover:scale-105 transition-all flex items-center gap-5 relative overflow-hidden group"
                             >
-                              <div className="absolute inset-0 bg-white/40 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                              <Zap className="w-8 h-8 fill-current" />
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                              <Zap className="w-8 h-8 fill-current text-[#ffff00]" />
                               <span className="text-3xl tracking-tighter uppercase">Engage Target</span>
-                              <ChevronRight className="w-8 h-8" />
+                              <ChevronRight className="w-8 h-8 text-[#ffff00]" />
                             </motion.button>
                           </motion.div>
                         )}

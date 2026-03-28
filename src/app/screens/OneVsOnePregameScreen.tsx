@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useSocket } from '../../contexts/SocketContext';
 import { CameraFeed } from '../components/CameraFeed';
+import { Video } from 'lucide-react';
 
 const RULES = [
   "Elbows - Do not lift your elbow.",
@@ -27,8 +28,30 @@ export function OneVsOnePregameScreen() {
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
   const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number } | null>(null);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const rulesVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Enumerate cameras on mount
+  useEffect(() => {
+    async function getDevices() {
+      try {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const vDevices = allDevices.filter(d => d.kind === 'videoinput');
+        setVideoDevices(vDevices);
+      } catch (err) {
+        console.error("Error enumerating devices:", err);
+      }
+    }
+    
+    // Request permission first
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        stream.getTracks().forEach(track => track.stop());
+        getDevices();
+      })
+      .catch(() => getDevices());
+  }, []);
 
   // Fetch player profile
   useEffect(() => {
@@ -165,7 +188,11 @@ export function OneVsOnePregameScreen() {
                     />
                   </div>
                 )}
-                <CameraFeed className="w-full h-full relative z-10" transparent={true} />
+                <CameraFeed 
+                  className="w-full h-full relative z-10" 
+                  transparent={true} 
+                  deviceId={videoDevices[0]?.deviceId}
+                />
                 <div className="absolute top-4 left-4 bg-[#00f0ff] text-black px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase z-20">
                   LIVE
                 </div>
@@ -259,11 +286,22 @@ export function OneVsOnePregameScreen() {
           <GlassCard className="p-4 border-[#ff006e]/30 bg-black/40 overflow-hidden">
             <div className="space-y-4 text-right">
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#ff006e]/50 relative bg-black/40">
-                {/* Opponent camera feed placeholder */}
-                <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50 bg-black">
-                  <span className="text-[10px] tracking-widest font-bold uppercase animate-pulse">OPPONENT CAM</span>
-                </div>
-                <div className="absolute top-4 right-4 bg-[#ff006e] text-white px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase">
+                {/* Opponent camera feed fallback or second local camera for testing */}
+                {videoDevices.length >= 2 ? (
+                  <CameraFeed 
+                    className="w-full h-full relative z-10" 
+                    transparent={true} 
+                    deviceId={videoDevices[1]?.deviceId}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50 bg-black">
+                    <Video className="w-12 h-12 mb-3 animate-pulse opacity-20" />
+                    <span className="text-[10px] tracking-[0.4em] font-black uppercase text-center px-4">
+                      Awaiting Rival<br/><span className="text-[8px] opacity-40">Connecting Node...</span>
+                    </span>
+                  </div>
+                )}
+                <div className="absolute top-4 right-4 bg-[#ff006e] text-white px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase z-20">
                   LIVE
                 </div>
               </div>

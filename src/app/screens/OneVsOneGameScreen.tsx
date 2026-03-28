@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
@@ -44,6 +44,13 @@ export function OneVsOneGameScreen() {
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const { socket, isConnected } = useSocket();
+
+  // Video Recording State
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const videoUrlRef = useRef<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   // Round-based states
   const [roundsWonPlayer, setRoundsWonPlayer] = useState(0);
@@ -162,6 +169,37 @@ export function OneVsOneGameScreen() {
     console.log('[1v1Game] Win/Loss checks via armPosition are disabled.');
   }, [armPosition, isGameActive]);
 
+  // Video Recording Logic
+  useEffect(() => {
+    if (isGameActive && stream && !mediaRecorderRef.current) {
+      console.log('[Recording] Starting 1v1 Match Recording...');
+      recordedChunksRef.current = [];
+      try {
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            recordedChunksRef.current.push(e.data);
+          }
+        };
+        recorder.onstop = () => {
+          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          console.log('[Recording] 1v1 Video ready:', url);
+          videoUrlRef.current = url;
+          setVideoUrl(url);
+        };
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+      } catch (err) {
+        console.error('[Recording] Failed to start 1v1 recorder:', err);
+      }
+    } else if (!isGameActive && mediaRecorderRef.current) {
+      console.log('[Recording] Stopping 1v1 Match Recording...');
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+    }
+  }, [isGameActive, stream]);
+
   // Handle Intermission Timer
   useEffect(() => {
     if (intermissionTime !== null && intermissionTime > 0 && !winner) {
@@ -270,15 +308,21 @@ export function OneVsOneGameScreen() {
     }
 
     setTimeout(() => {
-      navigate('/leaderboard', {
+      const isMeWinner = finalWinner === 'player1';
+      navigate('/victory', {
         state: {
-          result: isMeWinner ? 'win' : 'loss',
-          scoreChange: isMeWinner ? 300 : -100,
-          rankChange: isMeWinner ? 2 : -1,
-          combo: comboRef.current,
+          isWin: isMeWinner,
+          peakForce: finalMaxForce,
+          avgForce: avgForce,
+          enduranceTime: durationSeconds,
+          xpEarned: isMeWinner ? 300 : 50,
           matchId,
           gameMode: 'ranked',
-          gameType
+          gameType,
+          hand: handUsed,
+          forceHistory: forceHistory,
+          opponent: opponentInfo,
+          videoUrl: videoUrlRef.current // Use the ref for the most current URL
         }
       });
     }, 3000);
@@ -376,6 +420,11 @@ export function OneVsOneGameScreen() {
   }, [socket, isGameActive, winner, roundsWonPlayer, roundsWonOpponent, requiredWins, profile]);
 
 
+  // Memoize stream callback to prevent CameraFeed from restarting
+  const handleStreamStarted = useCallback((s: MediaStream) => {
+    setStream(s);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0a0515] relative overflow-hidden">
       {/* Dynamic Canvas Background */}
@@ -443,7 +492,7 @@ export function OneVsOneGameScreen() {
                   </div>
                 )}
                 <div className="w-full h-full relative z-10">
-                  <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} />
+                  <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} onStreamStarted={handleStreamStarted} />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-20" />
                 <div className="absolute bottom-4 left-4 flex items-center gap-2 z-30">
@@ -569,7 +618,7 @@ export function OneVsOneGameScreen() {
                   {winner === 'player1' ? 'YOU WIN!' : 'YOU LOSE!'}
                 </h2>
                 <p className={`relative z-10 mt-4 tracking-[0.5em] uppercase font-bold text-lg ${winner === 'player1' ? 'text-[#00f0ff]/80' : 'text-[#ff006e]/80'}`}>
-                  HEADING TO LEADERBOARD...
+                  HEADING TO VICTORY SCREEN...
                 </p>
               </motion.div>
             </motion.div>
