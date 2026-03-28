@@ -88,7 +88,8 @@ export function GameCanvas({
       ctx.arc(centerX, centerY, radius, Math.PI * 1.5, Math.PI * 2);
       ctx.stroke();
 
-      // 2. Draw Stamina Bars (High Performance) - Right to Left growth
+      // 2. Draw Stamina Bars (HIDDEN per user request)
+      /* 
       const barWidth = 180;
       const barHeight = 10;
       const barY = height - 40;
@@ -141,6 +142,7 @@ export function GameCanvas({
       ctx.fillStyle = '#ff006e';
       ctx.textAlign = 'left';
       ctx.fillText(`${Math.round(displayP2Power)}%`, p2X, barY - 10);
+      */
 
       // 4. Draw Center Marker
       ctx.beginPath();

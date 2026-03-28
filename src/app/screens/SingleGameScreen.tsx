@@ -660,29 +660,15 @@ export function SingleGameScreen() {
 
       {/* Main Content */}
       <div className="relative z-10 h-screen flex flex-col overflow-hidden">
-        {/* Top HUD */}
         <div className="p-4 flex-shrink-0">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <motion.div
-              className="flex items-center gap-2"
-              animate={{
-                scale: combo > 0 && combo % 10 === 0 ? [1, 1.1, 1] : 1,
-              }}
-              transition={{ type: 'tween' }}
-            >
-              <Flame className="w-5 h-5 text-[#ffff00]" />
-              <span className="text-[#ffff00] text-sm uppercase tracking-wider font-bold">
-                Combo: {combo}
-              </span>
-            </motion.div>
-
+          <div className="max-w-7xl mx-auto flex items-center justify-end">
             <div className="flex items-center gap-2">
               <Volume2 className="w-5 h-5 text-white/60" />
             </div>
           </div>
         </div>
 
-        {/* Player Cards - Top Section (Absolute and Massive) */}
+        {/* Player Cards - Top Section */}
         <div className="absolute inset-0 pt-24 px-4 flex justify-between pointer-events-none z-0">
           {/* Player 1 - Left */}
           <motion.div
@@ -693,78 +679,54 @@ export function SingleGameScreen() {
           >
             <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 bg-black/60">
               {/* Camera Feed Box */}
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-black shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-300 ${isBlurred ? '' : ''}`}>
-                {/* 1V1 Dual Camera Support: Show first camera if available in Ranked; otherwise follow standard local feed logic */}
-                {isRanked && videoDevices.length >= 2 ? (
-                  <CameraFeed deviceId={videoDevices[0].deviceId} />
-                ) : isPlayer1 ? (
-                  <CameraFeed deviceId={videoDevices[0]?.deviceId} />
-                ) : (
-                  gameMode === 'gauntlet' ? (
-                    <video src={`/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-[#00f0ff]/50">
-                      <Video className="w-8 h-8 mb-1" />
-                      <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
-                    </div>
-                  )
+              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-[#0a0515] shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-300`}>
+                {profile?.avatar_url && (
+                  <div className="absolute inset-0 z-0">
+                   <img 
+                     src={profile.avatar_url} 
+                     alt="Profile" 
+                     className="w-full h-full object-cover opacity-60 grayscale brightness-50" 
+                   />
+                  </div>
                 )}
-                {/* Visual Overlays for Feed */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                <div className="absolute bottom-2 left-2 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-white text-[8px] font-bold tracking-widest uppercase">REC</span>
+                <div className="w-full h-full relative z-10">
+                  {isRanked && videoDevices.length >= 2 ? (
+                    <CameraFeed deviceId={videoDevices[0].deviceId} transparent={true} />
+                  ) : isPlayer1 ? (
+                    <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} />
+                  ) : (
+                    gameMode === 'gauntlet' ? (
+                      <video src={`/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-[#00f0ff]/50">
+                        <Video className="w-8 h-8 mb-1" />
+                        <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
+                      </div>
+                    )
+                  )}
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-20" />
+                <div className="absolute bottom-4 left-4 flex items-center gap-2 z-30">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-white text-[10px] font-black tracking-widest uppercase">REC</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="relative">
                   <AvatarDisplay
                     avatar={player1.avatar}
                     className="border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.6)]"
                     size="md"
                   />
-                  {armPosition < 30 && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-4 border-[#00f0ff]"
-                      animate={{
-                        scale: [1, 1.3, 1],
-                        opacity: [0.8, 0, 0.8],
-                      }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: Infinity,
-                        type: 'tween',
-                      }}
-                    />
-                  )}
                 </div>
                 <div>
-                  <h3 className="text-lg text-[#00f0ff] font-bold uppercase leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <h3 className="text-2xl font-black italic text-[#00f0ff] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {player1.name} {isPlayer1 && '(YOU)'}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-[#00f0ff]/60 text-[10px] font-bold uppercase tracking-widest">{player1.rank}</p>
-                    <div className="px-1.5 py-0.5 rounded bg-[#00f0ff]/10 border border-[#00f0ff]/30">
-                      <p className="text-[#00f0ff] text-[8px] font-black uppercase tracking-widest leading-none">ALPHA</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* Stats */}
-              <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <p className="text-white/40 uppercase tracking-tighter">Round Wins</p>
-                  <div className="flex gap-1 mt-1">
-                    {[...Array(requiredWins)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-2 flex-1 rounded-full ${i < roundsWonPlayer ? 'bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]' : 'bg-white/5'}`}
-                      />
-                    ))}
-                  </div>
+                  <p className="text-[#00f0ff] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    {hand || 'RIGHT'} HAND
+                  </p>
                 </div>
               </div>
             </GlassCard>
@@ -778,11 +740,10 @@ export function SingleGameScreen() {
             }}
           >
             <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 bg-black/60">
-              {/* Rival Video/Camera Feed Box */}
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-all duration-700 ${isBlurred ? '' : ''}`}>
-                {/* Prioritize Gauntlet robot video; otherwise show second camera if available in Ranked */}
+              {/* Rival Video Feed Box */}
+              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-none`}>
                 {gameMode === 'gauntlet' ? (
-                  <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                  <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover transition-none" />
                 ) : isRanked && videoDevices.length >= 2 ? (
                   <CameraFeed deviceId={videoDevices[1].deviceId} />
                 ) : !isPlayer1 ? (
@@ -793,7 +754,6 @@ export function SingleGameScreen() {
                     <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
                   </div>
                 )}
-                {/* Visual Overlays for Feed */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
                 <div className="absolute bottom-2 left-2 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#ff006e] animate-pulse" />
@@ -801,17 +761,14 @@ export function SingleGameScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 text-right">
-                <div>
-                  <h3 className="text-lg text-[#ff006e] font-bold uppercase leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+              <div className="flex items-center justify-end gap-4 w-full">
+                <div className="flex flex-col items-end text-right">
+                  <h3 className="text-2xl font-black italic text-[#ff006e] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {!isPlayer1 && '(YOU) '} {player2.name} 
                   </h3>
-                  <div className="flex items-center justify-end gap-2 mt-1">
-                    <div className="px-1.5 py-0.5 rounded bg-[#ff006e]/10 border border-[#ff006e]/30">
-                      <p className="text-[#ff006e] text-[8px] font-black uppercase tracking-widest leading-none">OMEGA</p>
-                    </div>
-                    <p className="text-[#ff006e]/60 text-[10px] font-bold uppercase tracking-widest">{player2.rank}</p>
-                  </div>
+                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    LEVEL {stageNumber}
+                  </p>
                 </div>
                 <div className="relative">
                   <AvatarDisplay
@@ -819,65 +776,14 @@ export function SingleGameScreen() {
                     className="border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.6)]"
                     size="md"
                   />
-                  {armPosition > 70 && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-4 border-[#ff006e]"
-                      animate={{
-                        scale: [1, 1.3, 1],
-                        opacity: [0.8, 0, 0.8],
-                      }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: Infinity,
-                        type: 'tween',
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <p className="text-white/40 uppercase tracking-tighter text-right">AI Level</p>
-                  <p className="text-[#ff006e] font-bold text-right">Hard</p>
-                </div>
-                <div>
-                  <p className="text-white/40 uppercase tracking-tighter">Round Wins</p>
-                  <div className="flex gap-1 mt-1 justify-end">
-                    {[...Array(requiredWins)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-2 flex-1 rounded-full ${i < roundsWonOpponent ? 'bg-[#ff006e] shadow-[0_0_8px_#ff006e]' : 'bg-white/5'}`}
-                      />
-                    ))}
-                  </div>
                 </div>
               </div>
             </GlassCard>
           </motion.div>
         </div>
 
-        {/* Center - Round Info (Injected here) */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30">
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="px-6 py-2 bg-black/40 border border-white/10 rounded-full flex flex-col items-center shadow-2xl"
-          >
-            <span className="text-[10px] text-[#00f0ff] font-bold tracking-[0.3em] uppercase mb-0.5">Round {currentRound}</span>
-            <div className="flex items-center gap-4">
-              <span className={`text-2xl font-bold ${roundsWonPlayer > roundsWonOpponent ? 'text-[#00f0ff]' : 'text-white/40'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                {roundsWonPlayer}
-              </span>
-              <div className="w-px h-8 bg-white/10" />
-              <span className={`text-2xl font-bold ${roundsWonOpponent > roundsWonPlayer ? 'text-[#ff006e]' : 'text-white/40'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                {roundsWonOpponent}
-              </span>
-            </div>
-            <div className="text-[8px] text-white/40 uppercase mt-1 tracking-widest">{gameType.replace('_', ' ')}</div>
-          </motion.div>
-        </div>
+        {/* Top - Round Info (HIDDEN) */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 opacity-0 pointer-events-none" />
 
         {/* Round Finished Overlay */}
         <AnimatePresence>
@@ -902,7 +808,6 @@ export function SingleGameScreen() {
                   <GlassCard className="px-12 py-6 border-2 border-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.4)] flex flex-col items-center bg-black/60 relative overflow-hidden pointer-events-auto">
                      <div className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/10 to-transparent pointer-events-none" />
                      
-                     {/* Progress border indicator */}
                      <motion.div
                        className="absolute bottom-0 left-0 h-1 bg-[#00f0ff] shadow-[0_0_10px_#00f0ff]"
                        initial={{ width: '100%' }}
@@ -924,7 +829,6 @@ export function SingleGameScreen() {
         {/* Center - Arm Wrestling Battle Area */}
         <div className="flex-1 flex items-end justify-center px-6 pb-32 min-h-0 relative z-10 pointer-events-none mt-40 md:mt-0">
           <div className="w-full max-w-4xl pointer-events-auto">
-            {/* HIGH-PERFORMANCE CANVAS GAUGE */}
             <motion.div
               className="relative w-full max-w-[500px] h-[350px] mx-auto overflow-visible"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -940,134 +844,45 @@ export function SingleGameScreen() {
                 height={350} 
               />
 
-              {/* DATA UI - Digital counters (Keeping these as DOM for crisp text) */}
+              {/* DATA UI - Digital counters */}
               <div className="absolute -bottom-[80px] left-1/2 -translate-x-1/2 w-full flex justify-center gap-8 z-30">
-                {/* Current Angle Display */}
                 <motion.div
                   className="relative"
-                  animate={{
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    type: 'tween'
-                  }}
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                 >
                   <GlassCard className="px-6 py-4 border-2 border-[#00f0ff]/40 bg-black/60">
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-[#00f0ff]/20 to-transparent rounded-xl"
-                      animate={{
-                        x: ['-100%', '100%'],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: 'linear',
-                        type: 'tween'
-                      }}
-                    />
-
                     <div className="relative">
                       <div className="text-[#00f0ff]/60 text-xs uppercase tracking-widest mb-1">
                         Current Angle
                       </div>
-                      <div
-                        className="text-3xl font-bold text-[#00f0ff]"
-                        style={{
-                          fontFamily: "'Orbitron', monospace",
-                          textShadow: '0 0 10px rgba(0, 240, 255, 0.8)',
-                        }}
-                      >
-                          {Math.abs(angleValue).toFixed(2)}°
+                      <div className="text-3xl font-bold text-[#00f0ff]" style={{ fontFamily: "'Orbitron', monospace", textShadow: '0 0 10px rgba(0, 240, 255, 0.8)' }}>
+                        {Math.abs(angleValue).toFixed(2)}°
                       </div>
                     </div>
                   </GlassCard>
                 </motion.div>
 
-                {/* Resistance Display */}
                 <motion.div
                   className="relative"
-                  animate={{
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    delay: 0.5,
-                    type: 'tween'
-                  }}
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
                 >
                   <GlassCard className="px-6 py-4 border-2 border-[#ff006e]/40 bg-black/60">
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-[#ff006e]/20 to-transparent rounded-xl"
-                      animate={{
-                        x: ['-100%', '100%'],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: 'linear',
-                        delay: 1,
-                        type: 'tween'
-                      }}
-                    />
-
                     <div className="relative">
                       <div className="text-[#ff006e]/60 text-xs uppercase tracking-widest mb-1">
                         Resistance
                       </div>
-                      <div
-                        className="text-3xl font-bold text-[#ff006e]"
-                        style={{
-                          fontFamily: "'Orbitron', monospace",
-                          textShadow: '0 0 10px rgba(255, 0, 110, 0.8)',
-                        }}
-                      >
-                          {resistanceValue.toFixed(2)} <span className="text-xs not-italic">KG</span>
-                        </div>
+                      <div className="text-3xl font-bold text-[#ff006e]" style={{ fontFamily: "'Orbitron', monospace", textShadow: '0 0 10px rgba(255, 0, 110, 0.8)' }}>
+                        {resistanceValue.toFixed(2)} <span className="text-xs not-italic">KG</span>
                       </div>
-                    </GlassCard>
-                  </motion.div>
-                </div>
-
-
-            </motion.div>
-
-
-          </div>
-        </div>
-
-
-
-        {/* Combo Popup */}
-        <AnimatePresence>
-          {showCombo && (
-            <motion.div
-              className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50"
-              initial={{ scale: 0, opacity: 0, y: 50 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0, opacity: 0, y: -50 }}
-            >
-              <div className="text-center">
-                <h3
-                  className="text-7xl font-bold bg-gradient-to-r from-[#ffff00] via-[#ff006e] to-[#00f0ff] bg-clip-text text-transparent"
-                  style={{
-                    fontFamily: "'Orbitron', sans-serif",
-                    textShadow: '0 0 40px rgba(255, 255, 0, 0.8)',
-                  }}
-                >
-                  {combo} COMBO!
-                </h3>
-                <p className="text-[#ffff00] text-xl uppercase tracking-wider mt-2">
-                  ⚡ ON FIRE! ⚡
-                </p>
+                    </div>
+                  </GlassCard>
+                </motion.div>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        </div>
 
         {/* Winner Announcement */}
         <AnimatePresence>

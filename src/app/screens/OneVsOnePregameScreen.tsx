@@ -14,17 +14,18 @@ const RULES = [
   "Posture - Keep your shoulders perfectly square.",
 ];
 
-export function PregameScreen() {
+export function OneVsOnePregameScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const stageNumber = location.state?.stageNumber || 1;
-  const stageName = location.state?.stageName || 'STAGE 01';
+  const matchId = location.state?.matchId;
+  const isPlayer1 = location.state?.isPlayer1;
+  const opponent = location.state?.opponent;
+  const gameType = location.state?.gameType || '1_round';
   const playerHand = location.state?.hand || 'RIGHT';
 
-  const { sendMessage, isConnected, lastMessage } = useSocket();
+  const { sendMessage, isConnected } = useSocket();
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
-  const [rulesShown, setRulesShown] = useState<string[]>([]);
   const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const rulesVideoRef = useRef<HTMLVideoElement>(null);
@@ -48,54 +49,25 @@ export function PregameScreen() {
     fetchProfile();
   }, []);
 
-  const getRobotData = (stage: number) => {
-    const robots = [
-      { name: 'MARCO', avatar: '/assets/robots/stage1.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
-      { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png', prefight: '/assets/robots/stage2_prefight.mp4' },
-      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
-      { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
-      { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png', prefight: '/assets/robots/stage5_prefight.mp4' }
-    ];
-    return robots[Math.min(stage - 1, 4)] || robots[0];
-  };
-
-  const rivalData = getRobotData(stageNumber);
-
   const handleReady = () => {
     setPhase('action');
     if (rulesVideoRef.current) {
       rulesVideoRef.current.play();
     }
+  };
 
-    // Initialize the match (Socket INIT) when user presses READY
+  const handleVideoEnd = () => {
+    // Send INIT command after referee rules video ends
     const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
-    
-    // Calculate power based on stage
-    const getStagePower = (stage: number) => {
-      switch(stage) {
-        case 1: return 7;
-        case 2: return 10;
-        case 3: return 12.5;
-        case 4: return 20;
-        case 5: return 25;
-        default: return 7;
-      }
-    };
+    const handUpper = (playerHand || 'RIGHT').toUpperCase();
 
-    let initValue = getStagePower(stageNumber);
-    if (playerHand && playerHand.toLowerCase() === 'left') {
+    // For 1v1, use a default power value
+    let initValue = 10;
+    if (handUpper === 'LEFT') {
       initValue = -initValue;
     }
 
-    const handUpper = (playerHand || 'RIGHT').toUpperCase();
-
-    console.log('[Pregame] handleReady called. isConnected:', isConnected);
-    console.log('[Pregame] Variables:', { initValue, handUpper, myPlayerId });
-
-    if (!isConnected) {
-      console.warn('[Pregame] Socket not connected. Cannot send INIT.');
-    }
-
+    console.log('[1v1Pregame] Sending INIT after referee video ended.');
     sendMessage({
       cmd: {
         INIT: initValue,
@@ -104,48 +76,33 @@ export function PregameScreen() {
       }
     });
 
-    // Match rules sequence...
-    
-    // Start rule sequence
-    let ruleIdx = 0;
-    setRulesShown([RULES[0]]);
-    
-    const interval = setInterval(() => {
-      ruleIdx++;
-      if (ruleIdx < RULES.length) {
-        setRulesShown(prev => [...prev, RULES[ruleIdx]]);
-      } else {
-        clearInterval(interval);
-        
-        setTimeout(() => {
-          navigate('/single-game', {
-            state: {
-              mode: 'gauntlet',
-              stageNumber,
-              stageName,
-              hand: playerHand
-            }
-          });
-        }, 1500); 
+    // Navigate to 1v1 game
+    navigate('/1v1-game', {
+      state: {
+        matchId,
+        mode: 'ranked',
+        isPlayer1,
+        opponent,
+        gameType,
+        hand: playerHand
       }
-    }, 2500);
+    });
   };
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
       {/* Background Layer 1: Dynamic Looping Background (Wait Phase) */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-        {/* Full-screen Looping Video Background */}
         <video
           autoPlay
           muted
           loop
           playsInline
           className="absolute inset-0 w-full h-full object-cover opacity-50"
-          src={`/assets/robots/back_stage${stageNumber}.mp4`}
+          src="/assets/robots/back_stage1.mp4"
         />
         
-        {/* Dynamic Lightning Background (Subtle Overlay) */}
+        {/* Dynamic Lightning Background */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-20 mix-blend-screen">
           <div 
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
@@ -173,20 +130,18 @@ export function PregameScreen() {
           </div>
         </div>
         
-        {/* Dark Overlay for depth */}
         <div className="absolute inset-0 bg-black/60" />
-        
-        {/* Grid pattern (Subtle) */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
       </div>
 
-      {/* Background Layer 2: Referee Video (Action Phase - Plays on Ready) */}
+      {/* Background Layer 2: Referee Video (Action Phase) */}
       <div className="absolute inset-0 z-[5] overflow-hidden">
         <video
           ref={rulesVideoRef}
           src="/assets/referee_rules.mp4"
           playsInline
           preload="auto"
+          onEnded={handleVideoEnd}
           className="w-full h-full object-cover transition-opacity duration-700"
           style={{ 
             opacity: phase === 'action' ? 1 : 0,
@@ -195,8 +150,6 @@ export function PregameScreen() {
         />
         <div className={`absolute inset-0 bg-black/20 transition-opacity duration-1000 ${phase === 'action' ? 'opacity-100' : 'opacity-0'}`} />
       </div>
-
-      {/* Rules List (Action Phase) - MOVED TO BOTTOM */}
 
       {/* Bottom Interface Layer */}
       <div className="flex-1 flex items-end justify-between px-24 pb-16 z-30 relative">
@@ -209,7 +162,6 @@ export function PregameScreen() {
           <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 bg-black/60">
             <div className="space-y-4">
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#00f0ff]/50 relative group bg-[#0a0515]">
-                {/* Profile Photo as Background */}
                 {profile?.avatar_url && (
                   <div className="absolute inset-0 z-0">
                     <img 
@@ -246,65 +198,65 @@ export function PregameScreen() {
           </GlassCard>
         </motion.div>
 
-          <div className="flex flex-col items-center justify-center gap-8 w-full max-w-md h-[450px] relative">
-            {/* Rules always visible at the bottom center */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col gap-3 items-center w-full"
-            >
-              <p className="text-[#00f0ff]/40 text-[10px] uppercase font-bold tracking-[0.4em] mb-1 font-sans">RULES</p>
-              {RULES.slice(0, 3).map((rule, idx) => {
-                const parts = rule.split(' - ');
-                const firstWord = parts[0];
-                const rest = parts[1] || '';
-                
-                return (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="bg-black/40 border border-[#00f0ff]/20 px-6 py-2 rounded-lg w-full backdrop-blur-sm"
-                  >
-                    <h3 
-                      className="text-white text-sm font-bold tracking-tight text-center uppercase"
-                      style={{ 
-                        fontFamily: "'Orbitron', sans-serif"
-                      }}
-                    >
-                      <span className="text-yellow-400">{firstWord}</span> {rest}
-                    </h3>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-
-            <AnimatePresence mode="wait">
-              {phase === 'wait' && (
+        {/* Center: Rules + Ready */}
+        <div className="flex flex-col items-center justify-center gap-8 w-full max-w-md h-[450px] relative">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-3 items-center w-full"
+          >
+            <p className="text-[#00f0ff]/40 text-[10px] uppercase font-bold tracking-[0.4em] mb-1 font-sans">RULES</p>
+            {RULES.slice(0, 3).map((rule, idx) => {
+              const parts = rule.split(' - ');
+              const firstWord = parts[0];
+              const rest = parts[1] || '';
+              
+              return (
                 <motion.div
-                  key="ready-btn"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 1.2, opacity: 0 }}
-                  className="relative group h-24 flex items-center"
+                  key={idx}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="bg-black/40 border border-[#00f0ff]/20 px-6 py-2 rounded-lg w-full backdrop-blur-sm"
                 >
-                  <div className="absolute inset-0 bg-[#00f0ff] opacity-20 group-hover:opacity-40 transition-opacity rounded-xl blur-xl" />
-                  <motion.button
-                    onClick={handleReady}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="relative px-12 py-5 bg-[#00f0ff] text-black font-black text-2xl italic tracking-tighter rounded-xl shadow-[0_0_40px_rgba(0,240,255,0.4)] transition-all"
-                    style={{ fontFamily: "'Orbitron', sans-serif" }}
+                  <h3 
+                    className="text-white text-sm font-bold tracking-tight text-center uppercase"
+                    style={{ 
+                      fontFamily: "'Orbitron', sans-serif"
+                    }}
                   >
-                    READY
-                  </motion.button>
+                    <span className="text-yellow-400">{firstWord}</span> {rest}
+                  </h3>
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              );
+            })}
+          </motion.div>
 
-        {/* Rival Card (Right) */}
+          <AnimatePresence mode="wait">
+            {phase === 'wait' && (
+              <motion.div
+                key="ready-btn"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.2, opacity: 0 }}
+                className="relative group h-24 flex items-center"
+              >
+                <div className="absolute inset-0 bg-[#00f0ff] opacity-20 group-hover:opacity-40 transition-opacity rounded-xl blur-xl" />
+                <motion.button
+                  onClick={handleReady}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative px-12 py-5 bg-[#00f0ff] text-black font-black text-2xl italic tracking-tighter rounded-xl shadow-[0_0_40px_rgba(0,240,255,0.4)] transition-all"
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  READY
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Opponent Card (Right) */}
         <motion.div
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -313,14 +265,10 @@ export function PregameScreen() {
           <GlassCard className="p-4 border-[#ff006e]/30 bg-black/40 overflow-hidden">
             <div className="space-y-4 text-right">
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#ff006e]/50 relative bg-black/40">
-                <video 
-                  src={rivalData.prefight} 
-                  autoPlay 
-                  muted 
-                  loop 
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
+                {/* Opponent camera feed placeholder */}
+                <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50 bg-black">
+                  <span className="text-[10px] tracking-widest font-bold uppercase animate-pulse">OPPONENT CAM</span>
+                </div>
                 <div className="absolute top-4 right-4 bg-[#ff006e] text-white px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase">
                   LIVE
                 </div>
@@ -329,17 +277,14 @@ export function PregameScreen() {
               <div className="flex items-center justify-end gap-4 w-full">
                 <div className="flex flex-col items-end text-right">
                   <h2 className="text-2xl font-black italic text-[#ff006e] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    {rivalData.name}
+                    {opponent?.username || 'OPPONENT'}
                   </h2>
-                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    LEVEL {stageNumber}
-                  </p>
                 </div>
-                {rivalData.avatar && (
+                {opponent?.avatar_url && (
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#ff006e] shadow-[0_0_15px_rgba(255,0,110,0.3)]">
                     <img 
-                      src={rivalData.avatar} 
-                      alt="Rival Circle"
+                      src={opponent.avatar_url} 
+                      alt="Opponent"
                       className="w-full h-full object-cover"
                     />
                   </div>

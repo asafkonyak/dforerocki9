@@ -5,40 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useAudio } from '../../hooks/useAudio';
-import { Swords, Zap, Globe } from 'lucide-react';
+import { Swords, Zap } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
-
-const RadarScan = () => (
-  <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black/20">
-    <motion.div 
-      className="absolute inset-0 border border-[#ff006e]/50 rounded-full"
-      initial={{ scale: 0.2, opacity: 0 }}
-      animate={{ scale: 2, opacity: [0, 0.8, 0] }}
-      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-    />
-    <motion.div 
-      className="absolute inset-0 border border-[#ff006e]/30 rounded-full"
-      initial={{ scale: 0.2, opacity: 0 }}
-      animate={{ scale: 1.5, opacity: [0, 0.5, 0] }}
-      transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.6 }}
-    />
-    <motion.div 
-      className="absolute inset-0 border border-[#ff006e]/20 rounded-full"
-      initial={{ scale: 0.2, opacity: 0 }}
-      animate={{ scale: 1, opacity: [0, 0.3, 0] }}
-      transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 1.2 }}
-    />
-    <div className="z-10 flex flex-col items-center">
-      <Zap className="w-8 h-8 text-[#ff006e] animate-pulse mb-1" />
-      <motion.div 
-        className="h-[1px] w-12 bg-[#ff006e]/50"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-        style={{ originX: 0 }}
-      />
-    </div>
-  </div>
-);
 
 export function MatchmakingScreen() {
   const navigate = useNavigate();
@@ -47,13 +15,11 @@ export function MatchmakingScreen() {
   const referenceMatchId = location.state?.referenceMatchId || null;
   
   const [matchFound, setMatchFound] = useState(false);
-  const [searchingDelay, setSearchingDelay] = useState(true);
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('fighter_player_id'));
   const [userData, setUserData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
   const [opponentData, setOpponentData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
   const [isPlayer1, setIsPlayer1] = useState<boolean | null>(null);
-  const [onlineCount] = useState(Math.floor(Math.random() * 100) + 40);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [timeoutActive, setTimeoutActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300);
@@ -77,7 +43,7 @@ export function MatchmakingScreen() {
 
   startMatchRef.current = startMatch;
 
-  // Initial Data & Match Search
+  // Initial Data & Match Search with reliability fixes
   useEffect(() => {
     async function initMatchmaking() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -110,14 +76,19 @@ export function MatchmakingScreen() {
       }
       setPlayerId(currentId);
 
-      // 1. Search for pending match
+      // Stale filter: only consider matches from last 5 minutes
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+      // 1. Search for pending match (newest first, recent only)
       let pendingMatchQuery = supabase
         .from('matches')
         .select('*')
         .eq('status', 'pending')
         .eq('game_type', gameType)
         .is('player2_id', null)
-        .neq('player1_id', currentId);
+        .neq('player1_id', currentId)
+        .gte('created_at', fiveMinAgo)
+        .order('created_at', { ascending: false });
 
       if (referenceMatchId) {
         pendingMatchQuery = pendingMatchQuery.eq('reference_match_id', referenceMatchId);
@@ -128,22 +99,36 @@ export function MatchmakingScreen() {
       if (pendingMatches && pendingMatches.length > 0) {
         const joinMatch = pendingMatches[0];
         setIsPlayer1(false);
-        const { error: updateError } = await supabase
+        
+        // Optimistic lock: only update if player2_id is still null
+        const { error: updateError, data: updatedMatch } = await supabase
           .from('matches')
           .update({ player2_id: currentId, status: 'matched' })
-          .eq('id', joinMatch.id);
+          .eq('id', joinMatch.id)
+          .is('player2_id', null) // Optimistic lock
+          .select()
+          .maybeSingle();
 
-        if (!updateError) {
+        if (!updateError && updatedMatch) {
+          // Successfully joined
           const { data: p1Profile } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).maybeSingle();
           if (p1Profile) startMatchRef.current(joinMatch.id, p1Profile);
+        } else {
+          // Retry: someone else joined first, create as P1 instead
+          console.log('[Matchmaking] Join failed (race condition), creating new match as P1');
+          await createMatchAsP1(currentId);
         }
       } else {
         // 2. Create new match as P1
+        await createMatchAsP1(currentId);
+      }
+
+      async function createMatchAsP1(pid: string) {
         setIsPlayer1(true);
         const { data: newMatch } = await supabase
           .from('matches')
           .insert({
-            player1_id: currentId,
+            player1_id: pid,
             game_type: gameType,
             status: 'pending',
             reference_match_id: referenceMatchId
@@ -170,10 +155,8 @@ export function MatchmakingScreen() {
     }
 
     initMatchmaking();
-    const delayTimer = setTimeout(() => setSearchingDelay(false), 1500);
 
     return () => {
-      clearTimeout(delayTimer);
       if (subscriptionRef.current) supabase.removeChannel(subscriptionRef.current);
     };
   }, [gameType, referenceMatchId, navigate]);
@@ -197,7 +180,7 @@ export function MatchmakingScreen() {
 
   const handleStartMatch = () => {
     setIsBattleInitiated(true);
-    navigate('/versus', {
+    navigate('/1v1-pregame', {
       state: { matchId, mode: 'ranked', opponent: opponentData, isPlayer1, gameType }
     });
   };
@@ -215,6 +198,7 @@ export function MatchmakingScreen() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#ff006e]/10 rounded-full blur-[120px]" />
 
       <motion.div className="max-w-md w-full space-y-8 z-10" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+        {/* Title & Subtitle */}
         <div className="text-center">
           <motion.h2 
             className="text-4xl mb-2 text-[#00f0ff] font-bold tracking-tighter"
@@ -224,82 +208,106 @@ export function MatchmakingScreen() {
           >
             {errorHeader || (timeoutActive ? 'NO PARTNER FOUND' : matchFound ? 'TARGET ACQUIRED' : 'SIGNAL SCANNING')}
           </motion.h2>
-          <p className="text-white/60 text-sm tracking-widest uppercase">
-            {timeoutActive ? 'Try again later' : matchFound ? 'Synchronizing battle protocols' : 'searching for active hostiles'}
+          <p className="text-white/60 text-sm tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+            {timeoutActive ? 'TRY AGAIN LATER' : matchFound ? 'SYNCHRONIZING BATTLE PROTOCOLS' : 'SEARCHING FOR OPPONENT'}
           </p>
         </div>
 
+        {/* Main Content */}
         <AnimatePresence mode="wait">
-          {searchingDelay ? (
-            <motion.div key="scanning" className="h-[400px] flex flex-col items-center justify-center space-y-6" exit={{ opacity: 0, scale: 0.8 }}>
-              <div className="relative w-24 h-24">
-                <motion.div className="absolute inset-0 border-4 border-[#00f0ff] rounded-full border-t-transparent" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
-                <motion.div className="absolute inset-2 border-4 border-[#ff006e] rounded-full border-b-transparent" animate={{ rotate: -360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} />
+          {!matchFound && !timeoutActive && (
+            <motion.div 
+              key="searching" 
+              className="flex flex-col items-center justify-center space-y-8 py-12"
+              exit={{ opacity: 0, scale: 0.8 }}
+            >
+              {/* Radar Animation */}
+              <div className="relative w-32 h-32">
+                <motion.div 
+                  className="absolute inset-0 border-2 border-[#00f0ff]/40 rounded-full"
+                  animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                />
+                <motion.div 
+                  className="absolute inset-0 border-2 border-[#00f0ff]/30 rounded-full"
+                  animate={{ scale: [1, 1.6], opacity: [0.4, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
+                />
+                <motion.div 
+                  className="absolute inset-0 border-2 border-[#00f0ff]/20 rounded-full"
+                  animate={{ scale: [1, 1.4], opacity: [0.3, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 1 }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Zap className="w-10 h-10 text-[#00f0ff] animate-pulse" />
+                </div>
               </div>
-              <p className="text-[#00f0ff] font-bold tracking-[0.3em] text-xs uppercase animate-pulse">Frequency Locked</p>
+
+              {/* Progress Bar */}
+              <div className="w-full max-w-xs">
+                <div className="relative h-2 bg-white/10 rounded-full overflow-hidden border border-[#00f0ff]/20">
+                  <motion.div
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#00f0ff] to-[#ff006e] rounded-full shadow-[0_0_10px_rgba(0,240,255,0.5)]"
+                    animate={{ 
+                      left: ['-30%', '100%'],
+                    }}
+                    style={{ width: '30%' }}
+                    transition={{ 
+                      duration: 1.5, 
+                      repeat: Infinity, 
+                      ease: "easeInOut"
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-[#00f0ff]/40 text-[8px] uppercase tracking-widest font-bold">Scanning</span>
+                  <span className="text-[#00f0ff]/40 text-[8px] uppercase tracking-widest font-bold">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
+                </div>
+              </div>
             </motion.div>
-          ) : (
-            <motion.div key="vs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          )}
+
+          {matchFound && (
+            <motion.div 
+              key="found" 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="py-8"
+            >
               <GlassCard className="p-8 border-t border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                 <div className="grid grid-cols-3 gap-4 items-center">
                   {/* P1 / ALPHA */}
                   <div className="flex flex-col items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-2xl bg-[#00f0ff]/10 border-2 border-[#00f0ff] flex items-center justify-center overflow-hidden">
+                    <div className="relative w-20 h-20 rounded-full bg-[#00f0ff]/10 border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center overflow-hidden">
                       <AvatarDisplay avatar={(isPlayer1 ? userData : opponentData)?.avatar_url || '👤'} size="lg" />
                     </div>
                     <div className="text-center">
-                      <p className="text-white font-bold text-xs uppercase">{(isPlayer1 ? userData : opponentData)?.username || 'ALPHA'}</p>
-                      <p className="text-[#00f0ff] text-[8px] font-bold uppercase tracking-widest">ALPHA</p>
+                      <p className="text-[#00f0ff] font-bold text-xs uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                        {(isPlayer1 ? userData : opponentData)?.username || 'ALPHA'}
+                      </p>
                     </div>
                   </div>
 
                   <div className="relative flex flex-col items-center">
                     <motion.div 
                       className="text-4xl font-black italic text-[#ff006e] relative z-20"
-                      animate={matchFound ? { scale: [1, 1.2, 1], filter: 'drop-shadow(0 0 10px #ff006e)' } : { scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1, repeat: matchFound ? 0 : Infinity }}
+                      style={{ fontFamily: "'Orbitron', sans-serif" }}
+                      animate={{ scale: [1, 1.2, 1], filter: 'drop-shadow(0 0 10px #ff006e)' }}
+                      transition={{ duration: 1 }}
                     >
                       VS
                     </motion.div>
-                    {!matchFound && (
-                      <motion.div 
-                        className="absolute inset-0 bg-[#ff006e]/30 blur-2xl rounded-full z-10"
-                        animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.3, 0.6, 0.3] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
-                    )}
                   </div>
 
-                  {/* P2 / OMEGA / SEARCHING */}
+                  {/* P2 / OMEGA */}
                   <div className="flex flex-col items-center gap-4">
-                    <motion.div 
-                      className={`relative w-24 h-24 rounded-2xl bg-[#ff006e]/10 border-2 flex items-center justify-center overflow-hidden transition-colors duration-500 ${
-                        matchFound ? 'border-[#ff006e] shadow-[0_0_20px_#ff006e40]' : 'border-[#ff006e]/30'
-                      }`}
-                      animate={matchFound ? {} : { borderColor: ['rgba(255,0,110,0.3)', 'rgba(255,0,110,0.8)', 'rgba(255,0,110,0.3)'] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      {matchFound ? (
-                        <AvatarDisplay avatar={(isPlayer1 ? opponentData : userData)?.avatar_url || '👤'} size="lg" />
-                      ) : (
-                        <RadarScan />
-                      )}
-                      
-                      {!matchFound && (
-                        <div className="absolute inset-0 pointer-events-none">
-                          <motion.div 
-                            className="absolute top-0 left-0 w-full h-[2px] bg-[#ff006e]/50"
-                            animate={{ top: ['0%', '100%'] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                          />
-                        </div>
-                      )}
-                    </motion.div>
+                    <div className="relative w-20 h-20 rounded-full bg-[#ff006e]/10 border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.4)] flex items-center justify-center overflow-hidden">
+                      <AvatarDisplay avatar={(isPlayer1 ? opponentData : userData)?.avatar_url || '👤'} size="lg" />
+                    </div>
                     <div className="text-center">
-                      <p className={`font-bold text-xs uppercase tracking-wider ${matchFound ? 'text-white' : 'text-[#ff006e] animate-pulse'}`}>
-                        {matchFound ? (isPlayer1 ? opponentData : userData)?.username || 'OMEGA' : 'SEARCHING...'}
+                      <p className="text-[#ff006e] font-bold text-xs uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                        {(isPlayer1 ? opponentData : userData)?.username || 'OMEGA'}
                       </p>
-                      <p className="text-[#ff006e] text-[8px] font-bold uppercase tracking-widest mt-0.5">OMEGA SLOT</p>
                     </div>
                   </div>
                 </div>
@@ -308,33 +316,45 @@ export function MatchmakingScreen() {
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-2 gap-4 text-center">
-          <GlassCard className="py-3 bg-white/5 border-white/5">
-            <p className="text-[8px] text-white/40 uppercase tracking-widest mb-1">ROCKY</p>
-            <p className={`text-xs font-bold uppercase ${isConnected ? 'text-[#00f0ff]' : 'text-red-500'}`}>
-              {isConnected ? 'ONLINE' : 'OFFLINE'}
-            </p>
-          </GlassCard>
-          <GlassCard className="py-3 bg-white/5 border-white/5">
-            <p className="text-[8px] text-white/40 uppercase tracking-widest mb-1">Status</p>
-            <p className="text-xs font-bold text-white uppercase">{matchFound ? 'READY' : 'SEARCHING'}</p>
-          </GlassCard>
-        </div>
-
+        {/* Action Buttons */}
         <AnimatePresence mode="wait">
           {timeoutActive ? (
-            <motion.button key="back" onClick={() => navigate('/menu')} className="w-full py-4 rounded-xl bg-[#ff006e] text-white font-bold uppercase tracking-widest shadow-lg shadow-[#ff006e]/20">Back to Menu</motion.button>
+            <motion.button 
+              key="back" 
+              onClick={() => navigate('/menu')} 
+              className="w-full py-4 rounded-xl bg-[#ff006e] text-white font-bold uppercase tracking-widest shadow-lg shadow-[#ff006e]/20"
+              style={{ fontFamily: "'Orbitron', sans-serif" }}
+            >
+              Back to Menu
+            </motion.button>
           ) : matchFound ? (
-            <motion.button key="start" onClick={handleStartMatch} className="w-full py-4 rounded-xl bg-[#00f0ff] text-[#0a0515] font-bold uppercase tracking-widest shadow-lg shadow-[#00f0ff]/20 flex items-center justify-center gap-2">
-              <Swords className="w-5 h-5" /> Initiate Battle
+            <motion.button 
+              key="start" 
+              onClick={handleStartMatch} 
+              className="w-full py-4 rounded-xl bg-[#00f0ff] text-[#0a0515] font-bold uppercase tracking-widest shadow-lg shadow-[#00f0ff]/20 flex items-center justify-center gap-2"
+              style={{ fontFamily: "'Orbitron', sans-serif" }}
+            >
+              <Swords className="w-5 h-5" /> INITIATE BATTLE
             </motion.button>
           ) : (
-            <motion.button key="cancel" onClick={handleCancel} className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white uppercase text-[10px] font-bold tracking-widest">Abort Search</motion.button>
+            <motion.button 
+              key="cancel" 
+              onClick={handleCancel} 
+              className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white uppercase text-[10px] font-bold tracking-widest"
+              style={{ fontFamily: "'Orbitron', sans-serif" }}
+            >
+              Abort Search
+            </motion.button>
           )}
         </AnimatePresence>
 
+        {/* Scan Line Effect */}
         <div className="absolute inset-0 pointer-events-none opacity-20">
-          <motion.div className="absolute left-0 right-0 h-[100px] bg-gradient-to-b from-transparent via-[#00f0ff]/10 to-transparent" animate={{ y: ['-100%', '1000%'] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} />
+          <motion.div 
+            className="absolute left-0 right-0 h-[100px] bg-gradient-to-b from-transparent via-[#00f0ff]/10 to-transparent" 
+            animate={{ y: ['-100%', '1000%'] }} 
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }} 
+          />
         </div>
       </motion.div>
     </div>

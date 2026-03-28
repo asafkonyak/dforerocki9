@@ -7,13 +7,15 @@ interface CameraFeedProps {
   onStreamStarted?: (stream: MediaStream) => void;
   onError?: (error: Error) => void;
   deviceId?: string;
+  transparent?: boolean;
 }
 
 export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({ 
   className = '', 
   onStreamStarted, 
   onError, 
-  deviceId 
+  deviceId,
+  transparent = false
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -62,7 +64,7 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
   }, [onStreamStarted, onError, deviceId]);
 
   return (
-    <div className={`relative w-full h-full bg-[#0a0515] flex items-center justify-center overflow-hidden ${className}`}>
+    <div className={`relative w-full h-full flex items-center justify-center overflow-hidden ${!transparent ? 'bg-[#0a0515]' : ''} ${className}`}>
       {/* Loading/Scanning Placeholder */}
       <AnimatePresence>
         {!isReady && !hasError && (
@@ -70,19 +72,21 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0a0515]"
+            className={`absolute inset-0 z-20 flex flex-col items-center justify-center ${!transparent ? 'bg-[#0a0515]' : 'bg-transparent'}`}
           >
             {/* Cyber Grid Background */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none" 
-                 style={{ 
-                   backgroundImage: `linear-gradient(#00f0ff 1px, transparent 1px), linear-gradient(90deg, #00f0ff 1px, transparent 1px)`,
-                   backgroundSize: '30px 30px'
-                 }} 
-            />
+            {!transparent && (
+              <div className="absolute inset-0 opacity-10 pointer-events-none" 
+                   style={{ 
+                     backgroundImage: `linear-gradient(#00f0ff 1px, transparent 1px), linear-gradient(90deg, #00f0ff 1px, transparent 1px)`,
+                     backgroundSize: '30px 30px'
+                   }} 
+              />
+            )}
             
             <div className="relative flex flex-col items-center gap-4">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full border-2 border-[#00f0ff]/20 flex items-center justify-center bg-[#00f0ff]/5">
+                <div className={`w-24 h-24 rounded-full border-2 border-[#00f0ff]/20 flex items-center justify-center ${!transparent ? 'bg-[#00f0ff]/5' : 'bg-black/40 backdrop-blur-sm'}`}>
                   <User className="w-12 h-12 text-[#00f0ff]/40 animate-pulse" />
                 </div>
                 {/* Spinning circular loader around the user icon */}
@@ -121,7 +125,7 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
       </AnimatePresence>
 
       {hasError ? (
-        <div className="text-center p-4 z-30">
+        <div className={`text-center p-4 z-30 ${transparent ? 'bg-black/60 backdrop-blur-md rounded-xl' : ''}`}>
           <VideoOff className="w-12 h-12 text-white/20 mx-auto mb-2" />
           <p className="text-white/40 text-xs uppercase tracking-wider font-bold">Camera Blocked</p>
         </div>
