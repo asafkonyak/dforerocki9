@@ -363,14 +363,14 @@ export function OnboardingScreen() {
         </div>
       </motion.div>
 
-      {/* Main Content - Scrollable if needed */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0 relative z-10">
-        <div className="w-full max-w-[1600px] mx-auto space-y-6">
-          {/* Refined Layout Swapped: Video Protocol (Left) + Identity (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            {/* Video Tutorial Card - LEFT (Col Span 2) - Fills card, no title */}
+      {/* Main Content - No scroll */}
+      <div className="flex-1 px-6 pb-6 min-h-0 relative z-10 flex items-center">
+        <div className="w-full max-w-[1400px] mx-auto space-y-4">
+          {/* Refined Layout: Centered Video Protocol (Left) + Identity (Right) */}
+          <div className="flex flex-col lg:flex-row justify-center items-stretch gap-6 h-full max-h-[750px] mx-auto">
+            {/* Video Tutorial Card - LEFT - 2/3 width */}
             <motion.div
-              className="lg:col-span-2"
+              className="w-full lg:flex-[2] h-full"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
@@ -404,15 +404,15 @@ export function OnboardingScreen() {
               </GlassCard>
             </motion.div>
 
-            {/* Combined Identity Card - RIGHT (Col Span 1) - Single stack */}
+            {/* Combined Identity Card - RIGHT - 1/3 width, tighter padding */}
             <motion.div
-              className="lg:col-span-1"
+              className="w-full lg:flex-[1] h-full"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
-              <GlassCard className="p-8 h-full border-white/10 bg-black/40 backdrop-blur-xl flex flex-col justify-between">
-                <div className="space-y-8">
+              <GlassCard className="p-5 h-full border-white/10 bg-black/40 backdrop-blur-xl flex flex-col justify-between overflow-hidden">
+                <div className="space-y-5">
                   {/* 1. Preferences Stance (Now Top) */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -421,10 +421,10 @@ export function OnboardingScreen() {
                         <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PREFERENCES STANCE</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setPreferredHand('left')}
-                        className={`group relative py-4 rounded-xl border-2 transition-all text-base font-black tracking-[0.2em] uppercase italic ${preferredHand === 'left'
+                        className={`group relative py-3 rounded-xl border-2 transition-all text-sm font-black tracking-[0.1em] uppercase ${preferredHand === 'left'
                             ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
                             : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
                           }`}
@@ -434,7 +434,7 @@ export function OnboardingScreen() {
                       </button>
                       <button
                         onClick={() => setPreferredHand('right')}
-                        className={`group relative py-4 rounded-xl border-2 transition-all text-base font-black tracking-[0.2em] uppercase italic ${preferredHand === 'right'
+                        className={`group relative py-3 rounded-xl border-2 transition-all text-sm font-black tracking-[0.1em] uppercase ${preferredHand === 'right'
                             ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
                             : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
                           }`}
@@ -454,7 +454,7 @@ export function OnboardingScreen() {
 
                     {/* Subsection: Photo */}
                     <div className="space-y-3">
-                      <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] ml-1">TAKE A PHOTO</p>
+
                       <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-white/10 bg-black/60 shadow-inner group/camera">
                         <div className="absolute inset-0 flex items-center justify-center">
                           {!photoDataUrl || cameraCountdown !== null ? (
@@ -476,7 +476,7 @@ export function OnboardingScreen() {
                                 key={cameraCountdown}
                                 initial={{ scale: 0.5, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className="text-6xl font-black italic text-white drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                                className="text-6xl font-black text-white drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
                                 style={{ fontFamily: "'Orbitron', sans-serif" }}
                               >
                                 {cameraCountdown}
@@ -484,18 +484,18 @@ export function OnboardingScreen() {
                             </div>
                           )}
 
-                          {/* Bottom-Middle Capture/Re-capture Button */}
+                          {/* Middle Capture/Re-capture Button */}
                           {cameraCountdown === null && (
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
                                <motion.button
                                 onClick={startCameraCountdown}
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
-                                className="px-8 py-3 bg-[#ffff00] text-black rounded-xl font-black italic uppercase text-xs tracking-widest
-                                         shadow-[0_0_30px_#ffff0080] hover:bg-[#ffff00] transition-all duration-300 flex items-center gap-2"
+                                className="px-8 py-3 bg-transparent border-2 border-[#ffff00]/50 text-[#ffff00] rounded-xl font-black uppercase text-[10px] tracking-widest
+                                         shadow-[0_0_30px_#ffff0020] hover:border-[#ffff00] hover:bg-[#ffff00]/10 transition-all duration-300 flex flex-col items-center gap-1"
                                 style={{ fontFamily: "'Orbitron', sans-serif" }}
                               >
-                                <Camera className="w-4 h-4" />
+                                <Camera className="w-5 h-5" />
                                 {photoDataUrl ? 'RE-CAPTURE' : 'CAPTURE'}
                               </motion.button>
                             </div>
@@ -551,8 +551,8 @@ export function OnboardingScreen() {
                   {/* 3. Player Name (Bottom) */}
                   <div className="space-y-4 pt-4 border-t border-white/5">
                     <div className="flex items-center gap-2">
-                        <Edit3 className="w-5 h-5 text-[#00f0ff]" />
-                        <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER NAME</p>
+                        <Edit3 className="w-5 h-5 text-[#ffff00]" />
+                        <p className="text-sm text-white font-black uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER NAME</p>
                     </div>
                     <div className="relative group">
                       <input
@@ -561,10 +561,10 @@ export function OnboardingScreen() {
                         onChange={(e) => setPlayerName(e.target.value)}
                         placeholder="ENTER PLAYER NAME..."
                         maxLength={20}
-                        className="w-full px-12 py-5 bg-white/5 border-2 border-white/10 rounded-2xl
+                        className="w-full px-10 py-4 bg-white/5 border-2 border-white/10 rounded-2xl
                                  text-white placeholder-white/20 outline-none
-                                 focus:border-[#00f0ff] focus:bg-[#00f0ff]/5 focus:shadow-[0_0_30px_#00f0ff20]
-                                 transition-all duration-300 caret-[#ffff00] text-base font-black tracking-widest uppercase italic"
+                                 focus:border-[#ffff00] focus:bg-[#ffff00]/5 focus:shadow-[0_0_30px_#ffff0020]
+                                 transition-all duration-300 caret-[#ffff00] text-[14px] font-black tracking-widest uppercase"
                         style={{ fontFamily: 'var(--font-family-heading)' }}
                       />
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#ffff00]/40 group-focus-within:text-[#ffff00] transition-colors" />
@@ -589,13 +589,13 @@ export function OnboardingScreen() {
             </motion.div>
           </div>
 
-          {/* Complete Button */}
-          <div className="pt-8">
+          {/* Complete Button - Tighter padding */}
+          <div className="pt-4">
             <NeonButton
               variant="primary"
               color="yellow"
               onClick={handleComplete}
-              className={`w-full py-6 text-xl font-bold ${(!playerName || nameError || (!selectedAvatar && selectedAvatar !== 0)) ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+              className={`w-full py-4 text-lg font-bold ${(!playerName || nameError || (!selectedAvatar && selectedAvatar !== 0)) ? 'opacity-40 grayscale pointer-events-none' : ''}`}
             >
               {isSyncing ? 'SYNCING DATA...' : isEditing ? 'UPDATE PROFILE' : 'COMPLETE SETUP'}
             </NeonButton>

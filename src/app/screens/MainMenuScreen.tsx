@@ -252,46 +252,10 @@ export function MainMenuScreen() {
                     <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Training challenge</h3>
                   </div>
                   
-                  {/* Progression Pyramid - Theme Red */}
-                  <div className="mt-auto pt-4 border-t border-white/10 w-full">
-                    <div className="flex flex-col items-center gap-2">
-                      {[...Array(PROGRESSION_LEVELS)].map((_, index) => {
-                        const level = PROGRESSION_LEVELS - index;
-                        const width = 20 + (level * 15);
-                        const progress = playerData?.gauntlet_progress || 1;
-                        const isCompleted = level < progress;
-                        const isCurrent = level === progress && progress <= 5;
-                        
-                        return (
-                          <div
-                            key={index}
-                            className={`
-                              h-6 rounded flex items-center justify-center text-xs
-                              transition-all duration-300
-                              ${isCompleted 
-                                ? 'bg-[#ffff00]/30 border border-[#ffff00]' 
-                                : isCurrent
-                                ? 'bg-[#ffff00]/50 border-2 border-[#ffff00] animate-pulse'
-                                : 'bg-white/5 border border-white/10'
-                              }
-                            `}
-                            style={{ width: `${width}%` }}
-                          >
-                            {index === 0 && <span className="text-[#ffff00] drop-shadow-lg font-bold">👑 BOSS</span>}
-                            {isCurrent && <span className="text-[#ffff00]">⚡</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-center text-xs text-white/60 mt-3 drop-shadow-lg">
-                      {playerData?.gauntlet_progress && playerData.gauntlet_progress > 3 
-                        ? 'Practice Conquered! 🏆' 
-                        : `Progress: Level ${playerData?.gauntlet_progress || 1}/3`}
-                    </p>
-                    <div className="mt-auto w-full pt-6">
-                       <div className="px-6 py-4 bg-[#ffff00]/10 border border-[#ffff00]/30 rounded-xl group-hover:bg-[#ffff00]/20 transition-colors text-center">
-                          <span className="text-sm text-[#ffff00] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>START TRAINING</span>
-                       </div>
+                  {/* START TRAINING Button - Simplified */}
+                  <div className="mt-auto w-full pt-4">
+                    <div className="px-6 py-4 bg-[#ffff00]/10 border border-[#ffff00]/30 rounded-xl group-hover:bg-[#ffff00]/20 transition-colors text-center">
+                      <span className="text-sm text-[#ffff00] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>START TRAINING</span>
                     </div>
                   </div>
                 </div>
