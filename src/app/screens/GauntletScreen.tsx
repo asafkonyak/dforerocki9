@@ -426,7 +426,7 @@ export function GauntletScreen() {
         <div className="w-full max-w-sm">
           <div className="relative">
             <div className="flex flex-col-reverse items-center justify-between min-h-[500px] relative">
-              <div className="absolute left-1/2 -translate-x-1/2 top-10 bottom-10 w-1 bg-white/5 overflow-hidden">
+              <div className="absolute left-1/2 -translate-x-1/2 top-10 bottom-10 w-1 bg-white/5 overflow-hidden z-0">
                 <motion.div 
                   className="absolute bottom-0 left-0 right-0 bg-[#00f0ff] shadow-[0_0_15px_#00f0ff]"
                   initial={{ height: '0%' }}
@@ -455,7 +455,7 @@ export function GauntletScreen() {
                         whileHover={{ scale: 1.1 }}
                       >
                         <motion.div
-                          className="absolute inset-0 rounded-full bg-[#00f0ff]/20 blur-2xl"
+                          className="absolute inset-0 rounded-3xl bg-[#00f0ff]/20 blur-2xl"
                           animate={{
                             scale: [1, 1.3, 1],
                             opacity: [0.3, 0.6, 0.3],
@@ -466,7 +466,7 @@ export function GauntletScreen() {
                           }}
                         />
 
-                        <div className="w-40 h-40 rounded-full border-4 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group">
+                        <div className="w-40 h-40 rounded-3xl border-4 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group">
                           <motion.div
                             className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/30 to-transparent"
                             animate={{ opacity: [0.2, 0.5, 0.2] }}
@@ -484,7 +484,7 @@ export function GauntletScreen() {
                           </div>
                         </div>
 
-                        <div className="text-center mt-3">
+                        <div className="text-center mt-3 bg-[#0a0515]/60 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/5 shadow-xl">
                           <p className="text-[#00f0ff] text-base font-bold drop-shadow-[0_0_10px_#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                             {stage.name}
                           </p>
@@ -544,7 +544,7 @@ export function GauntletScreen() {
                         )}
 
                         <motion.div
-                          className="w-56 h-56 rounded-full border-4 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer"
+                          className="w-56 h-56 rounded-3xl border-4 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer"
                           initial={{ scale: 0.5, opacity: 0 }}
                           animate={{ scale: 1.1, opacity: 1 }}
                           whileHover={{ scale: 1.15 }}
@@ -570,7 +570,7 @@ export function GauntletScreen() {
                           >
                             <motion.button
                               onClick={handleInitiateBattle}
-                              className="px-12 py-6 bg-white/10 backdrop-blur-xl border-2 border-white/20 text-white font-black italic rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:bg-white/20 hover:border-white/40 hover:scale-105 transition-all flex items-center gap-5 relative overflow-hidden group"
+                              className="px-12 py-6 bg-[#ffff00]/10 backdrop-blur-xl border-2 border-[#ffff00]/40 text-white font-black italic rounded-2xl shadow-[0_0_40px_rgba(255,255,0,0.2)] hover:bg-[#ffff00]/20 hover:border-[#ffff00]/60 hover:scale-105 transition-all flex items-center gap-5 relative overflow-hidden group"
                             >
                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                               <Zap className="w-8 h-8 fill-current text-[#ffff00]" />
@@ -581,7 +581,7 @@ export function GauntletScreen() {
                         )}
 
                         <motion.div
-                          className="text-center mt-6"
+                          className="text-center mt-6 bg-[#0a0515]/60 backdrop-blur-md px-6 py-2 rounded-xl border border-white/10 shadow-xl"
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 1.2 }}
@@ -596,7 +596,7 @@ export function GauntletScreen() {
 
                     {isLocked && (
                       <div className="relative">
-                        <div className="w-32 h-32 rounded-full border-2 border-white/10 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-30">
+                        <div className="w-32 h-32 rounded-3xl border-2 border-white/10 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-30">
                           <Lock className="w-10 h-10 text-white/20" strokeWidth={1.5} />
                           <img
                             src={stage.image}
@@ -605,7 +605,7 @@ export function GauntletScreen() {
                           />
                         </div>
 
-                        <div className="text-center mt-3 opacity-20">
+                        <div className="text-center mt-3 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg opacity-20">
                           <p className="text-white text-xs font-bold uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                             {stage.name}
                           </p>
