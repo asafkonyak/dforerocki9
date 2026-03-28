@@ -26,9 +26,10 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
   useImperativeHandle(ref, () => videoRef.current!);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function setupCamera() {
       try {
-        // Stop any existing tracks before starting new ones
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
         }
@@ -41,22 +42,35 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
           } 
         });
         
+        if (!isMounted) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          try {
+            await videoRef.current.play();
+          } catch (e) {
+            console.warn("Autoplay was prevented", e);
+          }
         }
         
         if (onStreamStarted) onStreamStarted(stream);
       } catch (err) {
-        console.error("Camera access error:", err);
-        setHasError(true);
-        if (onError) onError(err as Error);
+        if (isMounted) {
+          console.error("Camera access error:", err);
+          setHasError(true);
+          if (onError) onError(err as Error);
+        }
       }
     }
 
     setupCamera();
 
     return () => {
+      isMounted = false;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }

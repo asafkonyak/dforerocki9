@@ -243,7 +243,7 @@ export function GauntletScreen() {
           muted
           loop
           playsInline
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-opacity duration-1000 ${showRefereeVideo ? 'opacity-0' : 'opacity-100'}`}
         />
         <div className="absolute inset-0 bg-[#0a0515]/20" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
@@ -382,7 +382,7 @@ export function GauntletScreen() {
               <span className="text-white/60 text-sm uppercase tracking-wider">Back to Menu</span>
             </motion.button>
 
-            {gauntletProgress === 1 && (
+            {(gauntletProgress >= 2 || (gauntletProgress === 1 && stages.some(s => s.cleared))) && (
               <motion.button
                 onClick={() => setShowResetConfirm(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all z-20 group"
@@ -390,7 +390,7 @@ export function GauntletScreen() {
                 whileTap={{ scale: 0.95 }}
               >
                 <RotateCcw className="w-5 h-5 text-white/40 group-hover:rotate-180 transition-transform duration-500" />
-                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">RESET</span>
+                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">START AGAIN</span>
               </motion.button>
             )}
           </div>
@@ -426,11 +426,34 @@ export function GauntletScreen() {
         <div className="w-full max-w-sm">
           <div className="relative">
             <div className="flex flex-col-reverse items-center justify-between min-h-[500px] relative">
-              <div className="absolute left-1/2 -translate-x-1/2 top-10 bottom-10 w-1 bg-white/5 overflow-hidden z-0">
+              <div className="absolute left-1/2 -translate-x-1/2 top-[10%] bottom-[10%] w-8 z-0">
+                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                  {/* Background Path Channel */}
+                  <rect x="14" y="0" width="4" height="100%" fill="rgba(255,255,255,0.05)" />
+                  {/* Glowing Progress Beam */}
+                  <motion.rect 
+                    x="12" 
+                    y={`${100 - (gauntletProgress / stages.length) * 100}%`}
+                    width="8" 
+                    height={`${(gauntletProgress / stages.length) * 100}%`}
+                    fill="url(#beamGradient)"
+                    initial={{ height: '0%' }}
+                    animate={{ height: `${(gauntletProgress / stages.length) * 100}%`, y: `${100 - (gauntletProgress / stages.length) * 100}%` }}
+                    className="filter drop-shadow-[0_0_8px_#00f0ff]"
+                  />
+                  <defs>
+                    <linearGradient id="beamGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ff00ff" />
+                      <stop offset="50%" stopColor="#7000ff" />
+                      <stop offset="100%" stopColor="#00f0ff" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                {/* Traveling Energy Pulse */}
                 <motion.div 
-                  className="absolute bottom-0 left-0 right-0 bg-[#00f0ff] shadow-[0_0_15px_#00f0ff]"
-                  initial={{ height: '0%' }}
-                  animate={{ height: `${(gauntletProgress / 3) * 100}%` }}
+                  className="absolute w-6 h-1 bg-[#00f0ff] blur-[2px] shadow-[0_0_15px_#00f0ff] left-1"
+                  animate={{ bottom: ['0%', '100%'] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                 />
               </div>
 
@@ -466,7 +489,15 @@ export function GauntletScreen() {
                           }}
                         />
 
-                        <div className="w-40 h-40 rounded-3xl border-4 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group">
+                        <div 
+                          className="w-40 h-40 border-2 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group"
+                          style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)' }}
+                        >
+                          <motion.div
+                            className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,240,255,0.1)_50%)] bg-[size:100%_4px] pointer-events-none"
+                            animate={{ backgroundPosition: ['0 0', '0 100%'] }}
+                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                          />
                           <motion.div
                             className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/30 to-transparent"
                             animate={{ opacity: [0.2, 0.5, 0.2] }}
@@ -544,11 +575,17 @@ export function GauntletScreen() {
                         )}
 
                         <motion.div
-                          className="w-56 h-56 rounded-3xl border-4 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer"
+                          className="w-56 h-56 border-2 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer"
+                          style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)' }}
                           initial={{ scale: 0.5, opacity: 0 }}
                           animate={{ scale: 1.1, opacity: 1 }}
                           whileHover={{ scale: 1.15 }}
                         >
+                          <motion.div
+                            className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(255,255,0,0.1)_50%)] bg-[size:100%_4px] pointer-events-none"
+                            animate={{ backgroundPosition: ['0 0', '0 100%'] }}
+                            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                          />
                           <motion.div
                             className="absolute inset-0 bg-white/10"
                             animate={{ opacity: [0, 0.2, 0] }}
@@ -596,7 +633,10 @@ export function GauntletScreen() {
 
                     {isLocked && (
                       <div className="relative">
-                        <div className="w-32 h-32 rounded-3xl border-2 border-white/10 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-30">
+                        <div 
+                          className="w-32 h-32 border border-white/10 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-30"
+                          style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)' }}
+                        >
                           <Lock className="w-10 h-10 text-white/20" strokeWidth={1.5} />
                           <img
                             src={stage.image}

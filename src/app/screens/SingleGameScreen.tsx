@@ -238,31 +238,44 @@ export function SingleGameScreen() {
 
   // Video Recording Logic
   useEffect(() => {
-    if (isGameActive && stream && !mediaRecorderRef.current) {
-      console.log('[Recording] Starting Match Recording...');
+    if (isGameActive && stream && stream.active && !mediaRecorderRef.current) {
+      console.log('[Recording] Starting Match Recording... (Stream Active)');
       recordedChunksRef.current = [];
       try {
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+        // Try with supported types
+        const options = { mimeType: 'video/webm;codecs=vp8' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          console.warn('[Recording] VP8 not supported, falling back to default webm');
+          delete (options as any).mimeType;
+        }
+
+        const recorder = new MediaRecorder(stream, options);
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
             recordedChunksRef.current.push(e.data);
           }
         };
         recorder.onstop = () => {
-          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          console.log('[Recording] Video ready:', url);
-          videoUrlRef.current = url;
-          setVideoUrl(url);
+          if (recordedChunksRef.current.length > 0) {
+            const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            console.log('[Recording] Video ready:', url);
+            videoUrlRef.current = url;
+            setVideoUrl(url);
+          } else {
+            console.warn('[Recording] No chunks recorded!');
+          }
         };
-        recorder.start();
+        recorder.start(1000); // Capture in 1s slices for better stability
         mediaRecorderRef.current = recorder;
       } catch (err) {
         console.error('[Recording] Failed to start recorder:', err);
       }
     } else if (!isGameActive && mediaRecorderRef.current) {
       console.log('[Recording] Stopping Match Recording...');
-      mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       mediaRecorderRef.current = null;
     }
   }, [isGameActive, stream]);
