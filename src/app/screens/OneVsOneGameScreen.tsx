@@ -122,14 +122,13 @@ export function OneVsOneGameScreen() {
       .catch(() => getDevices());
   }, []);
 
-  // Send SINGLE_PLAYER_START when connected
+  // No SINGLE_PLAYER_START needed — INIT is sent from the 1v1 pregame screen
   useEffect(() => {
     if (isConnected && isReady && !commandsSent) {
-      console.log('[1v1Game] Socket connected. Sending SINGLE_PLAYER_START.');
-      sendMessage({ cmd: { SINGLE_PLAYER_START: 0 } });
+      console.log('[1v1Game] Socket connected. Ready for game data.');
       setCommandsSent(true);
     }
-  }, [isConnected, isReady, commandsSent, sendMessage]);
+  }, [isConnected, isReady, commandsSent]);
 
   // Fight Countdown UI State
   useEffect(() => {
