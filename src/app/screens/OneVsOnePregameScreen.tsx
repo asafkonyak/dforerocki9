@@ -279,6 +279,9 @@ export function OneVsOnePregameScreen() {
                   <h2 className="text-2xl font-black italic text-[#ff006e] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {opponent?.username || 'OPPONENT'}
                   </h2>
+                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    {(opponent?.preferred_hand || 'RIGHT').toUpperCase()} HAND
+                  </p>
                 </div>
                 {opponent?.avatar_url && (
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#ff006e] shadow-[0_0_15px_rgba(255,0,110,0.3)]">

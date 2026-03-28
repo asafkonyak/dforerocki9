@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useAudio } from '../../hooks/useAudio';
-import { Swords, Zap } from 'lucide-react';
+import { Zap, CheckCircle } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
 
 export function MatchmakingScreen() {
@@ -16,32 +16,52 @@ export function MatchmakingScreen() {
   
   const [matchFound, setMatchFound] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(localStorage.getItem('fighter_player_id'));
-  const [userData, setUserData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
-  const [opponentData, setOpponentData] = useState<{ username: string; avatar_url: string; rank: string } | null>(null);
+  const [userData, setUserData] = useState<{ username: string; avatar_url: string; rank: string; preferred_hand?: string } | null>(null);
+  const [opponentData, setOpponentData] = useState<{ username: string; avatar_url: string; rank: string; preferred_hand?: string } | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
   const [isPlayer1, setIsPlayer1] = useState<boolean | null>(null);
   const [errorHeader, setErrorHeader] = useState<string | null>(null);
   const [timeoutActive, setTimeoutActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300);
-  const [isBattleInitiated, setIsBattleInitiated] = useState(false);
 
   const { socket, isConnected, isError: socketError } = useSocket();
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
   const subscriptionRef = useRef<any>(null);
   const startMatchRef = useRef<(id: string, opponent: any) => void>(() => {});
+  const hasNavigatedRef = useRef(false);
 
   const startMatch = (id: string, opponent: any) => {
     setMatchId(id);
     setOpponentData({
       username: opponent.username || 'OPPONENT',
       avatar_url: opponent.avatar_url || '👤',
-      rank: opponent.rank || 'Bronze'
+      rank: opponent.rank || 'Bronze',
+      preferred_hand: opponent.preferred_hand || 'right'
     });
     setMatchFound(true);
     playMatchFound();
   };
 
   startMatchRef.current = startMatch;
+
+  // Auto-redirect to 1v1-pregame after match found (with short delay for animation)
+  useEffect(() => {
+    if (matchFound && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
+      const timer = setTimeout(() => {
+        navigate('/1v1-pregame', {
+          state: { 
+            matchId, 
+            mode: 'ranked', 
+            opponent: opponentData, 
+            isPlayer1, 
+            gameType 
+          }
+        });
+      }, 2500); // 2.5s for the success animation
+      return () => clearTimeout(timer);
+    }
+  }, [matchFound, matchId, opponentData, isPlayer1, gameType, navigate]);
 
   // Initial Data & Match Search with reliability fixes
   useEffect(() => {
@@ -50,22 +70,24 @@ export function MatchmakingScreen() {
       let currentId = localStorage.getItem('fighter_player_id');
 
       if (user) {
-        const { data: player } = await supabase.from('players').select('id, username, avatar_url, rank').eq('user_id', user.id).maybeSingle();
+        const { data: player } = await supabase.from('players').select('id, username, avatar_url, rank, preferred_hand').eq('user_id', user.id).maybeSingle();
         if (player) {
           currentId = player.id;
           setUserData({
             username: player.username || 'PLAYER',
             avatar_url: player.avatar_url || '👤',
-            rank: player.rank || 'Bronze'
+            rank: player.rank || 'Bronze',
+            preferred_hand: player.preferred_hand || 'right'
           });
         }
       } else if (currentId) {
-        const { data: player } = await supabase.from('players').select('username, avatar_url, rank').eq('id', currentId).maybeSingle();
+        const { data: player } = await supabase.from('players').select('username, avatar_url, rank, preferred_hand').eq('id', currentId).maybeSingle();
         if (player) {
           setUserData({
             username: player.username || 'GUEST',
             avatar_url: player.avatar_url || '👤',
-            rank: player.rank || 'Bronze'
+            rank: player.rank || 'Bronze',
+            preferred_hand: player.preferred_hand || 'right'
           });
         }
       }
@@ -76,10 +98,8 @@ export function MatchmakingScreen() {
       }
       setPlayerId(currentId);
 
-      // Stale filter: only consider matches from last 5 minutes
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-      // 1. Search for pending match (newest first, recent only)
       let pendingMatchQuery = supabase
         .from('matches')
         .select('*')
@@ -100,26 +120,22 @@ export function MatchmakingScreen() {
         const joinMatch = pendingMatches[0];
         setIsPlayer1(false);
         
-        // Optimistic lock: only update if player2_id is still null
         const { error: updateError, data: updatedMatch } = await supabase
           .from('matches')
           .update({ player2_id: currentId, status: 'matched' })
           .eq('id', joinMatch.id)
-          .is('player2_id', null) // Optimistic lock
+          .is('player2_id', null)
           .select()
           .maybeSingle();
 
         if (!updateError && updatedMatch) {
-          // Successfully joined
           const { data: p1Profile } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).maybeSingle();
           if (p1Profile) startMatchRef.current(joinMatch.id, p1Profile);
         } else {
-          // Retry: someone else joined first, create as P1 instead
           console.log('[Matchmaking] Join failed (race condition), creating new match as P1');
           await createMatchAsP1(currentId);
         }
       } else {
-        // 2. Create new match as P1
         await createMatchAsP1(currentId);
       }
 
@@ -178,13 +194,6 @@ export function MatchmakingScreen() {
     return () => clearInterval(timer);
   }, [matchId, matchFound, isPlayer1]);
 
-  const handleStartMatch = () => {
-    setIsBattleInitiated(true);
-    navigate('/1v1-pregame', {
-      state: { matchId, mode: 'ranked', opponent: opponentData, isPlayer1, gameType }
-    });
-  };
-
   const handleCancel = async () => {
     if (matchId && !matchFound) {
       await supabase.from('matches').update({ status: 'abended' }).eq('id', matchId);
@@ -206,40 +215,108 @@ export function MatchmakingScreen() {
             animate={{ opacity: matchFound ? 1 : [1, 0.5, 1] }}
             transition={{ duration: 1.5, repeat: matchFound ? 0 : Infinity }}
           >
-            {errorHeader || (timeoutActive ? 'NO PARTNER FOUND' : matchFound ? 'TARGET ACQUIRED' : 'SIGNAL SCANNING')}
+            {errorHeader || (timeoutActive ? 'NO PARTNER FOUND' : matchFound ? 'OPPONENT FOUND' : 'SIGNAL SCANNING')}
           </motion.h2>
           <p className="text-white/60 text-sm tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-            {timeoutActive ? 'TRY AGAIN LATER' : matchFound ? 'SYNCHRONIZING BATTLE PROTOCOLS' : 'SEARCHING FOR OPPONENT'}
+            {timeoutActive ? 'TRY AGAIN LATER' : matchFound ? 'ENTERING ARENA...' : 'SEARCHING FOR OPPONENT'}
           </p>
         </div>
 
-        {/* Main Content */}
         <AnimatePresence mode="wait">
+          {/* Match Found — Success Animation */}
+          {matchFound && (
+            <motion.div
+              key="found"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-12 space-y-6"
+            >
+              {/* Success pulse ring */}
+              <div className="relative w-32 h-32">
+                <motion.div 
+                  className="absolute inset-0 border-4 border-[#00ff88] rounded-full"
+                  animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+                />
+                <motion.div 
+                  className="absolute inset-0 border-4 border-[#00ff88] rounded-full"
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut", delay: 0.3 }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                  >
+                    <CheckCircle className="w-16 h-16 text-[#00ff88]" />
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Opponent Name */}
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-[#ff006e] text-xl font-black uppercase tracking-widest"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                {opponentData?.username}
+              </motion.p>
+
+              {/* Auto-redirecting progress */}
+              <div className="w-full max-w-xs">
+                <motion.div 
+                  className="h-1 bg-[#00ff88] rounded-full shadow-[0_0_10px_rgba(0,255,136,0.5)]"
+                  initial={{ width: '0%' }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 2.5, ease: "linear" }}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Searching State — Player Profile + Progress */}
           {!matchFound && !timeoutActive && (
             <motion.div 
               key="searching" 
-              className="flex flex-col items-center justify-center space-y-8 py-12"
+              className="flex flex-col items-center justify-center space-y-8 py-6"
               exit={{ opacity: 0, scale: 0.8 }}
             >
+              {/* Player Profile Card */}
+              {userData && (
+                <GlassCard className="w-full p-6 border-t border-[#00f0ff]/30 bg-black/40">
+                  <div className="flex items-center gap-5">
+                    <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+                      <AvatarDisplay avatar={userData.avatar_url} size="lg" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-black text-[#00f0ff] uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                        {userData.username}
+                      </h3>
+                      <p className="text-white/40 text-xs uppercase tracking-widest mt-1 font-bold">{userData.rank}</p>
+                      <p className="text-[#00f0ff]/60 text-[10px] uppercase tracking-widest mt-1 font-bold">
+                        {(userData.preferred_hand || 'RIGHT').toUpperCase()} HAND
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white/20 text-[8px] uppercase tracking-widest font-bold">Game</p>
+                      <p className="text-[#00f0ff] text-sm font-bold uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                        {gameType === 'bo3' ? 'BO3' : gameType === 'bo5' ? 'BO5' : '1 ROUND'}
+                      </p>
+                    </div>
+                  </div>
+                </GlassCard>
+              )}
+
               {/* Radar Animation */}
-              <div className="relative w-32 h-32">
-                <motion.div 
-                  className="absolute inset-0 border-2 border-[#00f0ff]/40 rounded-full"
-                  animate={{ scale: [1, 1.8], opacity: [0.6, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-                />
-                <motion.div 
-                  className="absolute inset-0 border-2 border-[#00f0ff]/30 rounded-full"
-                  animate={{ scale: [1, 1.6], opacity: [0.4, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
-                />
-                <motion.div 
-                  className="absolute inset-0 border-2 border-[#00f0ff]/20 rounded-full"
-                  animate={{ scale: [1, 1.4], opacity: [0.3, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 1 }}
-                />
+              <div className="relative w-24 h-24">
+                <motion.div className="absolute inset-0 border-2 border-[#00f0ff]/40 rounded-full" animate={{ scale: [1, 1.8], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }} />
+                <motion.div className="absolute inset-0 border-2 border-[#00f0ff]/30 rounded-full" animate={{ scale: [1, 1.6], opacity: [0.4, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 0.5 }} />
+                <motion.div className="absolute inset-0 border-2 border-[#00f0ff]/20 rounded-full" animate={{ scale: [1, 1.4], opacity: [0.3, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: 1 }} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Zap className="w-10 h-10 text-[#00f0ff] animate-pulse" />
+                  <Zap className="w-8 h-8 text-[#00f0ff] animate-pulse" />
                 </div>
               </div>
 
@@ -248,15 +325,9 @@ export function MatchmakingScreen() {
                 <div className="relative h-2 bg-white/10 rounded-full overflow-hidden border border-[#00f0ff]/20">
                   <motion.div
                     className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#00f0ff] to-[#ff006e] rounded-full shadow-[0_0_10px_rgba(0,240,255,0.5)]"
-                    animate={{ 
-                      left: ['-30%', '100%'],
-                    }}
+                    animate={{ left: ['-30%', '100%'] }}
                     style={{ width: '30%' }}
-                    transition={{ 
-                      duration: 1.5, 
-                      repeat: Infinity, 
-                      ease: "easeInOut"
-                    }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                   />
                 </div>
                 <div className="flex justify-between mt-2">
@@ -264,54 +335,6 @@ export function MatchmakingScreen() {
                   <span className="text-[#00f0ff]/40 text-[8px] uppercase tracking-widest font-bold">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
                 </div>
               </div>
-            </motion.div>
-          )}
-
-          {matchFound && (
-            <motion.div 
-              key="found" 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="py-8"
-            >
-              <GlassCard className="p-8 border-t border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <div className="grid grid-cols-3 gap-4 items-center">
-                  {/* P1 / ALPHA */}
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-full bg-[#00f0ff]/10 border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center overflow-hidden">
-                      <AvatarDisplay avatar={(isPlayer1 ? userData : opponentData)?.avatar_url || '👤'} size="lg" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[#00f0ff] font-bold text-xs uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                        {(isPlayer1 ? userData : opponentData)?.username || 'ALPHA'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="relative flex flex-col items-center">
-                    <motion.div 
-                      className="text-4xl font-black italic text-[#ff006e] relative z-20"
-                      style={{ fontFamily: "'Orbitron', sans-serif" }}
-                      animate={{ scale: [1, 1.2, 1], filter: 'drop-shadow(0 0 10px #ff006e)' }}
-                      transition={{ duration: 1 }}
-                    >
-                      VS
-                    </motion.div>
-                  </div>
-
-                  {/* P2 / OMEGA */}
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-full bg-[#ff006e]/10 border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.4)] flex items-center justify-center overflow-hidden">
-                      <AvatarDisplay avatar={(isPlayer1 ? opponentData : userData)?.avatar_url || '👤'} size="lg" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[#ff006e] font-bold text-xs uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                        {(isPlayer1 ? opponentData : userData)?.username || 'OMEGA'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
             </motion.div>
           )}
         </AnimatePresence>
@@ -327,16 +350,7 @@ export function MatchmakingScreen() {
             >
               Back to Menu
             </motion.button>
-          ) : matchFound ? (
-            <motion.button 
-              key="start" 
-              onClick={handleStartMatch} 
-              className="w-full py-4 rounded-xl bg-[#00f0ff] text-[#0a0515] font-bold uppercase tracking-widest shadow-lg shadow-[#00f0ff]/20 flex items-center justify-center gap-2"
-              style={{ fontFamily: "'Orbitron', sans-serif" }}
-            >
-              <Swords className="w-5 h-5" /> INITIATE BATTLE
-            </motion.button>
-          ) : (
+          ) : !matchFound ? (
             <motion.button 
               key="cancel" 
               onClick={handleCancel} 
@@ -345,16 +359,12 @@ export function MatchmakingScreen() {
             >
               Abort Search
             </motion.button>
-          )}
+          ) : null}
         </AnimatePresence>
 
         {/* Scan Line Effect */}
         <div className="absolute inset-0 pointer-events-none opacity-20">
-          <motion.div 
-            className="absolute left-0 right-0 h-[100px] bg-gradient-to-b from-transparent via-[#00f0ff]/10 to-transparent" 
-            animate={{ y: ['-100%', '1000%'] }} 
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }} 
-          />
+          <motion.div className="absolute left-0 right-0 h-[100px] bg-gradient-to-b from-transparent via-[#00f0ff]/10 to-transparent" animate={{ y: ['-100%', '1000%'] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} />
         </div>
       </motion.div>
     </div>
