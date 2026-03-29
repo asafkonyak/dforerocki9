@@ -497,11 +497,20 @@ export function SingleGameScreen() {
         }
 
         if (cdVal !== null) {
-          console.log('[SingleGame] Countdown updated:', cdVal);
-          setCountdown(cdVal);
-          setShowCountdown(true);
-          
-          // Blur removal logic removed as per user request
+          const numVal = Number(cdVal);
+          if (!isNaN(numVal) && numVal <= 10) {
+            // Only update on even numbers to create a 5, 4, 3, 2, 1 sequence
+            if (numVal % 2 === 0 && numVal > 0) {
+              const mappedVal = numVal / 2;
+              console.log(`[SingleGame] Mapping countdown: ${numVal} -> ${mappedVal}`);
+              setCountdown(mappedVal);
+              setShowCountdown(true);
+            }
+          } else {
+            // Non-numeric or > 10 (e.g., "READY")
+            setCountdown(cdVal);
+            setShowCountdown(true);
+          }
         }
 
         // Check for game start strictly via acs_state: 'ACS_GAME'
