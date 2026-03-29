@@ -43,7 +43,7 @@ export function OneVsOnePregameScreen() {
         console.error("Error enumerating devices:", err);
       }
     }
-    
+
     // Request permission first
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
@@ -76,7 +76,7 @@ export function OneVsOnePregameScreen() {
   useEffect(() => {
     if (isConnected) {
       const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
-      
+
       sendMessage({
         set_game: {
           mode: "multiplayer",
@@ -138,7 +138,7 @@ export function OneVsOnePregameScreen() {
           className="absolute inset-0 w-full h-full object-cover"
           src="/assets/referee_rules.mp4"
         />
-        
+
         {/* Ambient overlays removed per user request */}
       </div>
 
@@ -157,28 +157,28 @@ export function OneVsOnePregameScreen() {
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#00f0ff]/50 relative group bg-[#0a0515]">
                 {profile?.avatar_url && (
                   <div className="absolute inset-0 z-0">
-                    <img 
-                      src={profile.avatar_url} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover opacity-60 grayscale brightness-50" 
+                    <img
+                      src={profile.avatar_url}
+                      alt="Profile"
+                      className="w-full h-full object-cover opacity-60 grayscale brightness-50"
                     />
                   </div>
                 )}
-                <CameraFeed 
-                  className="w-full h-full relative z-10" 
-                  transparent={true} 
+                <CameraFeed
+                  className="w-full h-full relative z-10"
+                  transparent={true}
                   deviceId={videoDevices[0]?.deviceId}
                 />
                 <div className="absolute top-4 left-4 bg-[#00f0ff] text-black px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase z-20">
                   LIVE
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4">
                 {profile?.avatar_url && (
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#00f0ff] shadow-[0_0_15px_rgba(0,240,255,0.3)]">
-                    <img 
-                      src={profile.avatar_url} 
+                    <img
+                      src={profile.avatar_url}
                       alt="Profile Circle"
                       className="w-full h-full object-cover"
                     />
@@ -197,7 +197,7 @@ export function OneVsOnePregameScreen() {
 
         {/* Center: Rules + Ready */}
         <div className="flex flex-col items-center justify-center gap-8 w-full max-w-md h-[450px] relative">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col gap-3 items-center w-full"
@@ -207,7 +207,7 @@ export function OneVsOnePregameScreen() {
               const parts = rule.split(' - ');
               const firstWord = parts[0];
               const rest = parts[1] || '';
-              
+
               return (
                 <motion.div
                   key={idx}
@@ -216,9 +216,9 @@ export function OneVsOnePregameScreen() {
                   transition={{ delay: idx * 0.1 }}
                   className="bg-black/40 border border-[#00f0ff]/20 px-6 py-2 rounded-lg w-full backdrop-blur-sm"
                 >
-                  <h3 
+                  <h3
                     className="text-white text-sm font-bold tracking-tight text-center uppercase"
-                    style={{ 
+                    style={{
                       fontFamily: "'Orbitron', sans-serif"
                     }}
                   >
@@ -264,16 +264,16 @@ export function OneVsOnePregameScreen() {
               <div className="h-64 rounded-xl overflow-hidden border-2 border-[#ff006e]/50 relative bg-black/40">
                 {/* Opponent camera feed fallback or second local camera for testing */}
                 {videoDevices.length >= 2 ? (
-                  <CameraFeed 
-                    className="w-full h-full relative z-10" 
-                    transparent={true} 
+                  <CameraFeed
+                    className="w-full h-full relative z-10"
+                    transparent={true}
                     deviceId={videoDevices[1]?.deviceId}
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50 bg-black">
                     <Video className="w-12 h-12 mb-3 animate-pulse opacity-20" />
                     <span className="text-[10px] tracking-[0.4em] font-black uppercase text-center px-4">
-                      Awaiting Rival<br/><span className="text-[8px] opacity-40">Connecting Node...</span>
+                      Awaiting Rival<br /><span className="text-[8px] opacity-40">Connecting Node...</span>
                     </span>
                   </div>
                 )}
@@ -281,7 +281,7 @@ export function OneVsOnePregameScreen() {
                   LIVE
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-end gap-4 w-full">
                 <div className="flex flex-col items-end text-right">
                   <h2 className="text-2xl font-black italic text-[#ff006e] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
@@ -293,8 +293,8 @@ export function OneVsOnePregameScreen() {
                 </div>
                 {opponent?.avatar_url && (
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#ff006e] shadow-[0_0_15px_rgba(255,0,110,0.3)]">
-                    <img 
-                      src={opponent.avatar_url} 
+                    <img
+                      src={opponent.avatar_url}
                       alt="Opponent"
                       className="w-full h-full object-cover"
                     />
