@@ -2,12 +2,14 @@ import React, { createContext, useContext, useRef, useEffect, useState } from 'r
 
 interface AudioContextType {
   isPlaying: boolean;
+  isDimmed: boolean;
   startIntroMusic: () => void;
   stopIntroMusic: () => void;
   playStageMusic: (stage: number) => void;
   stopStageMusic: () => void;
   playWinSound: () => void;
   stopWinSound: () => void;
+  setDimmed: (dim: boolean) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -17,12 +19,18 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const stageAudioRef = useRef<HTMLAudioElement | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isDimmed, setIsDimmed] = useState(false);
+
+  // Constants for volumes
+  const INTRO_VOL = 0.6;
+  const STAGE_VOL = 0.5;
+  const DIMMED_MULTIPLIER = 0.25; // 25% of the original volume
 
   useEffect(() => {
     // Create intro audio element
     const audio = new Audio('/assets/intosound.mp3');
     audio.loop = true;
-    audio.volume = 0.6;
+    audio.volume = INTRO_VOL;
     audioRef.current = audio;
 
     return () => {
@@ -39,12 +47,26 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
+  // Update volumes when isDimmed changes
+  useEffect(() => {
+    if (audioRef.current && isPlaying) {
+      audioRef.current.volume = isDimmed ? INTRO_VOL * DIMMED_MULTIPLIER : INTRO_VOL;
+    }
+    if (stageAudioRef.current) {
+      stageAudioRef.current.volume = isDimmed ? STAGE_VOL * DIMMED_MULTIPLIER : STAGE_VOL;
+    }
+  }, [isDimmed, isPlaying]);
+
+  const setDimmed = (dim: boolean) => {
+    setIsDimmed(dim);
+  };
+
   const startIntroMusic = () => {
     if (audioRef.current && !isPlaying) {
       audioRef.current.play()
         .then(() => {
           setIsPlaying(true);
-          audioRef.current!.volume = 0.6;
+          audioRef.current!.volume = isDimmed ? INTRO_VOL * DIMMED_MULTIPLIER : INTRO_VOL;
         })
         .catch(err => console.error('Persistent audio playback failed:', err));
     }
@@ -95,11 +117,11 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       stageAudioRef.current.pause();
     }
 
-    // 3. Determine file path (Stage 2 is .ogg, Stage 3 is .wav, others are .mp3)
+    // 3. Determine file path (Stage 2 is .ogg, Stage 3 is .mp3, others are .mp3)
     let ext = 'mp3';
     let targetStage = stage;
     if (stage === 2) ext = 'ogg';
-    if (stage === 3) ext = 'wav';
+    if (stage === 3) ext = 'mp3';
     if (stage > 5) targetStage = 5;
 
     const audioPath = `/assets/robots/stage${targetStage}.${ext}`;
@@ -110,12 +132,14 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     stageAudio.volume = 0;
     stageAudioRef.current = stageAudio;
 
+    const targetVolume = isDimmed ? STAGE_VOL * DIMMED_MULTIPLIER : STAGE_VOL;
+
     stageAudio.play()
       .then(() => {
         // Fade in
         const fadeIn = setInterval(() => {
-          if (stageAudio.volume < 0.5) {
-            stageAudio.volume = Math.min(0.5, stageAudio.volume + 0.05);
+          if (stageAudio.volume < targetVolume) {
+            stageAudio.volume = Math.min(targetVolume, stageAudio.volume + 0.05);
           } else {
             clearInterval(fadeIn);
           }
@@ -142,7 +166,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <AudioContext.Provider value={{ isPlaying, startIntroMusic, stopIntroMusic, playStageMusic, stopStageMusic, playWinSound, stopWinSound }}>
+    <AudioContext.Provider value={{ isPlaying, isDimmed, startIntroMusic, stopIntroMusic, playStageMusic, stopStageMusic, playWinSound, stopWinSound, setDimmed }}>
       {children}
     </AudioContext.Provider>
   );

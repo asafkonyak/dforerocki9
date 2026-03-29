@@ -9,7 +9,7 @@ import { useSocket } from '../../contexts/SocketContext';
 
 export function GauntletScreen() {
   const navigate = useNavigate();
-  const { playStageMusic, stopStageMusic, stopWinSound } = useGlobalAudio();
+  const { playStageMusic, stopStageMusic, stopWinSound, setDimmed } = useGlobalAudio();
   const { sendMessage, lastMessage } = useSocket();
   const [showUnlockAnimation, setShowUnlockAnimation] = useState(false);
   const [pathProgress, setPathProgress] = useState(0);
@@ -25,8 +25,15 @@ export function GauntletScreen() {
     if (!loading) {
       playStageMusic(gauntletProgress);
     }
-    return () => stopStageMusic();
-  }, [loading, gauntletProgress, playStageMusic, stopStageMusic, stopWinSound]);
+    
+    // Dim music while on Gauntlet (referee_practice video)
+    setDimmed(true);
+    
+    return () => {
+      stopStageMusic();
+      setDimmed(false);
+    };
+  }, [loading, gauntletProgress, playStageMusic, stopStageMusic, stopWinSound, setDimmed]);
 
   // Fetch progress on mount
   useEffect(() => {
@@ -118,7 +125,7 @@ export function GauntletScreen() {
   const baseStages = [
     {
       id: 1,
-      name: 'Marco',
+      name: 'MARCO',
       robot: '🤖',
       image: '/assets/robots/stage1.jpg',
       difficulty: 'Warm Up',
@@ -126,7 +133,7 @@ export function GauntletScreen() {
     },
     {
       id: 2,
-      name: 'Kamila',
+      name: 'KAMILA',
       robot: '🦾',
       image: '/assets/robots/stage2.png',
       difficulty: 'Endurance',
@@ -134,7 +141,7 @@ export function GauntletScreen() {
     },
     {
       id: 3,
-      name: 'Jeck',
+      name: 'JACK',
       robot: '💀',
       image: '/assets/robots/stage3.jpg',
       difficulty: 'Mastery',
@@ -208,11 +215,11 @@ export function GauntletScreen() {
     }
   };
 
-  const handleInitiateBattle = () => {
+  const handleInitiateBattle = (stage: any) => {
     navigate('/pregame', {
       state: {
-        stageNumber: activeStage.id,
-        stageName: activeStage.description,
+        stageNumber: stage.id,
+        stageName: stage.description,
         hand: playerHand
       }
     });
@@ -240,7 +247,6 @@ export function GauntletScreen() {
         <video
           src="/assets/referee_practice.mp4"
           autoPlay
-          muted
           loop
           playsInline
           className={`w-full h-full object-cover transition-opacity duration-1000 ${showRefereeVideo ? 'opacity-0' : 'opacity-100'}`}
@@ -382,7 +388,8 @@ export function GauntletScreen() {
               <span className="text-white/60 text-sm uppercase tracking-wider">Back to Menu</span>
             </motion.button>
 
-            {(gauntletProgress >= 2 || (gauntletProgress === 1 && stages.some(s => s.cleared))) && (
+            {/* RESET button hidden per user request */}
+            {/* {(gauntletProgress >= 2 || (gauntletProgress === 1 && stages.some(s => s.cleared))) && (
               <motion.button
                 onClick={() => setShowResetConfirm(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all z-20 group"
@@ -390,12 +397,13 @@ export function GauntletScreen() {
                 whileTap={{ scale: 0.95 }}
               >
                 <RotateCcw className="w-5 h-5 text-white/40 group-hover:rotate-180 transition-transform duration-500" />
-                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">START AGAIN</span>
+                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">RESET</span>
               </motion.button>
-            )}
+            )} */}
           </div>
 
-          <motion.div
+          {/* Title hidden per user request */}
+          {/* <motion.div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
             animate={{
               textShadow: [
@@ -416,7 +424,7 @@ export function GauntletScreen() {
             >
               PRACTICE CHALLENGE
             </h1>
-          </motion.div>
+          </motion.div> */}
 
           <div className="w-32" />
         </div>
@@ -425,7 +433,7 @@ export function GauntletScreen() {
       <div className="relative z-10 flex-1 flex items-end justify-end pr-24 pb-24 min-h-0">
         <div className="w-full max-w-sm">
           <div className="relative">
-            <div className="flex flex-col-reverse items-center justify-between min-h-[500px] relative">
+            <div className="flex flex-col-reverse items-center justify-between min-h-[650px] relative">
               <div className="absolute left-1/2 -translate-x-1/2 top-[10%] bottom-[10%] w-8 z-0">
                 <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
                   {/* Background Path Channel */}
@@ -466,7 +474,7 @@ export function GauntletScreen() {
                 return (
                   <motion.div
                     key={stage.id}
-                    className="flex flex-col items-center relative"
+                    className={`flex flex-col items-center relative ${index === 0 ? 'mt-8' : ''}`}
                     style={{ zIndex: isUnlocking ? 50 : isBoss ? 40 : 10 }}
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -474,8 +482,9 @@ export function GauntletScreen() {
                   >
                     {isCleared && (
                       <motion.div
-                        className="relative"
+                        className="relative cursor-pointer"
                         whileHover={{ scale: 1.1 }}
+                        onClick={() => handleInitiateBattle(stage)}
                       >
                         <motion.div
                           className="absolute inset-0 rounded-3xl bg-[#00f0ff]/20 blur-2xl"
@@ -490,8 +499,7 @@ export function GauntletScreen() {
                         />
 
                         <div 
-                          className="w-40 h-40 border-2 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group"
-                          style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)' }}
+                          className="w-40 h-40 border-2 border-[#00f0ff] bg-gradient-to-br from-[#00f0ff]/20 to-transparent shadow-[0_0_60px_rgba(0,240,255,0.4)] flex items-center justify-center relative overflow-hidden group rounded-2xl"
                         >
                           <motion.div
                             className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,240,255,0.1)_50%)] bg-[size:100%_4px] pointer-events-none"
@@ -513,13 +521,14 @@ export function GauntletScreen() {
                           <div className="absolute top-2 right-2 w-10 h-10 bg-[#00f0ff] rounded-full flex items-center justify-center shadow-[0_0_20px_#00f0ff] z-10 border-2 border-[#0a0515]">
                             <span className="text-black font-black text-sm">✓</span>
                           </div>
-                        </div>
 
-                        <div className="text-center mt-3 bg-[#0a0515]/60 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/5 shadow-xl">
-                          <p className="text-[#00f0ff] text-base font-bold drop-shadow-[0_0_10px_#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                            {stage.name}
-                          </p>
-                          <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">SUCCESS</p>
+                          <div className="absolute inset-x-0 bottom-0 p-2 bg-black/60 backdrop-blur-md border-t border-white/5 text-center flex items-center justify-center gap-2">
+                            <p className="text-[#00f0ff] text-[10px] font-bold drop-shadow-[0_0_8px_#00f0ff] uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                              {stage.name}
+                            </p>
+                            <span className="text-white/20 text-[10px]">|</span>
+                            <p className="text-white/40 text-[9px] uppercase font-bold tracking-widest">{stage.description}</p>
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -575,11 +584,11 @@ export function GauntletScreen() {
                         )}
 
                         <motion.div
-                          className="w-56 h-56 border-2 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer"
-                          style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)' }}
+                          className="w-56 h-56 border-2 border-[#ffff00] bg-gradient-to-br from-[#ffff00]/30 to-transparent shadow-[0_0_80px_rgba(255,255,0,0.3)] flex items-center justify-center relative overflow-hidden group cursor-pointer rounded-3xl"
                           initial={{ scale: 0.5, opacity: 0 }}
                           animate={{ scale: 1.1, opacity: 1 }}
                           whileHover={{ scale: 1.15 }}
+                          onClick={() => handleInitiateBattle(stage)}
                         >
                           <motion.div
                             className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(255,255,0,0.1)_50%)] bg-[size:100%_4px] pointer-events-none"
@@ -596,59 +605,38 @@ export function GauntletScreen() {
                             alt={stage.name}
                             className="w-full h-full object-cover"
                           />
+
+                          <div className="absolute inset-x-0 bottom-0 p-3 bg-black/60 backdrop-blur-md border-t border-white/10 text-center flex items-center justify-center gap-3">
+                            <p className="text-[#ffff00] text-lg font-bold drop-shadow-[0_0_15px_rgba(255,255,0,0.5)] uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                              {stage.name}
+                            </p>
+                            <span className="text-white/30 text-xs">|</span>
+                            <p className="text-white/80 text-[10px] uppercase font-bold tracking-[0.2em]">{stage.description}</p>
+                          </div>
                         </motion.div>
 
-                        {isUnlocking && !showUnlockAnimation && (
-                          <motion.div
-                            className="absolute right-[calc(100%+4rem)] top-1/2 -translate-y-1/2 whitespace-nowrap"
-                            initial={{ opacity: 0, x: 50 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 1 }}
-                          >
-                            <motion.button
-                              onClick={handleInitiateBattle}
-                              className="px-12 py-6 bg-[#ffff00]/10 backdrop-blur-xl border-2 border-[#ffff00]/40 text-white font-black italic rounded-2xl shadow-[0_0_40px_rgba(255,255,0,0.2)] hover:bg-[#ffff00]/20 hover:border-[#ffff00]/60 hover:scale-105 transition-all flex items-center gap-5 relative overflow-hidden group"
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                              <Zap className="w-8 h-8 fill-current text-[#ffff00]" />
-                              <span className="text-3xl tracking-tighter uppercase">Engage Target</span>
-                              <ChevronRight className="w-8 h-8 text-[#ffff00]" />
-                            </motion.button>
-                          </motion.div>
-                        )}
-
-                        <motion.div
-                          className="text-center mt-6 bg-[#0a0515]/60 backdrop-blur-md px-6 py-2 rounded-xl border border-white/10 shadow-xl"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 1.2 }}
-                        >
-                          <p className="text-[#ffff00] text-xl font-bold drop-shadow-[0_0_15px_rgba(255,255,0,0.5)]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                            {stage.name}
-                          </p>
-                          <p className="text-white text-xs uppercase font-bold tracking-[0.3em] mt-1">{stage.description}</p>
-                        </motion.div>
+                        {/* Removed Engage Target button as cards are clickable */}
                       </div>
                     )}
 
                     {isLocked && (
                       <div className="relative">
                         <div 
-                          className="w-32 h-32 border border-white/10 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-30"
-                          style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%)' }}
+                          className="w-40 h-40 border-2 border-white/20 bg-black/40 flex items-center justify-center relative overflow-hidden grayscale opacity-80 rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.05)]"
                         >
-                          <Lock className="w-10 h-10 text-white/20" strokeWidth={1.5} />
+                          <Lock className="w-12 h-12 text-white/50 z-20 drop-shadow-[0_0_10px_rgba(0,0,0,0.8)]" strokeWidth={2.5} />
                           <img
                             src={stage.image}
                             alt={stage.name}
-                            className="w-full h-full object-cover opacity-20"
+                            className="w-full h-full object-cover opacity-60"
                           />
-                        </div>
-
-                        <div className="text-center mt-3 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg opacity-20">
-                          <p className="text-white text-xs font-bold uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                            {stage.name}
-                          </p>
+                          <div className="absolute inset-x-0 bottom-0 p-2 bg-black/60 backdrop-blur-sm border-t border-white/10 text-center flex items-center justify-center gap-2 z-20">
+                            <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                              {stage.name}
+                            </p>
+                            <span className="text-white/30 text-[10px]">|</span>
+                            <p className="text-white/60 text-[9px] uppercase tracking-tighter font-bold">{stage.description}</p>
+                          </div>
                         </div>
                       </div>
                     )}

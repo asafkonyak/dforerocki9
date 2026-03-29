@@ -215,11 +215,8 @@ export function MatchmakingScreen() {
             animate={{ opacity: matchFound ? 1 : [1, 0.5, 1] }}
             transition={{ duration: 1.5, repeat: matchFound ? 0 : Infinity }}
           >
-            {errorHeader || (timeoutActive ? 'NO PARTNER FOUND' : matchFound ? 'OPPONENT FOUND' : 'SIGNAL SCANNING')}
+            {errorHeader || (timeoutActive ? 'NO PARTNER FOUND' : matchFound ? 'OPPONENT FOUND' : 'SEARCHING FOR OPPONENT')}
           </motion.h2>
-          <p className="text-white/60 text-sm tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-            {timeoutActive ? 'TRY AGAIN LATER' : matchFound ? 'ENTERING ARENA...' : 'SEARCHING FOR OPPONENT'}
-          </p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -288,22 +285,42 @@ export function MatchmakingScreen() {
               {userData && (
                 <GlassCard className="w-full p-6 border-t border-[#00f0ff]/30 bg-black/40">
                   <div className="flex items-center gap-5">
-                    <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)]">
-                      <AvatarDisplay avatar={userData.avatar_url} size="lg" />
+                    <div className="relative w-32 h-32 flex-shrink-0 border-2 border-[#00f0ff] shadow-[0_0_25px_rgba(0,240,255,0.4)] bg-[#050510] rounded-xl overflow-hidden">
+                      <AnimatePresence mode="wait">
+                        {userData.avatar_url ? (
+                          <motion.div
+                            key="avatar"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="w-full h-full"
+                          >
+                            <AvatarDisplay avatar={userData.avatar_url} size="xl" rounded={false} className="object-cover" />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="placeholder"
+                            className="w-full h-full flex items-center justify-center bg-black/40"
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                          >
+                            <Zap className="w-10 h-10 text-[#00f0ff]/40" />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      
+                      {/* Scanning line for placeholder */}
+                      <motion.div 
+                        className="absolute inset-x-0 h-0.5 bg-[#00f0ff] z-20 shadow-[0_0_10px_#00f0ff]"
+                        animate={{ top: ['0%', '100%', '0%'] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                      />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-black text-[#00f0ff] uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      <h3 className="text-2xl font-black text-[#00f0ff] uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                         {userData.username}
                       </h3>
-                      <p className="text-white/40 text-xs uppercase tracking-widest mt-1 font-bold">{userData.rank}</p>
-                      <p className="text-[#00f0ff]/60 text-[10px] uppercase tracking-widest mt-1 font-bold">
+                      <p className="text-[#00f0ff]/60 text-xs uppercase tracking-[0.2em] mt-2 font-bold">
                         {(userData.preferred_hand || 'RIGHT').toUpperCase()} HAND
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white/20 text-[8px] uppercase tracking-widest font-bold">Game</p>
-                      <p className="text-[#00f0ff] text-sm font-bold uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                        {gameType === 'bo3' ? 'BO3' : gameType === 'bo5' ? 'BO5' : '1 ROUND'}
                       </p>
                     </div>
                   </div>

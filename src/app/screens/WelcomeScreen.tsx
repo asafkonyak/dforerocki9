@@ -3,23 +3,31 @@ import { NeonButton } from '../components/NeonButton';
 import { Trophy } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGlobalAudio } from '../../contexts/AudioContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function WelcomeScreen() {
   const navigate = useNavigate();
-  const { startIntroMusic } = useGlobalAudio();
+  const { startIntroMusic, setDimmed } = useGlobalAudio();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     // Ensure intro music is playing when we arrive here
     startIntroMusic();
-  }, [startIntroMusic]);
+    
+    // Dim music while intro video is playing
+    setDimmed(true);
+    
+    return () => {
+      setDimmed(false);
+    };
+  }, [startIntroMusic, setDimmed]);
 
   return (
     <div className="min-h-screen bg-[#0a0515] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Video Background (Base Layer) */}
       <video
+        ref={videoRef}
         autoPlay
-        muted
         loop
         playsInline
         className="absolute inset-0 w-full h-full object-cover z-0"

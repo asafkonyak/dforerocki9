@@ -4,9 +4,10 @@ interface AvatarDisplayProps {
   avatar: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  rounded?: boolean;
 }
 
-export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDisplayProps) {
+export function AvatarDisplay({ avatar, className = '', size = 'md', rounded = true }: AvatarDisplayProps) {
   const safeAvatar = avatar || '👤';
   const isUrl = typeof safeAvatar === 'string' && (
     safeAvatar.startsWith('http') || 
@@ -23,7 +24,7 @@ export function AvatarDisplay({ avatar, className = '', size = 'md' }: AvatarDis
   };
 
   return (
-    <div className={`rounded-full flex items-center justify-center overflow-hidden bg-black/20 ${sizeClasses[size]} ${className}`}>
+    <div className={`${rounded ? 'rounded-full' : ''} flex items-center justify-center overflow-hidden bg-black/20 ${sizeClasses[size]} ${className}`}>
       {isUrl ? (
         <img 
           src={safeAvatar as string} 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
-import Lightning from '../components/Lightning';
+// Removed Lightning import
 import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useSocket } from '../../contexts/SocketContext';
@@ -51,8 +51,8 @@ export function PregameScreen() {
   const getRobotData = (stage: number) => {
     const robots = [
       { name: 'MARCO', avatar: '/assets/robots/stage1.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
-      { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png', prefight: '/assets/robots/stage2_prefight.mp4' },
-      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
+      { name: 'KAMILA', avatar: '/assets/robots/stage2.png', prefight: '/assets/robots/stage2_prefight.mp4' },
+      { name: 'JACK', avatar: '/assets/robots/stage3.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
       { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
       { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png', prefight: '/assets/robots/stage5_prefight.mp4' }
     ];
@@ -61,74 +61,69 @@ export function PregameScreen() {
 
   const rivalData = getRobotData(stageNumber);
 
+  // Socket initialization on mount
+  useEffect(() => {
+    if (isConnected) {
+      const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
+      
+      const getStagePower = (stage: number) => {
+        switch(stage) {
+          case 1: return 7;
+          case 2: return 10;
+          case 3: return 12.5;
+          case 4: return 20;
+          case 5: return 25;
+          default: return 7;
+        }
+      };
+
+      let initValue = getStagePower(stageNumber);
+      if (playerHand && playerHand.toLowerCase() === 'left') {
+        initValue = -initValue;
+      }
+
+      sendMessage({
+        set_game: {
+          mode: "single_player",
+          hand: (playerHand || 'RIGHT').toLowerCase(),
+          player_id: myPlayerId,
+          args: {
+            force: initValue,
+            count_down: 11
+          }
+        }
+      });
+    }
+  }, [isConnected, stageNumber, playerHand, sendMessage]);
+
   const handleReady = () => {
-    setPhase('action');
-    if (rulesVideoRef.current) {
-      rulesVideoRef.current.play();
-    }
-
-    // Initialize the match (Socket INIT) when user presses READY
-    const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
-    
-    // Calculate power based on stage
-    const getStagePower = (stage: number) => {
-      switch(stage) {
-        case 1: return 7;
-        case 2: return 10;
-        case 3: return 12.5;
-        case 4: return 20;
-        case 5: return 25;
-        default: return 7;
-      }
-    };
-
-    let initValue = getStagePower(stageNumber);
-    if (playerHand && playerHand.toLowerCase() === 'left') {
-      initValue = -initValue;
-    }
-
-    const handUpper = (playerHand || 'RIGHT').toUpperCase();
-
-    console.log('[Pregame] handleReady called. isConnected:', isConnected);
-    console.log('[Pregame] Variables:', { initValue, handUpper, myPlayerId });
-
-    if (!isConnected) {
-      console.warn('[Pregame] Socket not connected. Cannot send INIT.');
-    }
-
+    // Send SINGLE_PLAYER_START command on Ready click
     sendMessage({
-      cmd: {
-        INIT: initValue,
-        HAND: handUpper,
-        PLAYER_ID: myPlayerId
-      }
+      start_game: 0
     });
 
-    // Match rules sequence...
-    
-    // Start rule sequence
-    let ruleIdx = 0;
-    setRulesShown([RULES[0]]);
-    
-    const interval = setInterval(() => {
-      ruleIdx++;
-      if (ruleIdx < RULES.length) {
-        setRulesShown(prev => [...prev, RULES[ruleIdx]]);
-      } else {
-        clearInterval(interval);
-        
-        setTimeout(() => {
-          navigate('/single-game', {
-            state: {
-              mode: 'gauntlet',
-              stageNumber,
-              stageName,
-              hand: playerHand
-            }
-          });
-        }, 1500); 
-      }
-    }, 2500);
+    // Start rule sequence or navigate immediately? 
+    // The video has already played, so we can transition to the game.
+    setTimeout(() => {
+      navigate('/single-game', {
+        state: {
+          mode: 'gauntlet',
+          stageNumber,
+          stageName,
+          hand: playerHand
+        }
+      });
+    }, 500);
+  };
+
+  const [videoFinished, setVideoFinished] = useState(false);
+
+  const handleVideoEnd = () => {
+    setVideoFinished(true);
+    if (videoRef.current) {
+      videoRef.current.loop = true;
+      videoRef.current.play();
+    }
   };
 
   return (
@@ -136,65 +131,21 @@ export function PregameScreen() {
       {/* Background Layer 1: Dynamic Looping Background (Wait Phase) */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-black">
         {/* Full-screen Looping Video Background */}
+        {/* Referee Rules as primary background */}
         <video
+          ref={videoRef}
           autoPlay
           muted
-          loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-          src={`/assets/robots/back_stage${stageNumber}.mp4`}
+          onEnded={handleVideoEnd}
+          className="absolute inset-0 w-full h-full object-cover"
+          src="/assets/referee_rules.mp4"
         />
         
-        {/* Dynamic Lightning Background (Subtle Overlay) */}
-        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-20 mix-blend-screen">
-          <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
-            style={{ width: '1200px', height: '1200px' }}
-          >
-            <Lightning
-              hue={220}
-              xOffset={0.5}
-              speed={1.0}
-              intensity={1.2}
-              size={1.8}
-            />
-          </div>
-          <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
-            style={{ width: '1200px', height: '1200px' }}
-          >
-            <Lightning
-              hue={0}
-              xOffset={-0.5}
-              speed={1.2}
-              intensity={1.5}
-              size={1.8}
-            />
-          </div>
-        </div>
-        
-        {/* Dark Overlay for depth */}
-        <div className="absolute inset-0 bg-black/60" />
-        
-        {/* Grid pattern (Subtle) */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        {/* Ambient overlays removed per user request */}
       </div>
 
-      {/* Background Layer 2: Referee Video (Action Phase - Plays on Ready) */}
-      <div className="absolute inset-0 z-[5] overflow-hidden">
-        <video
-          ref={rulesVideoRef}
-          src="/assets/referee_rules.mp4"
-          playsInline
-          preload="auto"
-          className="w-full h-full object-cover transition-opacity duration-700"
-          style={{ 
-            opacity: phase === 'action' ? 1 : 0,
-            visibility: phase === 'action' ? 'visible' : 'hidden'
-          }}
-        />
-        <div className={`absolute inset-0 bg-black/20 transition-opacity duration-1000 ${phase === 'action' ? 'opacity-100' : 'opacity-0'}`} />
-      </div>
+      {/* Background Layer 2: Removed as it's now integrated in Layer 1 */}
 
       {/* Rules List (Action Phase) - MOVED TO BOTTOM */}
 
@@ -281,7 +232,7 @@ export function PregameScreen() {
             </motion.div>
 
             <AnimatePresence mode="wait">
-              {phase === 'wait' && (
+              {videoFinished && (
                 <motion.div
                   key="ready-btn"
                   initial={{ scale: 0.8, opacity: 0 }}
@@ -289,12 +240,12 @@ export function PregameScreen() {
                   exit={{ scale: 1.2, opacity: 0 }}
                   className="relative group h-24 flex items-center"
                 >
-                  <div className="absolute inset-0 bg-[#00f0ff] opacity-20 group-hover:opacity-40 transition-opacity rounded-xl blur-xl" />
+                  <div className="absolute inset-0 bg-[#ffff00] opacity-20 group-hover:opacity-40 transition-opacity rounded-xl blur-xl" />
                   <motion.button
                     onClick={handleReady}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="relative px-12 py-5 bg-[#00f0ff] text-black font-black text-2xl italic tracking-tighter rounded-xl shadow-[0_0_40px_rgba(0,240,255,0.4)] transition-all"
+                    className="relative px-12 py-5 bg-[#ffff00] text-black font-black text-2xl italic tracking-tighter rounded-xl shadow-[0_0_40px_rgba(255,255,0,0.4)] transition-all"
                     style={{ fontFamily: "'Orbitron', sans-serif" }}
                   >
                     READY

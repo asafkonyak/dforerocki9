@@ -133,7 +133,7 @@ export function GameScreen() {
     if (!stageNumber) return '/assets/robots/stage1.mp3';
     const num = Number(stageNumber);
     if (num === 2) return '/assets/robots/stage2.ogg';
-    if (num === 3) return '/assets/robots/stage3.wav';
+    if (num === 3) return '/assets/robots/stage3.mp3';
     return `/assets/robots/stage${num}.mp3`;
   };
 
@@ -623,6 +623,18 @@ export function GameScreen() {
             opacity: armPosition > 50 ? 0.6 : 0.2,
           }}
         />
+
+        {/* Preload Next Stage Video */}
+        {stageNumber && stageNumber < 5 && (
+          <video
+            key={`preload-${stageNumber + 1}`}
+            preload="auto"
+            muted
+            className="hidden"
+          >
+            <source src={`/assets/robots/back_stage${stageNumber + 1}.mp4`} type="video/mp4" />
+          </video>
+        )}
       </div>
 
       {/* Animated VS Background */}

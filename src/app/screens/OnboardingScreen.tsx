@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Camera, RotateCcw, Zap, User, Video as VideoIcon, ArrowLeft, Mic, ChevronLeft, ChevronRight, Edit3, Focus } from 'lucide-react';
 import { NeonButton } from '../components/NeonButton';
 import { supabase } from '../../lib/supabase';
+import { useGlobalAudio } from '../../contexts/AudioContext';
 
 import { useSocket } from '../../contexts/SocketContext';
 import { SUGGESTED_NAMES } from '../data/suggestedNames';
@@ -22,6 +23,7 @@ export function OnboardingScreen() {
   const location = useLocation();
   const isEditing = location.state?.isEditing;
   const { isConnected, isError } = useSocket();
+  const { setDimmed } = useGlobalAudio();
   const [playerName, setPlayerName] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [weight, setWeight] = useState('');
@@ -125,25 +127,25 @@ export function OnboardingScreen() {
         // NEW USER: Random Identity
         const PREFIXES = ['Cyber', 'Neo', 'Alpha', 'Mega', 'Hyper', 'Ultra', 'Giga', 'Bit', 'Byte', 'Core'];
         let baseName = SUGGESTED_NAMES[Math.floor(Math.random() * SUGGESTED_NAMES.length)];
-        
+
         try {
           // Check for uniqueness
           const { data: existing } = await supabase.from('players').select('id').eq('username', baseName).maybeSingle();
-          
+
           let finalName = baseName;
           if (existing) {
             const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
             finalName = `${prefix}_${baseName}`;
-            
+
             // Final check for prefixed name
             const { data: existingPrefixed } = await supabase.from('players').select('id').eq('username', finalName).maybeSingle();
             if (existingPrefixed) {
               finalName = `${finalName}${Math.floor(Math.random() * 99)}`;
             }
           }
-          
+
           setPlayerName(finalName);
-          
+
           // Random Avatar (1-24)
           const randomAvatarId = Math.floor(Math.random() * 24) + 1;
           setSelectedAvatar(randomAvatarId);
@@ -154,7 +156,14 @@ export function OnboardingScreen() {
       }
     };
     prefillData();
-  }, [isEditing]);
+
+    // Dim music while on onboarding (referee_onboarding video)
+    setDimmed(true);
+
+    return () => {
+      setDimmed(false);
+    };
+  }, [isEditing, setDimmed]);
 
   // Auto-scroll to selected avatar
   useEffect(() => {
@@ -382,16 +391,15 @@ export function OnboardingScreen() {
                     <div key={i} className="border border-white" />
                   ))}
                 </div>
-                
+
                 <video
                   src="/assets/referee_onboarding.mp4"
                   autoPlay
-                  muted
                   loop
                   playsInline
                   className="w-full h-full object-cover"
                 />
-                
+
                 <div className="absolute bottom-12 left-12 right-12 z-20">
                   <div className="flex flex-col gap-4">
                     <p className="text-[#ffff00] text-3xl font-black italic tracking-widest uppercase [text-shadow:0_0_20px_#ffff0060]" style={{ fontFamily: "'Orbitron', sans-serif" }}>SET UP YOUR PROFILE</p>
@@ -425,8 +433,8 @@ export function OnboardingScreen() {
                       <button
                         onClick={() => setPreferredHand('left')}
                         className={`group relative py-3 rounded-xl border-2 transition-all text-sm font-black tracking-[0.1em] uppercase ${preferredHand === 'left'
-                            ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
-                            : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
+                          ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
+                          : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
                           }`}
                         style={{ fontFamily: "'Orbitron', sans-serif" }}
                       >
@@ -435,8 +443,8 @@ export function OnboardingScreen() {
                       <button
                         onClick={() => setPreferredHand('right')}
                         className={`group relative py-3 rounded-xl border-2 transition-all text-sm font-black tracking-[0.1em] uppercase ${preferredHand === 'right'
-                            ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
-                            : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
+                          ? 'border-[#ffff00] bg-[#ffff00]/10 text-[#ffff00] shadow-[0_0_20px_#ffff0030]'
+                          : 'border-white/10 bg-white/5 text-white/30 hover:border-white/30 hover:bg-white/10'
                           }`}
                         style={{ fontFamily: "'Orbitron', sans-serif" }}
                       >
@@ -460,19 +468,19 @@ export function OnboardingScreen() {
                           {!photoDataUrl || cameraCountdown !== null ? (
                             <CameraFeed ref={videoRef} className="w-full h-full" />
                           ) : (
-                            <motion.img 
+                            <motion.img
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
-                              src={photoDataUrl} 
-                              alt="Scan" 
-                              className="absolute inset-0 w-full h-full object-cover z-10" 
+                              src={photoDataUrl}
+                              alt="Scan"
+                              className="absolute inset-0 w-full h-full object-cover z-10"
                             />
                           )}
-                          
+
                           {/* Countdown (No Blur) */}
                           {cameraCountdown !== null && (
                             <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/20">
-                              <motion.span 
+                              <motion.span
                                 key={cameraCountdown}
                                 initial={{ scale: 0.5, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -487,7 +495,7 @@ export function OnboardingScreen() {
                           {/* Middle Capture/Re-capture Button */}
                           {cameraCountdown === null && (
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
-                               <motion.button
+                              <motion.button
                                 onClick={startCameraCountdown}
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
@@ -509,14 +517,14 @@ export function OnboardingScreen() {
                       <div className="flex items-center justify-between">
                         <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] ml-1">OR SELECT AVATAR</p>
                         <div className="flex gap-1">
-                          <button 
+                          <button
                             onClick={() => setAvatarPage(p => Math.max(0, p - 1))}
                             disabled={avatarPage === 0}
                             className="p-1 hover:bg-white/10 rounded-md transition-colors disabled:opacity-20"
                           >
                             <ChevronLeft className="w-4 h-4 text-[#00f0ff]" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => setAvatarPage(p => Math.min(Math.floor(avatarOptions.length / AVATARS_PER_PAGE), p + 1))}
                             disabled={avatarPage >= Math.floor(avatarOptions.length / AVATARS_PER_PAGE)}
                             className="p-1 hover:bg-white/10 rounded-md transition-colors disabled:opacity-20"
@@ -551,8 +559,8 @@ export function OnboardingScreen() {
                   {/* 3. Player Name (Bottom) */}
                   <div className="space-y-4 pt-4 border-t border-white/5">
                     <div className="flex items-center gap-2">
-                        <Edit3 className="w-5 h-5 text-[#ffff00]" />
-                        <p className="text-sm text-white font-black uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER NAME</p>
+                      <Edit3 className="w-5 h-5 text-[#ffff00]" />
+                      <p className="text-sm text-white font-black uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>PLAYER NAME</p>
                     </div>
                     <div className="relative group">
                       <input
@@ -568,7 +576,7 @@ export function OnboardingScreen() {
                         style={{ fontFamily: 'var(--font-family-heading)' }}
                       />
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#ffff00]/40 group-focus-within:text-[#ffff00] transition-colors" />
-                      
+
                       <button className="absolute right-4 top-1/2 -translate-y-1/2">
                         <Mic className="w-5 h-5 text-white/20 hover:text-[#00f0ff] transition-colors" />
                       </button>

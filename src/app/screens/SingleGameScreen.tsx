@@ -142,7 +142,7 @@ export function SingleGameScreen() {
     if (!stageNumber) return '/assets/robots/stage1.mp3';
     const num = Number(stageNumber);
     if (num === 2) return '/assets/robots/stage2.ogg';
-    if (num === 3) return '/assets/robots/stage3.wav';
+    if (num === 3) return '/assets/robots/stage3.mp3';
     return `/assets/robots/stage${num}.mp3`;
   };
 
@@ -156,20 +156,8 @@ export function SingleGameScreen() {
 
   // Check if both players are ready
   // 1. Initialize match and send START command once component is ready and connected
-  useEffect(() => {
-    if (isConnected && isReady && !commandsSent) {
-      console.log('[SingleGame] Socket connected. Initializing match commands...');
-      // SINGLE_PLAYER_START is sent after navigating to the game page (as per user flow)
-      console.log('[SingleGame] Sending SINGLE_PLAYER_START: 0');
-      sendMessage({
-        cmd: {
-          SINGLE_PLAYER_START: 0
-        }
-      });
-
-      setCommandsSent(true);
-    }
-  }, [isConnected, isReady, commandsSent, sendMessage, stageNumber, hand]);
+  // The match is now triggered by the READY button in PregameScreen.
+  // No automatic start command is needed here.
 
   // Fight Countdown UI State
   useEffect(() => {
@@ -187,9 +175,9 @@ export function SingleGameScreen() {
   // Resolve Opponent Data for Gauntlet
   const getRobotData = (stage: number) => {
     const robots = [
-      { name: 'TRAINING DROID', avatar: '/assets/robots/stage1.jpg' },
-      { name: 'MECH BRAWLER', avatar: '/assets/robots/stage2.png' },
-      { name: 'STEEL ASSASSIN', avatar: '/assets/robots/stage3.jpg' },
+      { name: 'MARCO', avatar: '/assets/robots/stage1.jpg' },
+      { name: 'KAMILA', avatar: '/assets/robots/stage2.png' },
+      { name: 'JACK', avatar: '/assets/robots/stage3.jpg' },
       { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg' },
       { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png' }
     ];
@@ -302,10 +290,14 @@ export function SingleGameScreen() {
         const myPlayerId = profile?.id || localStorage.getItem('fighter_player_id') || 'GUEST';
         const playerHand = (profile?.preferred_hand || 'right').toUpperCase();
         socket.send(JSON.stringify({
-          cmd: {
-            INIT: 0,
-            PLAYER_ID: myPlayerId,
-            HAND: playerHand
+          set_game: {
+            mode: 'single_player',
+            hand: playerHand.toLowerCase(),
+            player_id: myPlayerId,
+            args: {
+              force: 0,
+              count_down: 0
+            }
           }
         }));
       }
@@ -667,6 +659,18 @@ export function SingleGameScreen() {
             opacity: armPosition > 50 ? 0.6 : 0.2,
           }}
         />
+
+        {/* Preload Next Stage Video */}
+        {stageNumber && stageNumber < 5 && (
+          <video
+            key={`preload-${stageNumber + 1}`}
+            preload="auto"
+            muted
+            className="hidden"
+          >
+            <source src={`/assets/robots/back_stage${stageNumber + 1}.mp4`} type="video/mp4" />
+          </video>
+        )}
       </div>
 
       {/* Animated VS Background */}

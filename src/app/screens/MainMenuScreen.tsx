@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useSocket } from '../../contexts/SocketContext';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import Lightning from '../components/Lightning';
+import { useGlobalAudio } from '../../contexts/AudioContext';
 
 const DIFFICULTY_ICONS = ['🤖', '🦾', '💀'];
 const PROGRESSION_LEVELS = 5;
@@ -14,6 +15,7 @@ const PROGRESSION_LEVELS = 5;
 export function MainMenuScreen() {
   const navigate = useNavigate();
   const { isConnected, isError } = useSocket();
+  const { setDimmed } = useGlobalAudio();
   const [playerData, setPlayerData] = useState<{
     id: string;
     username: string;
@@ -55,11 +57,18 @@ export function MainMenuScreen() {
     }
 
     fetchPlayerData();
-  }, []);
+    
+    // Dim music while on main menu (referee_menu video)
+    setDimmed(true);
+    
+    return () => {
+      setDimmed(false);
+    };
+  }, [setDimmed]);
 
   const handleLogout = async () => {
     // Navigate home which acts as logout/exit
-    navigate('/');
+    navigate('/cyber');
   };
 
   return (
@@ -168,7 +177,6 @@ export function MainMenuScreen() {
                 <div className="absolute inset-0 z-0">
                   <video
                     autoPlay
-                    muted
                     loop
                     playsInline
                     className="w-full h-full object-cover"

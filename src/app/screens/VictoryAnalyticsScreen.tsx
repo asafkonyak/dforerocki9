@@ -293,7 +293,7 @@ export function VictoryAnalyticsScreen() {
               <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-white text-xl font-black italic tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    Force Dynamics
+                    Performance Analytics
                   </h3>
                   <div className="flex items-center gap-2 bg-[#00f0ff]/10 px-3 py-1 rounded-lg border border-[#00f0ff]/20">
                     <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Avg Pulse</span>
