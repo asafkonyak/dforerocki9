@@ -116,13 +116,12 @@ export function PregameScreen() {
     }, 500);
   };
 
-  const [videoFinished, setVideoFinished] = useState(false);
+  const [showReady, setShowReady] = useState(false);
 
-  const handleVideoEnd = () => {
-    setVideoFinished(true);
-    if (videoRef.current) {
-      videoRef.current.loop = true;
-      videoRef.current.play();
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (video.currentTime >= 30 && !showReady) {
+      setShowReady(true);
     }
   };
 
@@ -135,9 +134,9 @@ export function PregameScreen() {
         <video
           ref={videoRef}
           autoPlay
-          muted
+          loop
           playsInline
-          onEnded={handleVideoEnd}
+          onTimeUpdate={handleTimeUpdate}
           className="absolute inset-0 w-full h-full object-cover"
           src="/assets/referee_rules.mp4"
         />
@@ -197,42 +196,8 @@ export function PregameScreen() {
           </GlassCard>
         </motion.div>
 
-          <div className="flex flex-col items-center justify-center gap-8 w-full max-w-md h-[450px] relative">
-            {/* Rules always visible at the bottom center */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col gap-3 items-center w-full"
-            >
-              <p className="text-[#00f0ff]/40 text-[10px] uppercase font-bold tracking-[0.4em] mb-1 font-sans">RULES</p>
-              {RULES.slice(0, 3).map((rule, idx) => {
-                const parts = rule.split(' - ');
-                const firstWord = parts[0];
-                const rest = parts[1] || '';
-                
-                return (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="bg-black/40 border border-[#00f0ff]/20 px-6 py-2 rounded-lg w-full backdrop-blur-sm"
-                  >
-                    <h3 
-                      className="text-white text-sm font-bold tracking-tight text-center uppercase"
-                      style={{ 
-                        fontFamily: "'Orbitron', sans-serif"
-                      }}
-                    >
-                      <span className="text-yellow-400">{firstWord}</span> {rest}
-                    </h3>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-
             <AnimatePresence mode="wait">
-              {videoFinished && (
+              {showReady && (
                 <motion.div
                   key="ready-btn"
                   initial={{ scale: 0.8, opacity: 0 }}
@@ -253,7 +218,6 @@ export function PregameScreen() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
 
         {/* Rival Card (Right) */}
         <motion.div

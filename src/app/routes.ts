@@ -20,6 +20,8 @@ import { PregameScreen } from "./screens/PregameScreen";
 import { SingleGameScreen } from "./screens/SingleGameScreen";
 import { OneVsOnePregameScreen } from "./screens/OneVsOnePregameScreen";
 import { OneVsOneGameScreen } from "./screens/OneVsOneGameScreen";
+import { MatchVictoryScreen } from "./screens/MatchVictoryScreen";
+import { SystemSettingsScreen } from "./screens/SystemSettingsScreen";
 
 export const router = createBrowserRouter([
   {
@@ -106,5 +108,17 @@ export const router = createBrowserRouter([
   {
     path: "/1v1-game",
     Component: OneVsOneGameScreen,
+  },
+  {
+    path: "/1v1victory",
+    Component: MatchVictoryScreen,
+  },
+  {
+    path: "/1v1practice",
+    Component: OneVsOneGameScreen, // Reuse 1v1 game for practice
+  },
+  {
+    path: "/settings",
+    Component: SystemSettingsScreen,
   },
 ]);

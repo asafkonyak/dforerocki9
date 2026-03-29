@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useSocket } from '../../contexts/SocketContext';
 import { CameraFeed } from '../components/CameraFeed';
+import { useCamera } from '../../contexts/CameraContext';
 import { Video } from 'lucide-react';
 
 const RULES = [
@@ -24,7 +25,8 @@ export function OneVsOnePregameScreen() {
   const gameType = location.state?.gameType || '1_round';
   const playerHand = location.state?.hand || 'RIGHT';
 
-  const { sendMessage, isConnected } = useSocket();
+   const { sendMessage, isConnected } = useSocket();
+   const { mainCameraId, player2CameraId } = useCamera();
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
   const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number } | null>(null);
@@ -167,7 +169,7 @@ export function OneVsOnePregameScreen() {
                 <CameraFeed
                   className="w-full h-full relative z-10"
                   transparent={true}
-                  deviceId={videoDevices[0]?.deviceId}
+                  deviceId={mainCameraId || undefined}
                 />
                 <div className="absolute top-4 left-4 bg-[#00f0ff] text-black px-3 py-1 rounded-sm text-[10px] font-black tracking-widest uppercase z-20">
                   LIVE
@@ -267,7 +269,7 @@ export function OneVsOnePregameScreen() {
                   <CameraFeed
                     className="w-full h-full relative z-10"
                     transparent={true}
-                    deviceId={videoDevices[1]?.deviceId}
+                    deviceId={player2CameraId || undefined}
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50 bg-black">

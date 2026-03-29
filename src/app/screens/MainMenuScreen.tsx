@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { GlassCard } from '../components/GlassCard';
-import { Swords, Bot, Zap, Trophy, ChevronRight, ArrowLeft, LogOut, AlertTriangle, Edit2, User, Target } from 'lucide-react';
+import { Swords, Bot, Zap, Trophy, ChevronRight, ArrowLeft, LogOut, AlertTriangle, Edit2, User, Target, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -112,16 +112,17 @@ export function MainMenuScreen() {
         transition={{ duration: 0.5 }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Left: Logout Button (same glass-pill style as Onboarding back button) */}
-          <motion.button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <LogOut className="w-5 h-5 text-[#ff006e]" />
-            <span className="text-white/60 text-sm uppercase tracking-wider">Logout</span>
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <motion.button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-[#ff006e]/20 hover:border-[#ff006e]/30 transition-all group"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <LogOut className="w-4 h-4 text-[#ff006e]" />
+              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest group-hover:text-white transition-colors">Logout</span>
+            </motion.button>
+          </div>
 
           {/* Center: Glowing Title */}
           <motion.div

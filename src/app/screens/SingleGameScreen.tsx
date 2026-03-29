@@ -8,6 +8,7 @@ import { CanvasRenderer } from '../../components/CanvasRenderer';
 import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { CameraFeed } from '../components/CameraFeed';
+import { useCamera } from '../../contexts/CameraContext';
 import { useSocket } from '../../contexts/SocketContext';
 import { GameCanvas } from '../components/GameCanvas';
 
@@ -27,6 +28,7 @@ export function SingleGameScreen() {
   const stageName = location.state?.stageName || 'STAGE 01';
   const hand = location.state?.hand || 'RIGHT';
   const { sendMessage, lastMessage } = useSocket();
+  const { mainCameraId } = useCamera();
   const [armPosition, setArmPosition] = useState(50);
   const [player1Power, setPlayer1Power] = useState(100);
   const [player2Power, setPlayer2Power] = useState(100);
@@ -112,27 +114,7 @@ export function SingleGameScreen() {
     fetchProfile();
   }, []);
 
-  // Enumerate cameras on mount
-  useEffect(() => {
-    async function getDevices() {
-      try {
-        const allDevices = await navigator.mediaDevices.enumerateDevices();
-        const vDevices = allDevices.filter(d => d.kind === 'videoinput');
-        console.log('[GameScreen] Found video devices:', vDevices);
-        setVideoDevices(vDevices);
-      } catch (err) {
-        console.error("Error enumerating devices:", err);
-      }
-    }
-    
-    // Request permission first to ensure we can see labels/IDs
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        stream.getTracks().forEach(track => track.stop());
-        getDevices();
-      })
-      .catch(() => getDevices());
-  }, []);
+  // Camera management now handled by useCamera hook and CameraProvider
 
   // Audio Hooks - Placeholders for actual sound files
   // REMOVED: playTap, playWin, playLose, playCombo, playStart (Missing files)
@@ -747,20 +729,7 @@ export function SingleGameScreen() {
                   </div>
                 )}
                 <div className="w-full h-full relative z-10">
-                  {isRanked && videoDevices.length >= 2 ? (
-                    <CameraFeed deviceId={videoDevices[0].deviceId} transparent={true} onStreamStarted={handleStreamStarted} />
-                  ) : isPlayer1 ? (
-                    <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} onStreamStarted={handleStreamStarted} />
-                  ) : (
-                    gameMode === 'gauntlet' ? (
-                      <video src={`/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-[#00f0ff]/50">
-                        <Video className="w-8 h-8 mb-1" />
-                        <span className="text-[10px] tracking-widest font-bold">AWAITING FEED</span>
-                      </div>
-                    )
-                  )}
+                   <CameraFeed deviceId={mainCameraId || undefined} transparent={true} onStreamStarted={handleStreamStarted} />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-20" />
                 <div className="absolute bottom-4 left-4 flex items-center gap-2 z-30">

@@ -1,28 +1,23 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { VideoOff, User, Loader2 } from 'lucide-react';
+import { VideoOff, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useCamera } from '../../contexts/CameraContext';
 
 interface CameraFeedProps {
-  className?: string;
-  onStreamStarted?: (stream: MediaStream) => void;
-  onError?: (error: Error) => void;
   deviceId?: string;
+  className?: string;
   transparent?: boolean;
+  onStreamStarted?: (stream: MediaStream) => void;
 }
 
-export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({ 
-  className = '', 
-  onStreamStarted, 
-  onError, 
-  deviceId,
-  transparent = false
-}, ref) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [hasError, setHasError] = useState(false);
+export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({ deviceId, className = '', transparent = false, onStreamStarted }, ref) => {
+  const { mainCameraId } = useCamera();
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Forward the video ref
+  // Expose the video element via the ref
   useImperativeHandle(ref, () => videoRef.current!);
 
   useEffect(() => {
@@ -30,39 +25,41 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
 
     async function setupCamera() {
       try {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
+        setIsReady(false);
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            deviceId: deviceId ? { exact: deviceId } : undefined,
+        // Priority order:
+        // 1. Explicitly passed 'deviceId' prop
+        // 2. Global 'mainCameraId' from context
+        const targetId = deviceId || mainCameraId;
+        console.log('[CameraFeed] Initializing with target ID:', targetId);
+
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: targetId ? { exact: targetId } : undefined,
             width: { ideal: 640 },
             height: { ideal: 480 }
-          } 
+          }
         });
-        
+
         if (!isMounted) {
-          stream.getTracks().forEach(t => t.stop());
+          newStream.getTracks().forEach(t => t.stop());
           return;
         }
 
-        streamRef.current = stream;
+        setStream(newStream);
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          try {
-            await videoRef.current.play();
-          } catch (e) {
-            console.warn("Autoplay was prevented", e);
-          }
+          videoRef.current.srcObject = newStream;
         }
         
-        if (onStreamStarted) onStreamStarted(stream);
+        if (onStreamStarted) onStreamStarted(newStream);
+        setError(null);
       } catch (err) {
         if (isMounted) {
           console.error("Camera access error:", err);
-          setHasError(true);
-          if (onError) onError(err as Error);
+          setError("Access Denied");
         }
       }
     }
@@ -71,17 +68,17 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
 
     return () => {
       isMounted = false;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [onStreamStarted, onError, deviceId]);
+  }, [deviceId, mainCameraId]);
 
   return (
     <div className={`relative w-full h-full flex items-center justify-center overflow-hidden ${!transparent ? 'bg-[#0a0515]' : ''} ${className}`}>
       {/* Loading/Scanning Placeholder */}
       <AnimatePresence>
-        {!isReady && !hasError && (
+        {!isReady && !error && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -90,21 +87,20 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
           >
             {/* Cyber Grid Background */}
             {!transparent && (
-              <div className="absolute inset-0 opacity-10 pointer-events-none" 
-                   style={{ 
-                     backgroundImage: `linear-gradient(#00f0ff 1px, transparent 1px), linear-gradient(90deg, #00f0ff 1px, transparent 1px)`,
-                     backgroundSize: '30px 30px'
-                   }} 
+              <div className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{
+                  backgroundImage: `linear-gradient(#00f0ff 1px, transparent 1px), linear-gradient(90deg, #00f0ff 1px, transparent 1px)`,
+                  backgroundSize: '30px 30px'
+                }}
               />
             )}
-            
+
             <div className="relative flex flex-col items-center gap-4">
               <div className="relative">
-                <div className={`w-24 h-24 rounded-full border-2 border-[#00f0ff]/20 flex items-center justify-center ${!transparent ? 'bg-[#00f0ff]/5' : 'bg-black/40 backdrop-blur-sm'}`}>
+                <div className={`w-24 h-24 rounded-full border-2 border-[#00f0ff]/20 flex items-center justify-center ${!transparent ? 'bg-[#0a0515]' : 'bg-black/40 backdrop-blur-sm'}`}>
                   <User className="w-12 h-12 text-[#00f0ff]/40 animate-pulse" />
                 </div>
-                {/* Spinning circular loader around the user icon */}
-                <motion.div 
+                <motion.div
                   className="absolute inset-0 border-2 border-t-[#00f0ff] border-r-transparent border-b-transparent border-l-transparent rounded-full"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -115,21 +111,11 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
                 <p className="text-[#00f0ff] text-[10px] font-black tracking-[0.3em] uppercase italic animate-pulse">
                   Initializing...
                 </p>
-                <div className="flex gap-1">
-                  {[0, 1, 2].map(i => (
-                    <motion.div
-                      key={i}
-                      className="w-1 h-1 bg-[#00f0ff] rounded-full"
-                      animate={{ opacity: [0.2, 1, 0.2] }}
-                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                    />
-                  ))}
-                </div>
               </div>
             </div>
 
             {/* Vertical Scanning Line */}
-            <motion.div 
+            <motion.div
               className="absolute inset-x-0 h-[2px] bg-[#00f0ff]/40 z-30 shadow-[0_0_15px_#00f0ff]"
               animate={{ top: ['0%', '100%', '0%'] }}
               transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -138,10 +124,10 @@ export const CameraFeed = forwardRef<HTMLVideoElement, CameraFeedProps>(({
         )}
       </AnimatePresence>
 
-      {hasError ? (
+      {error ? (
         <div className={`text-center p-4 z-30 ${transparent ? 'bg-black/60 backdrop-blur-md rounded-xl' : ''}`}>
           <VideoOff className="w-12 h-12 text-white/20 mx-auto mb-2" />
-          <p className="text-white/40 text-xs uppercase tracking-wider font-bold">Camera Blocked</p>
+          <p className="text-white/40 text-xs uppercase tracking-wider font-bold">{error}</p>
         </div>
       ) : (
         <video

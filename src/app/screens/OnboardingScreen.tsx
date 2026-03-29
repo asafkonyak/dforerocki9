@@ -6,6 +6,7 @@ import { Camera, RotateCcw, Zap, User, Video as VideoIcon, ArrowLeft, Mic, Chevr
 import { NeonButton } from '../components/NeonButton';
 import { supabase } from '../../lib/supabase';
 import { useGlobalAudio } from '../../contexts/AudioContext';
+import { useCamera } from '../../contexts/CameraContext';
 
 import { useSocket } from '../../contexts/SocketContext';
 import { SUGGESTED_NAMES } from '../data/suggestedNames';
@@ -24,6 +25,7 @@ export function OnboardingScreen() {
   const isEditing = location.state?.isEditing;
   const { isConnected, isError } = useSocket();
   const { setDimmed } = useGlobalAudio();
+  const { mainCameraId } = useCamera();
   const [playerName, setPlayerName] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [weight, setWeight] = useState('');
@@ -494,7 +496,7 @@ export function OnboardingScreen() {
 
                           {/* Middle Capture/Re-capture Button */}
                           {cameraCountdown === null && (
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col gap-2">
                               <motion.button
                                 onClick={startCameraCountdown}
                                 whileHover={{ scale: 1.1 }}

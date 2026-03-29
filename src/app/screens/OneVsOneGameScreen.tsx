@@ -10,6 +10,8 @@ import { AvatarDisplay } from '../components/AvatarDisplay';
 import { CameraFeed } from '../components/CameraFeed';
 import { useSocket } from '../../contexts/SocketContext';
 import { GameCanvas } from '../components/GameCanvas';
+import { useGlobalAudio } from '../../contexts/AudioContext';
+import { useCamera } from '../../contexts/CameraContext';
 
 export function OneVsOneGameScreen() {
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ export function OneVsOneGameScreen() {
 
   // Stats Tracking Refs
   const maxForceRef = useRef<number>(0);
-  const forceHistoryRef = useRef<{time: number, force: number}[]>([]);
+  const forceHistoryRef = useRef<{ time: number, force: number }[]>([]);
   const lastForceCaptureTimeRef = useRef<number>(0);
 
   // Get game state from navigation
@@ -27,6 +29,8 @@ export function OneVsOneGameScreen() {
   const gameType = location.state?.gameType || '1_round';
   const hand = location.state?.hand || 'RIGHT';
 
+  const { playWinSound, setDimmed } = useGlobalAudio();
+  const { mainCameraId, player2CameraId } = useCamera();
   const { sendMessage, lastMessage } = useSocket();
   const [armPosition, setArmPosition] = useState(50);
   const [player1Power, setPlayer1Power] = useState(100);
@@ -120,7 +124,7 @@ export function OneVsOneGameScreen() {
         console.error("Error enumerating devices:", err);
       }
     }
-    
+
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         stream.getTracks().forEach(track => track.stop());
@@ -226,8 +230,8 @@ export function OneVsOneGameScreen() {
       setArmPosition(50);
       setPlayer1Power(100);
       setPlayer2Power(100);
-      setAngleValue(0); 
-      
+      setAngleValue(0);
+
       if (socket && socket.readyState === WebSocket.OPEN) {
         const myPlayerId = profile?.id || localStorage.getItem('fighter_player_id') || 'GUEST';
         const playerHand = (profile?.preferred_hand || 'right').toUpperCase();
@@ -258,7 +262,7 @@ export function OneVsOneGameScreen() {
 
     let finalMaxForce = Math.round(maxForceRef.current * 10) / 10;
     if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
-    
+
     let avgForce = Math.round(
       forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length * 10
     ) / 10;
@@ -321,7 +325,7 @@ export function OneVsOneGameScreen() {
 
     setTimeout(() => {
       const isMeWinner = finalWinner === 'player1';
-      navigate('/victory', {
+      navigate('/1v1victory', {
         state: {
           isWin: isMeWinner,
           peakForce: finalMaxForce,
@@ -416,13 +420,13 @@ export function OneVsOneGameScreen() {
           setIsGameActive(false);
           setShowCountdown(false);
           setCountdown(null);
-          
+
           const isMeWin = isMultiWin || isSingleWin;
           // Local player is always player1 (Blue)
           const roundWinnerSlot = isMeWin ? 'player1' : 'player2';
-            
+
           setRoundWinner(roundWinnerSlot);
-          
+
           let p1Wins = roundsWonPlayer;
           let p2Wins = roundsWonOpponent;
 
@@ -519,7 +523,7 @@ export function OneVsOneGameScreen() {
                   </div>
                 )}
                 <div className="w-full h-full relative z-10">
-                  <CameraFeed deviceId={videoDevices[0]?.deviceId} transparent={true} onStreamStarted={handleStreamStarted} />
+                  <CameraFeed deviceId={mainCameraId || undefined} transparent={true} onStreamStarted={handleStreamStarted} />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-20" />
                 <div className="absolute bottom-4 left-4 flex items-center gap-2 z-30">
@@ -548,10 +552,8 @@ export function OneVsOneGameScreen() {
           <motion.div className="w-[48vw] max-w-[800px] pointer-events-auto" animate={{ scale: armPosition > 60 ? 1.05 : 1 }}>
             <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 bg-black/60">
               <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)]`}>
-                {/* Opponent camera placeholder */}
-                <div className="w-full h-full flex flex-col items-center justify-center text-[#ff006e]/50">
-                  <Video className="w-8 h-8 mb-1" />
-                  <span className="text-[10px] tracking-widest font-bold">OPPONENT CAM</span>
+                <div className="w-full h-full relative">
+                  <CameraFeed deviceId={player2CameraId || undefined} transparent={true} />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
                 <div className="absolute bottom-2 left-2 flex items-center gap-2">
@@ -585,7 +587,7 @@ export function OneVsOneGameScreen() {
                 <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className={`text-7xl font-black italic tracking-tighter mb-8 ${roundWinner === 'player1' ? 'text-[#00f0ff]' : 'text-[#ff006e]'}`} style={{ fontFamily: "'Orbitron', sans-serif", textShadow: `0 0 20px ${roundWinner === 'player1' ? '#00f0ff' : '#ff006e'}` }}>
                   {roundWinner === 'player1' ? 'ROUND WON' : 'ROUND LOST'}
                 </motion.div>
-                
+
                 {intermissionTime !== null && (
                   <GlassCard className="px-12 py-6 border-2 border-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.4)] flex flex-col items-center bg-black/60 relative overflow-hidden pointer-events-auto">
                     <div className="absolute inset-0 bg-gradient-to-t from-[#00f0ff]/10 to-transparent pointer-events-none" />

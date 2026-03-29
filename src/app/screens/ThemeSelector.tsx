@@ -257,16 +257,7 @@ export function ThemeSelector() {
 
   return (
     <div className="min-h-screen bg-[#0a0515] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Video Background (Base Layer) */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0"
-      >
-        <source src="/assets/intro.mp4" type="video/mp4" />
-      </video>
+      {/* Animated Cyberpunk Background Blobs */}
 
       {/* Dark Overlay (Darkening the video) */}
       <div className="absolute inset-0 bg-black/60 z-[5] pointer-events-none" />
@@ -319,272 +310,17 @@ export function ThemeSelector() {
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
       >
-        {/* Settings Button */}
+        {/* Quick Config Button */}
         <div className="absolute -top-20 -right-4 md:-right-20">
-          <Dialog open={isSettingsOpen} onOpenChange={(open) => {
-            setIsSettingsOpen(open);
-            if (!open) stopWebRTCTest();
-          }}>
-            <DialogTrigger asChild>
-              <button className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-[#00f0ff] hover:bg-white/10 transition-all group relative">
-                <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-[#00f0ff]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className="bg-[#0a0515]/95 backdrop-blur-2xl border-white/10 text-white max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black italic tracking-wider text-[#00f0ff]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                  SYSTEM SETTINGS
-                </DialogTitle>
-                <DialogDescription className="text-white/40 uppercase text-[10px] tracking-widest">
-                  Configure your arena experience and peripheral connections.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-6 py-4">
-                {/* Simulation Toggle */}
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-bold tracking-widest text-white/80 uppercase">Simulation Mode</Label>
-                    <p className="text-[10px] text-white/40 uppercase">Enable auto-play and bot fighters</p>
-                  </div>
-                  <Switch 
-                    checked={isSimulationEnabled} 
-                    onCheckedChange={setSimulationEnabled}
-                    className="data-[state=checked]:bg-[#00f0ff]"
-                  />
-                </div>
-
-                {/* WebRTC Toggle */}
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-bold tracking-widest text-white/80 uppercase">WebRTC Connection</Label>
-                    <p className="text-[10px] text-white/40 uppercase">Enable peer-to-peer video calls</p>
-                  </div>
-                  <Switch 
-                    checked={isWebRTCEnabled} 
-                    onCheckedChange={setWebRTCEnabled}
-                    className="data-[state=checked]:bg-[#ff006e]"
-                  />
-                </div>
-
-                {/* Video Test Toggle */}
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-bold tracking-widest text-white/80 uppercase">Video Test</Label>
-                    <p className="text-[10px] text-white/40 uppercase">Test vertical recording (9:16)</p>
-                  </div>
-                  <Switch 
-                    checked={isVideoTestEnabled} 
-                    onCheckedChange={(checked) => {
-                      setIsVideoTestEnabled(checked);
-                      if (!checked && isRecording) stopAndSave();
-                    }}
-                    className="data-[state=checked]:bg-[#fbff00]"
-                  />
-                </div>
-
-                {/* Video Test Section */}
-                <AnimatePresence>
-                  {isVideoTestEnabled && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4 pt-2"
-                    >
-                      <div className="flex gap-4 items-start justify-center">
-                        {/* Recording Preview */}
-                        <div className="relative w-full max-w-[160px] aspect-[9/16] rounded-xl overflow-hidden bg-black/40 border-2 border-dashed border-white/10 flex flex-col items-center justify-center">
-                          <video 
-                            ref={videoPreviewRef} 
-                            autoPlay 
-                            muted 
-                            playsInline
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                          {!isRecording && !videoTestError && (
-                            <Camera className="w-8 h-8 text-white/20 mb-2 relative z-10" />
-                          )}
-                          {videoTestError && (
-                            <div className="p-4 text-center relative z-10">
-                              <AlertCircle className="w-6 h-6 text-[#ff006e] mx-auto mb-2" />
-                              <p className="text-[8px] text-white/60 uppercase">{videoTestError}</p>
-                            </div>
-                          )}
-                          {isRecording && (
-                            <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
-                              <motion.div 
-                                className="w-1.5 h-1.5 rounded-full bg-red-600"
-                                animate={{ opacity: [1, 0.4, 1] }}
-                                transition={{ duration: 1, repeat: Infinity }}
-                              />
-                              <span className="text-[6px] font-bold text-white uppercase tracking-tighter">REC</span>
-                            </div>
-                          )}
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[6px] text-white/40 uppercase tracking-widest font-bold">Live Preview</div>
-                        </div>
-
-                        {/* Player Back (Playback) */}
-                        <div className="relative w-full max-w-[160px] aspect-[9/16] rounded-xl overflow-hidden bg-black/60 border-2 border-white/10 flex flex-col items-center justify-center">
-                          <video 
-                            ref={playbackVideoRef} 
-                            controls
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                          {!sharingLink && !isUploading && (
-                            <div className="text-center p-4">
-                              <Video className="w-8 h-8 text-white/10 mx-auto mb-2" />
-                              <span className="text-[6px] text-white/20 uppercase font-black italic">Player Back</span>
-                            </div>
-                          )}
-                          {isUploading && (
-                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 z-10">
-                              <div className="w-6 h-6 border-2 border-[#00f0ff]/30 border-t-[#00f0ff] rounded-full animate-spin" />
-                              <span className="text-[6px] text-[#00f0ff] font-bold uppercase tracking-widest">Processing...</span>
-                            </div>
-                          )}
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[6px] text-white/40 uppercase tracking-widest font-bold">Replay</div>
-                        </div>
-                      </div>
-
-                      {sharingLink && (
-                        <motion.div 
-                          className="p-4 bg-white/5 border border-white/10 rounded-lg flex flex-col items-center gap-4"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                        >
-                          <div className="text-[10px] text-[#00f0ff] font-bold uppercase tracking-widest text-center">Scan to Share Reel</div>
-                          
-                          {/* QR Code Display */}
-                          <div className="p-2 bg-white rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                            <QRCode 
-                              value={sharingLink} 
-                              size={120}
-                              level="H"
-                              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                            />
-                          </div>
-
-                          <div className="w-full space-y-2">
-                            <div className="text-[8px] text-white/40 uppercase tracking-widest font-bold px-1">Shareable Link</div>
-                            <div className="flex items-center gap-2 bg-black/40 p-2 rounded border border-white/5 overflow-hidden">
-                              <div className="text-[10px] text-white/80 font-mono truncate flex-1">{sharingLink}</div>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 text-[#00f0ff] hover:bg-[#00f0ff]/10"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(sharingLink);
-                                  setIsCopied(true);
-                                  setTimeout(() => setIsCopied(false), 2000);
-                                }}
-                              >
-                                {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                              </Button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          onClick={startRecording}
-                          disabled={isRecording || isUploading}
-                          className="bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 hover:bg-[#00f0ff]/30 py-6 uppercase font-black italic text-xs tracking-widest"
-                          style={{ fontFamily: "'Orbitron', sans-serif" }}
-                        >
-                          <Camera className="w-4 h-4 mr-2" /> Start
-                        </Button>
-                        <Button
-                          onClick={stopAndSave}
-                          disabled={!isRecording || isUploading}
-                          className="bg-[#fbff00]/20 text-[#fbff00] border border-[#fbff00]/50 hover:bg-[#fbff00]/30 py-6 uppercase font-black italic text-xs tracking-widest"
-                          style={{ fontFamily: "'Orbitron', sans-serif" }}
-                        >
-                          {isUploading ? (
-                             <div className="flex items-center gap-2">
-                               <div className="w-3 h-3 border-2 border-[#fbff00]/30 border-t-[#fbff00] rounded-full animate-spin" />
-                               <span>Uploading</span>
-                             </div>
-                          ) : (
-                            <>
-                              <Download className="w-4 h-4 mr-2" /> Save & Share
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* WebRTC Test Section */}
-                <AnimatePresence>
-                  {isWebRTCEnabled && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4"
-                    >
-                      <Button
-                        onClick={isTestingWebRTC ? stopWebRTCTest : startWebRTCTest}
-                        className={`w-full py-6 font-bold tracking-widest uppercase transition-all ${
-                          isTestingWebRTC 
-                            ? 'bg-[#ff006e]/20 text-[#ff006e] border border-[#ff006e]/50 hover:bg-[#ff006e]/30' 
-                            : 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/50 hover:bg-[#00f0ff]/30'
-                        }`}
-                        style={{ fontFamily: "'Orbitron', sans-serif" }}
-                      >
-                        {isTestingWebRTC ? (
-                          <>
-                            <VideoOff className="w-4 h-4 mr-2" /> Stop Test
-                          </>
-                        ) : (
-                          <>
-                            <Video className="w-4 h-4 mr-2" /> Test WebRTC
-                          </>
-                        )}
-                      </Button>
-
-                      {isTestingWebRTC && (
-                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/10">
-                          {/* Remote Video (Full) */}
-                          <video 
-                            ref={otherVideoRef} 
-                            autoPlay 
-                            playsInline
-                            className="w-full h-full object-cover"
-                          />
-                          {!remoteStream && (
-                            <div className="absolute inset-0 flex items-center justify-center flex-col gap-2">
-                              <div className="w-8 h-8 border-2 border-[#00f0ff]/30 border-t-[#00f0ff] rounded-full animate-spin" />
-                              <span className="text-[10px] text-white/40 uppercase tracking-widest">Waiting for peer...</span>
-                            </div>
-                          )}
-
-                          {/* Local Video (Floating) */}
-                          <div className="absolute bottom-3 right-3 w-32 aspect-video rounded-lg overflow-hidden border border-white/20 shadow-2xl z-10">
-                            <video 
-                              ref={myVideoRef} 
-                              autoPlay 
-                              muted 
-                              playsInline
-                              className="w-full h-full object-cover bg-black"
-                            />
-                          </div>
-                          
-                          <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-[8px] text-[#00f0ff] font-bold uppercase tracking-widest border border-[#00f0ff]/30">
-                            Live Test Feed
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <motion.button
+            onClick={() => navigate('/settings')}
+            className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-[#fbff00] hover:bg-white/10 transition-all group relative"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
+            <div className="absolute inset-0 bg-[#fbff00]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          </motion.button>
         </div>
 
         {/* Text-based Logo Layout */}
@@ -630,6 +366,16 @@ export function ThemeSelector() {
           >
             ENTER ARENA
           </NeonButton>
+
+          <motion.button
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-2 px-8 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-[#fbff00]/20 hover:border-[#fbff00]/40 transition-all group"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Settings className="w-5 h-5 text-[#fbff00] group-hover:rotate-90 transition-transform duration-500" />
+            <span className="text-white/40 text-xs font-black uppercase tracking-widest group-hover:text-white transition-colors">System Configuration</span>
+          </motion.button>
         </motion.div>
       </motion.div>
     </div>

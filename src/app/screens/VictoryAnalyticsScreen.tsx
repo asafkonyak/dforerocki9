@@ -59,8 +59,8 @@ export function VictoryAnalyticsScreen() {
   }, []);
 
   // Determine force data for chart
-  const forceData = matchData.forceHistory && matchData.forceHistory.length > 0 
-    ? matchData.forceHistory 
+  const forceData = matchData.forceHistory && matchData.forceHistory.length > 0
+    ? matchData.forceHistory
     : [
       { time: 0, force: 0 },
       { time: 5, force: 25 },
@@ -129,7 +129,7 @@ export function VictoryAnalyticsScreen() {
       </div>
 
       {/* Grid overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-5"
         style={{
           backgroundImage: `
@@ -171,12 +171,12 @@ export function VictoryAnalyticsScreen() {
             </div>
           </motion.div>
 
-          <motion.h1 
+          <motion.h1
             className="text-4xl md:text-5xl font-bold mb-2"
             style={{
               fontFamily: "'Orbitron', sans-serif",
-              background: isWin 
-                ? 'linear-gradient(to right, #00f0ff, #00ffff)' 
+              background: isWin
+                ? 'linear-gradient(to right, #00f0ff, #00ffff)'
                 : 'linear-gradient(to right, #ff0033, #ff4444)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -194,7 +194,7 @@ export function VictoryAnalyticsScreen() {
             }}
             transition={{ duration: 2, repeat: Infinity, type: 'tween' }}
           >
-            {isWin ? 'YOU WON!' : 'STAY HUNGRY!'}
+            {isWin ? 'STAY SHARP' : 'TRY AGAIN'}
           </motion.h1>
 
           <div className="flex justify-center">
@@ -214,12 +214,12 @@ export function VictoryAnalyticsScreen() {
           <GlassCard className="p-6 border-4 border-[#00f0ff]/40 bg-black/60 shadow-[0_0_50px_rgba(0,240,255,0.3)]">
             {isOneVsOne && (
               <div className="flex justify-center mb-8">
-                <h3 
+                <h3
                   className="text-2xl md:text-3xl font-black italic tracking-[0.2em] uppercase"
-                  style={{ 
+                  style={{
                     fontFamily: "'Orbitron', sans-serif",
-                    background: isWin 
-                      ? 'linear-gradient(to right, #00f0ff, #00ffff)' 
+                    background: isWin
+                      ? 'linear-gradient(to right, #00f0ff, #00ffff)'
                       : 'linear-gradient(to right, #ff0033, #ff4444)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -231,7 +231,7 @@ export function VictoryAnalyticsScreen() {
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              
+
               {/* Left Side: Video Replay */}
               <div className={`flex flex-col gap-4 ${isOneVsOne ? 'mt-10' : ''}`}>
                 <div className={`w-full aspect-video rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'border-[#ff0033] shadow-[0_0_20px_rgba(255,0,51,0.4)]'} bg-black relative`}>
@@ -254,7 +254,7 @@ export function VictoryAnalyticsScreen() {
                           setAnimateMetrics(true);
                         }}
                       />
-                      
+
                       {/* Replay Overlay */}
                       <div className="absolute top-4 left-4 bg-black/60 px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -278,18 +278,18 @@ export function VictoryAnalyticsScreen() {
                       playsInline
                       className="w-full h-full object-cover"
                     >
-                      <source 
+                      <source
                         src={
                           matchData.stageNumber === 1 ? '/assets/robots/stage1_postfight.mp4' :
-                          matchData.stageNumber === 2 ? `/assets/robots/stage2.mp4` :
-                          matchData.stageNumber === 5 ? '/assets/robots/stage5_postfight.mp4' :
-                          `/assets/robots/stage${matchData.stageNumber}.mp4`
-                        } 
-                        type="video/mp4" 
+                            matchData.stageNumber === 2 ? `/assets/robots/stage2.mp4` :
+                              matchData.stageNumber === 5 ? '/assets/robots/stage5_postfight.mp4' :
+                                `/assets/robots/stage${matchData.stageNumber}.mp4`
+                        }
+                        type="video/mp4"
                       />
                     </video>
                   )}
-                  
+
                   {/* Cyber Scanning Line */}
                   <motion.div
                     className={`absolute inset-x-0 h-1 bg-${isWin ? '[#00f0ff]' : '[#ff0033]'} z-20 shadow-[0_0_15px_#00f0ff]`}
@@ -341,7 +341,7 @@ export function VictoryAnalyticsScreen() {
                             <stop offset="100%" stopColor="#00f0ff" stopOpacity="0" />
                           </linearGradient>
                         </defs>
-                        
+
                         <motion.path
                           d={`M 0,100 ${forceData.map((d: any, i: number) => `L ${(i / (forceData.length - 1)) * 100},${100 - (d.force / maxForce) * 100}`).join(' ')} L 100,100 Z`}
                           fill="url(#areaGrad)"
@@ -411,23 +411,23 @@ export function VictoryAnalyticsScreen() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              navigate('/menu');
+              navigate('/practice');
             }}
           >
             <GlassCard className={`p-5 border-2 ${isWin ? 'border-[#00f0ff]' : 'border-[#ff0033]'} bg-black/60 shadow-[0_0_40px_rgba(0,240,255,0.2)] flex items-center justify-between overflow-hidden relative`}>
               {/* Pulse effect */}
-              <motion.div 
+              <motion.div
                 className={`absolute inset-0 bg-gradient-to-r ${isWin ? 'from-[#00f0ff]/10' : 'from-[#ff0033]/10'} to-transparent`}
                 animate={{ x: ['-100%', '100%'] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               />
-              
+
               <div className="relative flex items-center gap-4">
                 <div className={`p-2 rounded-lg ${isWin ? 'bg-[#00f0ff]/20' : 'bg-[#ff0033]/20'}`}>
                   <Award className={`w-6 h-6 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} />
                 </div>
                 <span className={`text-2xl font-black italic tracking-widest uppercase ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                  RETURN TO MAIN MENU
+                  {isWin ? 'BACK TO PRACTICE' : 'RETURN TO MAP'}
                 </span>
               </div>
               <ChevronRight className={`w-8 h-8 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} relative z-10`} />
