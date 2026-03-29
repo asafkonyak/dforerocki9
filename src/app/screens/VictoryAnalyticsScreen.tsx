@@ -26,6 +26,7 @@ export function VictoryAnalyticsScreen() {
   };
 
   const isWin = matchData.isWin ?? true;
+  const isOneVsOne = matchData.gameMode === 'ranked' || matchData.mode === 'ranked';
 
   const formatTime = (totalSeconds: number) => {
     if (!totalSeconds || isNaN(totalSeconds)) return "00.000";
@@ -193,7 +194,7 @@ export function VictoryAnalyticsScreen() {
             }}
             transition={{ duration: 2, repeat: Infinity, type: 'tween' }}
           >
-            {isWin ? 'TARGET DEFEATED - YOU WON!' : 'STAY HUNGRY!'}
+            {isWin ? 'YOU WON!' : 'STAY HUNGRY!'}
           </motion.h1>
 
           <div className="flex justify-center">
@@ -211,10 +212,28 @@ export function VictoryAnalyticsScreen() {
           transition={{ delay: 0.3, duration: 0.6 }}
         >
           <GlassCard className="p-6 border-4 border-[#00f0ff]/40 bg-black/60 shadow-[0_0_50px_rgba(0,240,255,0.3)]">
+            {isOneVsOne && (
+              <div className="flex justify-center mb-8">
+                <h3 
+                  className="text-2xl md:text-3xl font-black italic tracking-[0.2em] uppercase"
+                  style={{ 
+                    fontFamily: "'Orbitron', sans-serif",
+                    background: isWin 
+                      ? 'linear-gradient(to right, #00f0ff, #00ffff)' 
+                      : 'linear-gradient(to right, #ff0033, #ff4444)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    textShadow: isWin ? '0 0 20px rgba(0, 240, 255, 0.4)' : '0 0 20px rgba(255, 0, 51, 0.4)'
+                  }}
+                >
+                  Performance Analytics
+                </h3>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
               {/* Left Side: Video Replay */}
-              <div className="flex flex-col gap-4">
+              <div className={`flex flex-col gap-4 ${isOneVsOne ? 'mt-10' : ''}`}>
                 <div className={`w-full aspect-video rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'border-[#ff0033] shadow-[0_0_20px_rgba(255,0,51,0.4)]'} bg-black relative`}>
                   {matchData.videoUrl ? (
                     <div className="relative w-full h-full">
@@ -279,28 +298,25 @@ export function VictoryAnalyticsScreen() {
                   />
                 </div>
 
-                <div className="text-center mt-2">
-                  <span className={`text-sm uppercase tracking-[0.4em] font-bold ${isWin ? 'text-[#00f0ff]/60' : 'text-[#ff0033]/60'}`}>
-                    Performance Analytics
-                  </span>
-                  <p className={`text-3xl font-black italic mt-1 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    {isWin ? 'ELITE PERFORMANCE' : 'RELOAD & GO AGAIN'}
-                  </p>
-                </div>
+
               </div>
 
               {/* Right Side: Chart & Metrics */}
               <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-white text-xl font-black italic tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                    Performance Analytics
-                  </h3>
-                  <div className="flex items-center gap-2 bg-[#00f0ff]/10 px-3 py-1 rounded-lg border border-[#00f0ff]/20">
-                    <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Avg Pulse</span>
-                    <span className={`font-bold text-lg ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', monospace" }}>
-                      {Number(matchData.avgForce || 0).toFixed(1)} <span className="text-xs">KG</span>
-                    </span>
-                  </div>
+                  {!isOneVsOne && (
+                    <h3 className="text-white text-xl font-black italic tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      Performance Analytics
+                    </h3>
+                  )}
+                  {!isOneVsOne && (
+                    <div className="flex items-center gap-2 bg-[#00f0ff]/10 px-3 py-1 rounded-lg border border-[#00f0ff]/20">
+                      <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Avg Pulse</span>
+                      <span className={`font-bold text-lg ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', monospace" }}>
+                        {Number(matchData.avgForce || 0).toFixed(1)} <span className="text-xs">KG</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <GlassCard className="p-4 border border-white/10 bg-black/40 h-[240px]">
@@ -412,7 +428,7 @@ export function VictoryAnalyticsScreen() {
                   <Award className={`w-6 h-6 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} />
                 </div>
                 <span className={`text-2xl font-black italic tracking-widest uppercase ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                  {matchData.mode === 'ranked' ? 'Back to Menu' : (isWin ? 'Continue to Map' : 'Return to Map')}
+                  {isOneVsOne ? 'RETURN TO MAIN' : (matchData.mode === 'ranked' ? 'Back to Menu' : (isWin ? 'Continue to Map' : 'Return to Map'))}
                 </span>
               </div>
               <ChevronRight className={`w-8 h-8 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} relative z-10`} />
