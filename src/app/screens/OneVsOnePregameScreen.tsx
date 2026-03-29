@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
-import Lightning from '../components/Lightning';
+// Removed Lightning import
 import { supabase } from '../../lib/supabase';
 import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useSocket } from '../../contexts/SocketContext';
@@ -72,101 +72,77 @@ export function OneVsOnePregameScreen() {
     fetchProfile();
   }, []);
 
-  const handleReady = () => {
-    setPhase('action');
-    if (rulesVideoRef.current) {
-      rulesVideoRef.current.play();
+  // Socket initialization on mount
+  useEffect(() => {
+    if (isConnected) {
+      const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
+      
+      sendMessage({
+        set_game: {
+          mode: "multiplayer",
+          hand: (playerHand || 'RIGHT').toLowerCase(),
+          player_id: myPlayerId,
+          args: {
+            force: 0, // Multiplayer uses hardware resistance or 0
+            count_down: 11
+          }
+        }
+      });
     }
+  }, [isConnected, playerHand, sendMessage]);
+
+  const handleReady = () => {
+    // Send ready_game command on Ready click
+    sendMessage({
+      ready_game: 0
+    });
+
+    // Start rule sequence or navigate immediately? 
+    // Navigation usually happens after both players are ready in 1v1, 
+    // but for now we follow the user flow.
+    setTimeout(() => {
+      navigate('/1v1-game', {
+        state: {
+          matchId,
+          mode: 'ranked',
+          isPlayer1,
+          opponent,
+          gameType,
+          hand: playerHand
+        }
+      });
+    }, 500);
   };
 
+  const [videoFinished, setVideoFinished] = useState(false);
+
   const handleVideoEnd = () => {
-    // Send INIT command after referee rules video ends
-    const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
-    const handUpper = (playerHand || 'RIGHT').toUpperCase();
-
-    console.log('[1v1Pregame] Sending INIT after referee video ended.');
-    sendMessage({
-      cmd: {
-        INIT: 0,
-        PLAYER_ID: myPlayerId,
-        HAND: handUpper
-      }
-    });
-
-    // Navigate to 1v1 game
-    navigate('/1v1-game', {
-      state: {
-        matchId,
-        mode: 'ranked',
-        isPlayer1,
-        opponent,
-        gameType,
-        hand: playerHand
-      }
-    });
+    setVideoFinished(true);
+    if (videoRef.current) {
+      videoRef.current.loop = true;
+      videoRef.current.play();
+    }
   };
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
       {/* Background Layer 1: Dynamic Looping Background (Wait Phase) */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+        {/* Referee Rules as primary background */}
         <video
+          ref={videoRef}
           autoPlay
           muted
-          loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-          src="/assets/robots/back_stage1.mp4"
+          onEnded={handleVideoEnd}
+          className="absolute inset-0 w-full h-full object-cover"
+          src="/assets/referee_rules.mp4"
         />
         
-        {/* Dynamic Lightning Background */}
-        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-20 mix-blend-screen">
-          <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
-            style={{ width: '1200px', height: '1200px' }}
-          >
-            <Lightning
-              hue={220}
-              xOffset={0.5}
-              speed={1.0}
-              intensity={1.2}
-              size={1.8}
-            />
-          </div>
-          <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
-            style={{ width: '1200px', height: '1200px' }}
-          >
-            <Lightning
-              hue={0}
-              xOffset={-0.5}
-              speed={1.2}
-              intensity={1.5}
-              size={1.8}
-            />
-          </div>
-        </div>
-        
-        <div className="absolute inset-0 bg-black/60" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        {/* Ambient overlays removed per user request */}
       </div>
 
-      {/* Background Layer 2: Referee Video (Action Phase) */}
-      <div className="absolute inset-0 z-[5] overflow-hidden">
-        <video
-          ref={rulesVideoRef}
-          src="/assets/referee_rules.mp4"
-          playsInline
-          preload="auto"
-          onEnded={handleVideoEnd}
-          className="w-full h-full object-cover transition-opacity duration-700"
-          style={{ 
-            opacity: phase === 'action' ? 1 : 0,
-            visibility: phase === 'action' ? 'visible' : 'hidden'
-          }}
-        />
-        <div className={`absolute inset-0 bg-black/20 transition-opacity duration-1000 ${phase === 'action' ? 'opacity-100' : 'opacity-0'}`} />
-      </div>
+      {/* Background Layer 2: Removed as it's now integrated in Layer 1 */}
 
       {/* Bottom Interface Layer */}
       <div className="flex-1 flex items-end justify-between px-24 pb-16 z-30 relative">
@@ -254,7 +230,7 @@ export function OneVsOnePregameScreen() {
           </motion.div>
 
           <AnimatePresence mode="wait">
-            {phase === 'wait' && (
+            {videoFinished && (
               <motion.div
                 key="ready-btn"
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -262,12 +238,12 @@ export function OneVsOnePregameScreen() {
                 exit={{ scale: 1.2, opacity: 0 }}
                 className="relative group h-24 flex items-center"
               >
-                <div className="absolute inset-0 bg-[#00f0ff] opacity-20 group-hover:opacity-40 transition-opacity rounded-xl blur-xl" />
+                <div className="absolute inset-0 bg-[#ffff00] opacity-20 group-hover:opacity-40 transition-opacity rounded-xl blur-xl" />
                 <motion.button
                   onClick={handleReady}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="relative px-12 py-5 bg-[#00f0ff] text-black font-black text-2xl italic tracking-tighter rounded-xl shadow-[0_0_40px_rgba(0,240,255,0.4)] transition-all"
+                  className="relative px-12 py-5 bg-[#ffff00] text-black font-black text-2xl italic tracking-tighter rounded-xl shadow-[0_0_40px_rgba(255,255,0,0.4)] transition-all"
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   READY
