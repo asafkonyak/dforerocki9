@@ -411,8 +411,7 @@ export function VictoryAnalyticsScreen() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              if (matchData.mode === 'ranked') navigate('/menu');
-              else navigate('/practice');
+              navigate('/menu');
             }}
           >
             <GlassCard className={`p-5 border-2 ${isWin ? 'border-[#00f0ff]' : 'border-[#ff0033]'} bg-black/60 shadow-[0_0_40px_rgba(0,240,255,0.2)] flex items-center justify-between overflow-hidden relative`}>
@@ -428,7 +427,7 @@ export function VictoryAnalyticsScreen() {
                   <Award className={`w-6 h-6 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} />
                 </div>
                 <span className={`text-2xl font-black italic tracking-widest uppercase ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'}`} style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                  {isOneVsOne ? 'RETURN TO MAIN' : (matchData.mode === 'ranked' ? 'Back to Menu' : (isWin ? 'Continue to Map' : 'Return to Map'))}
+                  RETURN TO MAIN MENU
                 </span>
               </div>
               <ChevronRight className={`w-8 h-8 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} relative z-10`} />

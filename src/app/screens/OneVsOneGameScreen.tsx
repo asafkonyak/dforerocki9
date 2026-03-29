@@ -377,8 +377,23 @@ export function OneVsOneGameScreen() {
         else if (serverData.countdown !== undefined) cdVal = serverData.countdown;
 
         if (cdVal !== null) {
-          setCountdown(cdVal);
-          setShowCountdown(true);
+          let displayVal: string | number | null = null;
+          if (typeof cdVal === 'number') {
+            if (cdVal === 10) displayVal = 5;
+            else if (cdVal === 8) displayVal = 4;
+            else if (cdVal === 6) displayVal = 3;
+            else if (cdVal === 4) displayVal = 2;
+            else if (cdVal === 2) displayVal = 1;
+            // If it's a number but not one of these, we don't update/show the countdown
+          } else {
+            // Keep strings like "READY" or "GO!"
+            displayVal = cdVal;
+          }
+
+          if (displayVal !== null) {
+            setCountdown(displayVal);
+            setShowCountdown(true);
+          }
         }
 
         if (serverData.acs_state === 'ACS_GAME' && !isGameActive) {

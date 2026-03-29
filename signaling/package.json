@@ -12,6 +12,6 @@
   "description": "",
   "dependencies": {
     "nodemon": "^3.1.14",
-    "socket.io": "^4.8.3"
+    "ws": "^8.18.1"
   }
 }
