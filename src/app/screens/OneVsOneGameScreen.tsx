@@ -12,6 +12,7 @@ import { useSocket } from '../../contexts/SocketContext';
 import { GameCanvas } from '../components/GameCanvas';
 import { useGlobalAudio } from '../../contexts/AudioContext';
 import { useCamera } from '../../contexts/CameraContext';
+import { moveMatchToArchive } from '../../lib/matchmaking-utils';
 
 export function OneVsOneGameScreen() {
   const navigate = useNavigate();
@@ -289,12 +290,17 @@ export function OneVsOneGameScreen() {
     const winnerId = isMeWinner ? playerId : opponentId;
 
     if (matchId) {
-      await supabase.from('matches').update({
+      const { error: updateError } = await supabase.from('matches').update({
         winner_id: winnerId,
         status: 'done',
         duration: durationSeconds,
         score: scoreObj
       }).eq('id', matchId);
+
+      // Move to archive after updating live record
+      if (!updateError) {
+        await moveMatchToArchive(matchId);
+      }
     }
 
     // Update Player Statistics

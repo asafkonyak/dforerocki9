@@ -7,6 +7,7 @@ import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useAudio } from '../../hooks/useAudio';
 import { Zap, CheckCircle } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
+import { archiveStaleMatches } from '../../lib/matchmaking-utils';
 
 export function MatchmakingScreen() {
   const navigate = useNavigate();
@@ -66,9 +67,13 @@ export function MatchmakingScreen() {
   // Initial Data & Match Search with reliability fixes
   useEffect(() => {
     async function initMatchmaking() {
+      // 1. Proactive cleanup of STALE records before searching
+      await archiveStaleMatches();
+
       const { data: { user } } = await supabase.auth.getUser();
       let currentId = localStorage.getItem('fighter_player_id');
 
+      // (A) Profile Setup logic
       if (user) {
         const { data: player } = await supabase.from('players').select('id, username, avatar_url, rank, preferred_hand').eq('user_id', user.id).maybeSingle();
         if (player) {
@@ -98,6 +103,7 @@ export function MatchmakingScreen() {
       }
       setPlayerId(currentId);
 
+      // (B) Searching for PENDING match (Exclude 'archived' or 'done')
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       let pendingMatchQuery = supabase
@@ -114,25 +120,38 @@ export function MatchmakingScreen() {
         pendingMatchQuery = pendingMatchQuery.eq('reference_match_id', referenceMatchId);
       }
 
-      const { data: pendingMatches } = await pendingMatchQuery.limit(1);
+      const { data: pendingMatches, error: searchError } = await pendingMatchQuery.limit(1);
 
+      if (searchError) {
+        console.error('[Matchmaking] Search error:', searchError);
+        setErrorHeader('SEARCH ERROR');
+        return;
+      }
+
+      // (C) Join logic or Create logic
       if (pendingMatches && pendingMatches.length > 0) {
-        const joinMatch = pendingMatches[0];
+        const joinTarget = pendingMatches[0];
+        console.log('[Matchmaking] Found pending match to join:', joinTarget.id);
         setIsPlayer1(false);
         
+        // Atomic lock attempt using 'player2_id IS NULL' hint in the query
         const { error: updateError, data: updatedMatch } = await supabase
           .from('matches')
-          .update({ player2_id: currentId, status: 'matched' })
-          .eq('id', joinMatch.id)
+          .update({ 
+            player2_id: currentId, 
+            status: 'matched'
+          })
+          .eq('id', joinTarget.id)
           .is('player2_id', null)
           .select()
           .maybeSingle();
 
         if (!updateError && updatedMatch) {
-          const { data: p1Profile } = await supabase.from('players').select('*').eq('id', joinMatch.player1_id).maybeSingle();
-          if (p1Profile) startMatchRef.current(joinMatch.id, p1Profile);
+          console.log('[Matchmaking] JOINED SUCCESSFULLY as Player 2:', updatedMatch.id);
+          const { data: p1Profile } = await supabase.from('players').select('*').eq('id', joinTarget.player1_id).maybeSingle();
+          if (p1Profile) startMatchRef.current(joinTarget.id, p1Profile);
         } else {
-          console.log('[Matchmaking] Join failed (race condition), creating new match as P1');
+          console.warn('[Matchmaking] Join race condition detected or record already matched. Creating new...');
           await createMatchAsP1(currentId);
         }
       } else {
@@ -140,8 +159,9 @@ export function MatchmakingScreen() {
       }
 
       async function createMatchAsP1(pid: string) {
+        console.log('[Matchmaking] CREATING NEW MATCH as Player 1...');
         setIsPlayer1(true);
-        const { data: newMatch } = await supabase
+        const { data: newMatch, error: insertError } = await supabase
           .from('matches')
           .insert({
             player1_id: pid,
@@ -152,19 +172,32 @@ export function MatchmakingScreen() {
           .select()
           .single();
 
+        if (insertError) {
+          console.error('[Matchmaking] Failed to create match:', insertError);
+          setErrorHeader('INIT FAILED');
+          return;
+        }
+
         if (newMatch) {
+          console.log('[Matchmaking] P1 Match Created:', newMatch.id);
           setMatchId(newMatch.id);
           const channel = supabase
             .channel(`match-sync-${newMatch.id}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${newMatch.id}` }, 
               async (payload: any) => {
+                console.log('[Matchmaking] Match status update observed:', payload.new.status);
                 if (payload.new.status === 'matched' && payload.new.player2_id && !matchFound) {
                   const { data: oppProfile } = await supabase.from('players').select('*').eq('id', payload.new.player2_id).maybeSingle();
-                  if (oppProfile) startMatchRef.current(payload.new.id, oppProfile);
+                  if (oppProfile) {
+                    console.log('[Matchmaking] OPPONENT JOINED:', oppProfile.username);
+                    startMatchRef.current(payload.new.id, oppProfile);
+                  }
                 }
               }
             )
-            .subscribe();
+            .subscribe((status) => {
+              console.log('[Matchmaking] Channel status:', status);
+            });
           subscriptionRef.current = channel;
         }
       }
@@ -173,7 +206,10 @@ export function MatchmakingScreen() {
     initMatchmaking();
 
     return () => {
-      if (subscriptionRef.current) supabase.removeChannel(subscriptionRef.current);
+      if (subscriptionRef.current) {
+        console.log('[Matchmaking] Cleaning up channel subscription.');
+        supabase.removeChannel(subscriptionRef.current);
+      }
     };
   }, [gameType, referenceMatchId, navigate]);
 

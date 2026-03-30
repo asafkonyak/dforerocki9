@@ -35,8 +35,10 @@ export function VersusScreen() {
 
     async function loadPlayers() {
       try {
-        const { data: match } = await supabase.from('matches').select('player1_id, player2_id').eq('id', matchId).single();
-        if (!match) {
+        const { data: match } = await supabase.from('matches').select('player1_id, player2_id, status').eq('id', matchId).single();
+        
+        if (!match || (match.status !== 'matched' && match.status !== 'pending')) {
+          console.warn('[Versus] Invalid match status or match not found:', match?.status);
           navigate('/menu');
           return;
         }
