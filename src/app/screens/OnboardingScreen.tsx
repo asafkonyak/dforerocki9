@@ -24,7 +24,7 @@ export function OnboardingScreen() {
   const location = useLocation();
   const isEditing = location.state?.isEditing;
   const { isConnected, isError } = useSocket();
-  const { setDimmed } = useGlobalAudio();
+  const { setDimmed, stopIntroMusic, startIntroMusic } = useGlobalAudio();
   const { mainCameraId } = useCamera();
   const [playerName, setPlayerName] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -38,6 +38,7 @@ export function OnboardingScreen() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const bgVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const avatarScrollRef = useRef<HTMLDivElement>(null);
   const [avatarPage, setAvatarPage] = useState(0);
@@ -159,13 +160,17 @@ export function OnboardingScreen() {
     };
     prefillData();
 
-    // Dim music while on onboarding (referee_onboarding video)
-    setDimmed(true);
+    // Stop background music and only play onboarding video at 100% volume
+    stopIntroMusic();
+    if (bgVideoRef.current) {
+      bgVideoRef.current.volume = 1.0;
+    }
 
     return () => {
-      setDimmed(false);
+      // Restore music when leaving (optional, usually /menu handles this)
+      startIntroMusic();
     };
-  }, [isEditing, setDimmed]);
+  }, [isEditing, stopIntroMusic, startIntroMusic]);
 
   // Auto-scroll to selected avatar
   useEffect(() => {
@@ -314,13 +319,13 @@ export function OnboardingScreen() {
       {/* Video Background */}
       <div className="absolute inset-0 z-0">
         <video
+          ref={bgVideoRef}
           autoPlay
-          muted
           loop
           playsInline
           className="w-full h-full object-cover"
         >
-          <source src="/assets/registration.mp4" type="video/mp4" />
+          <source src="/assets/referee_onboarding.mp4" type="video/mp4" />
         </video>
         {/* Dark Overlay for Readability */}
         <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
@@ -378,48 +383,12 @@ export function OnboardingScreen() {
       <div className="flex-1 px-6 pb-6 min-h-0 relative z-10 flex items-center">
         <div className="w-full max-w-[1400px] mx-auto space-y-4">
           {/* Refined Layout: Centered Video Protocol (Left) + Identity (Right) */}
-          <div className="flex flex-col lg:flex-row justify-center items-stretch gap-6 h-full max-h-[750px] mx-auto">
-            {/* Video Tutorial Card - LEFT - 2/3 width */}
+            {/* Combined Identity Card - ALIGNED RIGHT */}
             <motion.div
-              className="w-full lg:flex-[2] h-full"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              className="w-full max-w-md h-full ml-auto"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, duration: 0.5 }}
-            >
-              <GlassCard className="h-full overflow-hidden p-0 border-2 border-[#ffff00]/20 relative group">
-                {/* Scan Overlay */}
-                <div className="absolute inset-0 grid grid-cols-8 grid-rows-8 opacity-[0.05] pointer-events-none z-10">
-                  {Array.from({ length: 64 }).map((_, i) => (
-                    <div key={i} className="border border-white" />
-                  ))}
-                </div>
-
-                <video
-                  src="/assets/referee_onboarding.mp4"
-                  autoPlay
-                  loop
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-
-                <div className="absolute bottom-12 left-12 right-12 z-20">
-                  <div className="flex flex-col gap-4">
-                    <p className="text-[#ffff00] text-3xl font-black italic tracking-widest uppercase [text-shadow:0_0_20px_#ffff0060]" style={{ fontFamily: "'Orbitron', sans-serif" }}>SET UP YOUR PROFILE</p>
-                    <p className="text-white text-lg leading-relaxed uppercase tracking-[0.1em] max-w-2xl font-bold [text-shadow:0_2px_10px_rgba(0,0,0,0.8)]">Take a photo or choose an avatar, pick your dominant hand, and enter your fighter name to get started.</p>
-                  </div>
-                </div>
-
-                {/* Gradient vignette */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 pointer-events-none" />
-              </GlassCard>
-            </motion.div>
-
-            {/* Combined Identity Card - RIGHT - 1/3 width, tighter padding */}
-            <motion.div
-              className="w-full lg:flex-[1] h-full"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
             >
               <GlassCard className="p-5 h-full border-white/10 bg-black/40 backdrop-blur-xl flex flex-col justify-between overflow-hidden">
                 <div className="space-y-5">
@@ -597,7 +566,6 @@ export function OnboardingScreen() {
                 </div>
               </GlassCard>
             </motion.div>
-          </div>
 
           {/* Complete Button - Tighter padding */}
           <div className="pt-4">

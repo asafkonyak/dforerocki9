@@ -245,12 +245,9 @@ export function MainMenuScreen() {
               >
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0">
-                  <video
-                    ref={bossVideoRef}
-                    src="/assets/robots/bosRobot.mp4"
-                    autoPlay
-                    muted
-                    playsInline
+                  <img
+                    src="/assets/robots/allStages.png"
+                    alt="Training Training"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />

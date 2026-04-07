@@ -157,9 +157,9 @@ export function SingleGameScreen() {
   // Resolve Opponent Data for Gauntlet
   const getRobotData = (stage: number) => {
     const robots = [
-      { name: 'MARCO', avatar: '/assets/robots/stage1.jpg' },
+      { name: 'MARCO', avatar: '/assets/robots/stage1.png' },
       { name: 'KAMILA', avatar: '/assets/robots/stage2.png' },
-      { name: 'JACK', avatar: '/assets/robots/stage3.jpg' },
+      { name: 'JACK', avatar: '/assets/robots/stage3.png' },
       { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg' },
       { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png' }
     ];
