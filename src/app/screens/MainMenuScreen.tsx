@@ -269,6 +269,31 @@ export function MainMenuScreen() {
             </motion.div>
           </div>
 
+          {/* Leaderboard Link Below Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="mt-8 flex justify-center"
+          >
+            <button
+              onClick={() => navigate('/leaderboard')}
+              className="group relative flex items-center gap-4 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-[#ffff00]/30 transition-all overflow-hidden"
+            >
+              {/* Background Glow Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#ffff00]/0 via-[#ffff00]/5 to-[#ffff00]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              
+              <Trophy className="w-6 h-6 text-[#ffff00] drop-shadow-[0_0_10px_rgba(255,255,0,0.5)]" />
+              <div className="flex flex-col items-start leading-tight relative z-10">
+                <span className="text-[#ffff00] text-sm font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>VIEW GLOBAL LEADERBOARD</span>
+                <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">See how you rank against the world's best</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-[#ffff00]/40 group-hover:translate-x-1 group-hover:text-[#ffff00] transition-all" />
+
+              {/* Glowing line effect */}
+              <div className="absolute -bottom-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#ffff00]/40 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+            </button>
+          </motion.div>
         </div>
       </div>
 

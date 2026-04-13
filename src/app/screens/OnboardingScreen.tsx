@@ -2,14 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { GlassCard } from '../components/GlassCard';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, RotateCcw, Zap, User, Video as VideoIcon, ArrowLeft, Mic, ChevronLeft, ChevronRight, Edit3, Focus } from 'lucide-react';
+import { Camera, RotateCcw, Zap, User, Video as VideoIcon, ArrowLeft, Mic, ChevronLeft, ChevronRight, Edit3, Focus, Phone, Search, Check } from 'lucide-react';
 import { NeonButton } from '../components/NeonButton';
 import { supabase } from '../../lib/supabase';
 import { useGlobalAudio } from '../../contexts/AudioContext';
 import { useCamera } from '../../contexts/CameraContext';
-
 import { useSocket } from '../../contexts/SocketContext';
 import { SUGGESTED_NAMES } from '../data/suggestedNames';
+import { COUNTRIES } from '../data/countries';
 import { CameraFeed } from '../components/CameraFeed';
 
 const CHARACTER_AVATARS = Array.from({ length: 24 }, (_, i) => `/assets/avatars/cyber_${i + 1}.png`);
@@ -27,6 +27,11 @@ export function OnboardingScreen() {
   const { setDimmed, stopIntroMusic, startIntroMusic } = useGlobalAudio();
   const { mainCameraId } = useCamera();
   const [playerName, setPlayerName] = useState('');
+  const [phonePrefix, setPhonePrefix] = useState('+49');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [weight, setWeight] = useState('');
   const [preferredHand, setPreferredHand] = useState<'left' | 'right'>('right');
@@ -112,6 +117,8 @@ export function OnboardingScreen() {
           const { data: player } = await supabase.from('players').select('*').eq('id', playerId).maybeSingle();
           if (player) {
             setPlayerName(player.username || '');
+            setPhonePrefix(player.phone_prefix || '+49');
+            setPhoneNumber(player.phone_number || '');
             setWeight(player.weight?.toString() || '');
             setPreferredHand(player.preferred_hand || 'right');
 
@@ -289,6 +296,8 @@ export function OnboardingScreen() {
         id: playerId,
         user_id: user?.id || null, // Guest will be null, Email will be populated
         username: playerName,
+        phone_prefix: phonePrefix,
+        phone_number: phoneNumber,
         avatar_url: finalAvatarUrl,
         weight: parseInt(weight) || null,
         preferred_hand: preferredHand,
@@ -314,8 +323,44 @@ export function OnboardingScreen() {
     }
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCountries = COUNTRIES.filter(c =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.dial_code.includes(searchQuery) ||
+    c.code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const selectedCountry = COUNTRIES.find(c => c.dial_code === phonePrefix) || COUNTRIES.find(c => c.code === 'DE');
+
   return (
     <div className="h-screen bg-gradient-to-b from-[#0a0515] via-[#1a0a2e] to-[#0a0515] overflow-hidden flex flex-col relative">
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #ffff00;
+          border-radius: 10px;
+          box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #ffff33;
+        }
+      `}</style>
       {/* Video Background */}
       <div className="absolute inset-0 z-0">
         <video
@@ -527,7 +572,97 @@ export function OnboardingScreen() {
                     </div>
                   </div>
 
-                  {/* 3. Player Name (Bottom) */}
+                  {/* 3. Phone Contact (Middle-Bottom) */}
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-5 h-5 text-[#ffff00]" />
+                      <p className="text-sm text-white font-black uppercase tracking-[0.2em] italic" style={{ fontFamily: "'Orbitron', sans-serif" }}>PHONE CONTACT</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="w-1/3 relative" ref={dropdownRef}>
+                        <button
+                          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                          className="w-full px-3 py-4 bg-white/5 border-2 border-white/10 rounded-2xl
+                                   text-white outline-none flex items-center justify-between
+                                   hover:border-[#ffff00]/30 focus:border-[#ffff00] focus:bg-[#ffff00]/5 transition-all duration-300"
+                        >
+                          <span className="text-[14px] font-black tracking-widest uppercase truncate">
+                            {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.dial_code}` : '+49'}
+                          </span>
+                          <ChevronRight className={`w-4 h-4 text-[#ffff00]/40 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+                        </button>
+
+                        <AnimatePresence>
+                          {isCountryDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute bottom-full left-0 w-[240px] mb-2 bg-[#1a0a2e] border-2 border-[#ffff00]/30 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-[100] overflow-hidden backdrop-blur-2xl"
+                            >
+                              <div className="p-3 border-b border-white/10 sticky top-0 bg-[#1a0a2e]/90 backdrop-blur-md">
+                                <div className="relative">
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white/30" />
+                                  <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="SEARCH COUNTRY..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-8 pr-3 text-[10px] font-black tracking-widest text-white outline-none focus:border-[#ffff00]/50"
+                                    style={{ fontFamily: "'Orbitron', sans-serif" }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {filteredCountries.map((country) => (
+                                  <button
+                                    key={`${country.code}-${country.dial_code}`}
+                                    onClick={() => {
+                                      setPhonePrefix(country.dial_code);
+                                      setIsCountryDropdownOpen(false);
+                                      setSearchQuery('');
+                                    }}
+                                    className={`w-full px-4 py-3 flex items-center justify-between hover:bg-[#ffff00]/10 transition-colors group ${phonePrefix === country.dial_code ? 'bg-[#ffff00]/5' : ''}`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xl">{country.flag}</span>
+                                      <div className="flex flex-col items-start leading-tight">
+                                        <span className="text-[10px] font-black text-white group-hover:text-[#ffff00] transition-colors uppercase tracking-wider">{country.name}</span>
+                                        <span className="text-[12px] font-bold text-white/40">{country.dial_code}</span>
+                                      </div>
+                                    </div>
+                                    {phonePrefix === country.dial_code && <Check className="w-3 h-3 text-[#ffff00]" />}
+                                  </button>
+                                ))}
+                                {filteredCountries.length === 0 && (
+                                  <div className="p-8 text-center text-white/20 text-[10px] uppercase font-black tracking-widest">
+                                    No results found
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <div className="flex-1 relative group">
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          placeholder="PHONE NUMBER..."
+                          className="w-full px-4 py-4 bg-white/5 border-2 border-white/10 rounded-2xl
+                                   text-white placeholder-white/20 outline-none
+                                   focus:border-[#ffff00] focus:bg-[#ffff00]/5 focus:shadow-[0_0_30px_#ffff0020]
+                                   transition-all duration-300 caret-[#ffff00] text-[14px] font-black tracking-widest"
+                          style={{ fontFamily: "'Orbitron', sans-serif" }}
+                        />
+                        <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#ffff00]/20 group-focus-within:text-[#ffff00] transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Player Name (Bottom) */}
                   <div className="space-y-4 pt-4 border-t border-white/5">
                     <div className="flex items-center gap-2">
                       <Edit3 className="w-5 h-5 text-[#ffff00]" />
