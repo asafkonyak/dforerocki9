@@ -324,11 +324,8 @@ export function OneVsOneGameScreen() {
       await updatePlayerStats(opponentId, !isMeWinner);
     }
 
-    const earnedXp = 300;
-    if (isMeWinner) {
-      await supabase.rpc('increment_xp', { p_id: playerId, xp_amount: earnedXp });
-    }
-
+    const earnedXp = 0;
+    
     setTimeout(() => {
       const isMeWinner = finalWinner === 'player1';
       navigate('/1v1victory', {
@@ -337,7 +334,7 @@ export function OneVsOneGameScreen() {
           peakForce: finalMaxForce,
           avgForce: avgForce,
           enduranceTime: durationSeconds,
-          xpEarned: isMeWinner ? 300 : 50,
+          xpEarned: 0,
           matchId,
           gameMode: 'ranked',
           gameType,

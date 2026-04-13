@@ -370,28 +370,45 @@ export function VictoryAnalyticsScreen() {
                   </div>
                 </GlassCard>
 
-                {/* Sub-Chart Metrics */}
-                <div className="grid grid-cols-2 gap-4">
-                  <GlassCard className="p-4 border border-[#ffaa00]/30 bg-[#ffaa00]/5 flex items-center justify-between">
-                    <div>
-                      <p className="text-[#ffaa00]/60 text-[10px] font-black tracking-widest uppercase">Peak Force</p>
-                      <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                        {matchData.peakForce} <span className="text-xs text-white/40">KG</span>
-                      </p>
-                    </div>
-                    <Zap className="w-6 h-6 text-[#ffaa00]/60" />
-                  </GlassCard>
-
-                  <GlassCard className="p-4 border border-[#00f0ff]/30 bg-[#00f0ff]/5 flex items-center justify-between">
-                    <div>
-                      <p className="text-[#00f0ff]/60 text-[10px] font-black tracking-widest uppercase">Endurance Time</p>
-                      <p className="text-2xl font-bold text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                        {formatTime(matchData.enduranceTime)}
-                      </p>
-                    </div>
-                    <Clock className="w-6 h-6 text-[#00f0ff]/60" />
-                  </GlassCard>
                 </div>
+
+                {/* XP Rewards Breakdown - ONLY for Gauntlet */}
+                {!isOneVsOne && matchData.xpEarned > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                  >
+                    <GlassCard className="p-6 border-2 border-[#ffff00]/30 bg-gradient-to-br from-[#ffff00]/10 to-transparent relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Sparkles className="w-16 h-16 text-[#ffff00]" />
+                      </div>
+                      
+                      <h4 className="text-[#ffff00] text-xs font-black tracking-[0.3em] uppercase mb-4 flex items-center gap-2">
+                        <Award className="w-4 h-4" />
+                        Experience Gained
+                      </h4>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Victory Base</span>
+                          <span className="text-white font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.baseXp || 500} XP</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-[#00f0ff] font-bold uppercase tracking-widest text-[10px]">Force Bonus (x10)</span>
+                          <span className="text-[#00f0ff] font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.bonusXp || 0} XP</span>
+                        </div>
+                        <div className="h-px bg-white/10 my-2" />
+                        <div className="flex justify-between items-end">
+                          <span className="text-white font-black uppercase tracking-[0.2em] text-xs">Total Earned</span>
+                          <span className="text-3xl font-black text-[#ffff00] drop-shadow-[0_0_15px_#ffff0088]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                            {matchData.xpEarned} <span className="text-xs opacity-50">XP</span>
+                          </span>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+                )}
               </div>
             </div>
           </GlassCard>

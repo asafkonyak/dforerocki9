@@ -190,13 +190,20 @@ export function GauntletScreen() {
       if (playerId) {
         const { error } = await supabase
           .from('players')
-          .update({ gauntlet_progress: 1 })
+          .update({ 
+            gauntlet_progress: 1,
+            xp: 0 
+          })
           .eq('id', playerId);
 
         if (error) throw error;
         setGauntletProgress(1);
         setShowUnlockAnimation(false);
         setShowResetConfirm(false);
+        
+        // Update local storage to reflect reset
+        localStorage.setItem('fighter_gauntlet_progress', '1');
+        window.location.reload(); // Refresh to sync everything
       }
     } catch (err) {
       console.error("Error resetting progress:", err);
@@ -389,7 +396,7 @@ export function GauntletScreen() {
             </motion.button>
 
             {/* RESET button hidden per user request */}
-            {/* {(gauntletProgress >= 2 || (gauntletProgress === 1 && stages.some(s => s.cleared))) && (
+            {(gauntletProgress >= 2 || (gauntletProgress === 1 && stages.some(s => s.cleared))) && (
               <motion.button
                 onClick={() => setShowResetConfirm(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 hover:border-[#ff006e]/30 transition-all z-20 group"
@@ -397,9 +404,9 @@ export function GauntletScreen() {
                 whileTap={{ scale: 0.95 }}
               >
                 <RotateCcw className="w-5 h-5 text-white/40 group-hover:rotate-180 transition-transform duration-500" />
-                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">RESET</span>
+                <span className="text-white/60 text-sm uppercase tracking-wider font-bold">REDO</span>
               </motion.button>
-            )} */}
+            )}
           </div>
 
           {/* Title hidden per user request */}

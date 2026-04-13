@@ -377,17 +377,21 @@ export function SingleGameScreen() {
       }
     };
 
-    await updatePlayerStats(playerId, isMeWinner);
-    if (opponentId) {
-      await updatePlayerStats(opponentId, !isMeWinner);
+    if (isRanked) {
+      await updatePlayerStats(playerId, isMeWinner);
+      if (opponentId) {
+        await updatePlayerStats(opponentId, !isMeWinner);
+      }
     }
 
     // 5. Add XP and Update Progress
-    const earnedXp = gameMode === 'gauntlet' ? 500 : isRanked ? 300 : 150;
     const isWin = isMeWinner;
+    const baseXp = (gameMode === 'gauntlet' && isWin) ? 500 : 0;
+    const bonusXp = (gameMode === 'gauntlet' && isWin) ? Math.round(finalMaxForce * 10) : 0;
+    const totalEarnedXp = baseXp + bonusXp;
 
-    if (isWin) {
-      await supabase.rpc('increment_xp', { p_id: playerId, xp_amount: earnedXp });
+    if (isWin && totalEarnedXp > 0) {
+      await supabase.rpc('increment_xp', { p_id: playerId, xp_amount: totalEarnedXp });
       if (gameMode === 'gauntlet' && stageNumber) {
         // Fetch current progress to avoid demotion
         const { data: playerData } = await supabase.from('players').select('gauntlet_progress').eq('id', playerId).maybeSingle();
@@ -409,7 +413,9 @@ export function SingleGameScreen() {
           peakForce: finalMaxForce,
           avgForce: avgForce,
           enduranceTime: durationSeconds,
-          xpEarned: earnedXp,
+          xpEarned: totalEarnedXp,
+          baseXp,
+          bonusXp,
           stageName: stageName || 'OPPONENT',
           stageNumber: stageNumber || 1,
           hand: isLeft ? 'left' : 'right',
