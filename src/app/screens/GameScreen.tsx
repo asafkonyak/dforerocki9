@@ -450,8 +450,8 @@ export function GameScreen() {
             maxForceRef.current = Math.max(maxForceRef.current, resultVal);
             
             const now = Date.now();
-            if (now - lastForceCaptureTimeRef.current >= 1000) {
-              const elapsedSeconds = Math.floor((now - startTime) / 1000);
+            if (now - lastForceCaptureTimeRef.current >= 100) {
+              const elapsedSeconds = (now - startTime) / 1000;
               forceHistoryRef.current.push({ time: elapsedSeconds, force: resultVal });
               lastForceCaptureTimeRef.current = now;
             }

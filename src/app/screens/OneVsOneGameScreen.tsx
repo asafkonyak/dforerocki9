@@ -57,6 +57,12 @@ export function OneVsOneGameScreen() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
+  // Rival Video Recording State
+  const [rivalStream, setRivalStream] = useState<MediaStream | null>(null);
+  const rivalVideoUrlRef = useRef<string | null>(null);
+  const rivalMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const rivalRecordedChunksRef = useRef<Blob[]>([]);
+
   // Round-based states
   const [roundsWonPlayer, setRoundsWonPlayer] = useState(0);
   const [roundsWonOpponent, setRoundsWonOpponent] = useState(0);
@@ -217,6 +223,48 @@ export function OneVsOneGameScreen() {
     }
   }, [isGameActive, stream]);
 
+  // Rival Video Recording Logic
+  useEffect(() => {
+    if (isGameActive && rivalStream && rivalStream.active && !rivalMediaRecorderRef.current) {
+      console.log('[Recording] Starting Rival Match Recording...');
+      rivalRecordedChunksRef.current = [];
+      try {
+        const options = { mimeType: 'video/webm;codecs=vp8' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          console.warn('[Recording] VP8 not supported for rival, falling back to default webm');
+          delete (options as any).mimeType;
+        }
+
+        const recorder = new MediaRecorder(rivalStream, options);
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            rivalRecordedChunksRef.current.push(e.data);
+          }
+        };
+        recorder.onstop = () => {
+          if (rivalRecordedChunksRef.current.length > 0) {
+            const blob = new Blob(rivalRecordedChunksRef.current, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            console.log('[Recording] Rival Video ready:', url);
+            rivalVideoUrlRef.current = url;
+          } else {
+            console.warn('[Recording] No rival chunks recorded!');
+          }
+        };
+        recorder.start(1000);
+        rivalMediaRecorderRef.current = recorder;
+      } catch (err) {
+        console.error('[Recording] Failed to start rival recorder:', err);
+      }
+    } else if (!isGameActive && rivalMediaRecorderRef.current) {
+      console.log('[Recording] Stopping Rival Match Recording...');
+      if (rivalMediaRecorderRef.current.state !== 'inactive') {
+        rivalMediaRecorderRef.current.stop();
+      }
+      rivalMediaRecorderRef.current = null;
+    }
+  }, [isGameActive, rivalStream]);
+
   // Handle Intermission Timer
   useEffect(() => {
     if (intermissionTime !== null && intermissionTime > 0 && !winner) {
@@ -341,7 +389,8 @@ export function OneVsOneGameScreen() {
           hand: handUsed,
           forceHistory: forceHistory,
           opponent: opponentInfo,
-          videoUrl: videoUrlRef.current // Use the ref for the most current URL
+          videoUrl: videoUrlRef.current,
+          rivalVideoUrl: rivalVideoUrlRef.current
         }
       });
     }, 3000);
@@ -369,8 +418,8 @@ export function OneVsOneGameScreen() {
           if (isGameActive && startTime) {
             maxForceRef.current = Math.max(maxForceRef.current, resultVal);
             const now = Date.now();
-            if (now - lastForceCaptureTimeRef.current >= 1000) {
-              const elapsedSeconds = Math.floor((now - startTime) / 1000);
+            if (now - lastForceCaptureTimeRef.current >= 100) {
+              const elapsedSeconds = (now - startTime) / 1000;
               forceHistoryRef.current.push({ time: elapsedSeconds, force: resultVal });
               lastForceCaptureTimeRef.current = now;
             }
@@ -457,6 +506,10 @@ export function OneVsOneGameScreen() {
   // Memoize stream callback to prevent CameraFeed from restarting
   const handleStreamStarted = useCallback((s: MediaStream) => {
     setStream(s);
+  }, []);
+
+  const handleRivalStreamStarted = useCallback((s: MediaStream) => {
+    setRivalStream(s);
   }, []);
 
   return (
@@ -556,7 +609,7 @@ export function OneVsOneGameScreen() {
             <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 bg-black/60">
               <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)]`}>
                 <div className="w-full h-full relative">
-                  <CameraFeed deviceId={player2CameraId || undefined} transparent={true} />
+                  <CameraFeed deviceId={player2CameraId || undefined} transparent={true} onStreamStarted={handleRivalStreamStarted} />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
                 <div className="absolute bottom-2 left-2 flex items-center gap-2">

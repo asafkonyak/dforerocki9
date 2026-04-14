@@ -75,7 +75,10 @@ export function VictoryAnalyticsScreen() {
     ];
 
   const maxForceRaw = Math.max(...forceData.map((d: { time: number, force: number }) => d.force));
-  const maxForce = Math.ceil(maxForceRaw < 1 ? 1 : maxForceRaw);
+  const minForceRaw = Math.min(...forceData.map((d: { time: number, force: number }) => d.force));
+  const maxForce = Math.max(1, maxForceRaw);
+  const minForce = Math.min(0, minForceRaw);
+  const forceRange = (maxForce - minForce) || 1;
 
   return (
     <div className="h-screen bg-[#0a0515] relative overflow-hidden flex flex-col">
@@ -206,7 +209,7 @@ export function VictoryAnalyticsScreen() {
       {/* Main Content Area */}
       <div className="relative z-10 flex-1 overflow-hidden min-h-0 px-4 md:px-12 flex flex-col justify-center">
         <motion.div
-          className="w-full max-w-6xl mx-auto"
+          className="w-full max-w-[90vw] 2xl:max-w-[1600px] mx-auto"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.6 }}
@@ -319,7 +322,7 @@ export function VictoryAnalyticsScreen() {
                   )}
                 </div>
 
-                <GlassCard className="p-4 border border-white/10 bg-black/40 h-[240px]">
+                <GlassCard className="p-4 border border-white/10 bg-black/40 h-[240px] xl:h-[320px]">
                   <div className="relative h-full">
                     {/* Y-axis */}
                     <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] text-white/30 font-bold">
@@ -330,7 +333,7 @@ export function VictoryAnalyticsScreen() {
 
                     {/* Chart Container */}
                     <div className="absolute left-8 right-0 top-0 bottom-6">
-                      <svg className="w-full h-full" preserveAspectRatio="none">
+                      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                         <defs>
                           <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="#00f0ff" />
@@ -343,17 +346,19 @@ export function VictoryAnalyticsScreen() {
                         </defs>
 
                         <motion.path
-                          d={`M 0,100 ${forceData.map((d: any, i: number) => `L ${(i / (forceData.length - 1)) * 100},${100 - (d.force / maxForce) * 100}`).join(' ')} L 100,100 Z`}
+                          d={`M 0,100 ${forceData.map((d: any, i: number) => `L ${(i / (forceData.length - 1)) * 100},${100 - ((d.force - minForce) / forceRange) * 100}`).join(' ')} L 100,100 Z`}
                           fill="url(#areaGrad)"
                           initial={{ opacity: 0 }}
                           animate={animateCharts ? { opacity: 1 } : {}}
                         />
                         <motion.polyline
-                          points={forceData.map((d: any, i: number) => `${(i / (forceData.length - 1)) * 100},${100 - (d.force / maxForce) * 100}`).join(' ')}
+                          points={forceData.map((d: any, i: number) => `${(i / (forceData.length - 1)) * 100},${100 - ((d.force - minForce) / forceRange) * 100}`).join(' ')}
                           fill="none"
                           stroke="url(#lineGrad)"
                           strokeWidth="3"
                           strokeLinejoin="round"
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
                           initial={{ pathLength: 0 }}
                           animate={animateCharts ? { pathLength: 1 } : {}}
                           transition={{ duration: 2, ease: "easeInOut" }}
@@ -417,7 +422,7 @@ export function VictoryAnalyticsScreen() {
       {/* Footer Navigation */}
       <div className="relative z-10 p-8 flex-shrink-0">
         <motion.div
-          className="max-w-xl mx-auto"
+          className="max-w-3xl mx-auto"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
