@@ -238,60 +238,81 @@ export function VictoryAnalyticsScreen() {
               {/* Left Side: Video Replay */}
               <div className={`flex flex-col gap-4 ${isOneVsOne ? 'mt-10' : ''}`}>
                 <div className={`w-full aspect-video rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'border-[#ff0033] shadow-[0_0_20px_rgba(255,0,51,0.4)]'} bg-black relative`}>
-                  {matchData.videoUrl ? (
-                    <div className="relative w-full h-full">
+                  <div className="absolute inset-0 grid grid-cols-2">
+                    {/* Player Camera */}
+                    <div className="relative border-r-2 border-white/20 h-full w-full">
+                      {matchData.videoUrl ? (
+                        <div className="relative w-full h-full">
+                          <video
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="w-full h-full object-cover"
+                            src={matchData.videoUrl}
+                            onLoadedData={() => {
+                              console.log('[Victory] Video Loaded Successfully');
+                              setAnimateMetrics(true);
+                            }}
+                            onError={(e) => {
+                              console.error('[Victory] Video Playback Error:', e);
+                              setAnimateMetrics(true);
+                            }}
+                          />
+                          {!animateMetrics && (
+                            <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center gap-4 z-30">
+                              <Loader2 className="w-8 h-8 text-[#00f0ff] animate-spin" />
+                              <span className="text-[#00f0ff] text-[8px] font-black tracking-[0.3em] uppercase italic animate-pulse">Processing Replay...</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white/10 uppercase font-black tracking-widest italic bg-black/50">
+                          No Feed
+                        </div>
+                      )}
+                      
+                      {/* Left Badge */}
+                      <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-lg border border-white/10 z-40">
+                        <span className="text-[10px] text-white font-black tracking-[0.2em] uppercase">YOU</span>
+                      </div>
+                    </div>
+
+                    {/* Rival Camera (AI Robot) */}
+                    <div className="relative h-full w-full">
                       <video
+                        key={matchData.stageNumber || 1}
                         autoPlay
                         muted
                         loop
                         playsInline
                         className="w-full h-full object-cover"
-                        src={matchData.videoUrl}
-                        onLoadedData={() => {
-                          console.log('[Victory] Video Loaded Successfully');
-                          setAnimateMetrics(true);
-                        }}
-                        onError={(e) => {
-                          console.error('[Victory] Video Playback Error:', e);
-                          // Still show metrics even if video fails
-                          setAnimateMetrics(true);
-                        }}
-                      />
-
-                      {/* Replay Overlay */}
-                      <div className="absolute top-4 left-4 bg-black/60 px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-xs text-white font-black tracking-widest">REPLAY</span>
+                      >
+                        <source
+                          src={isWin 
+                            ? `/assets/robots/stage${matchData.stageNumber || 1}_postfight.mp4` 
+                            : `/assets/robots/stage${matchData.stageNumber || 1}_prefight.mp4`
+                          }
+                          type="video/mp4"
+                          onError={(e) => {
+                            const target = e.target as HTMLSourceElement;
+                            target.src = `/assets/robots/stage${matchData.stageNumber || 1}.mp4`;
+                          }}
+                        />
+                      </video>
+                      
+                      {/* Right Badge */}
+                      <div className="absolute bottom-4 right-4 bg-black/60 px-3 py-1 rounded-lg border border-white/10 z-40">
+                        <span className="text-[10px] text-white font-black tracking-[0.2em] uppercase">RIVAL</span>
                       </div>
-
-                      {/* Loader overlay */}
-                      {!animateMetrics && (
-                        <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center gap-4 z-30">
-                          <Loader2 className="w-12 h-12 text-[#00f0ff] animate-spin" />
-                          <span className="text-[#00f0ff] text-xs font-black tracking-[0.3em] uppercase italic animate-pulse">Processing Replay...</span>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <video
-                      key={matchData.stageNumber}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover"
-                    >
-                      <source
-                        src={
-                          matchData.stageNumber === 1 ? '/assets/robots/stage1_postfight.mp4' :
-                            matchData.stageNumber === 2 ? `/assets/robots/stage2.mp4` :
-                              matchData.stageNumber === 5 ? '/assets/robots/stage5_postfight.mp4' :
-                                `/assets/robots/stage${matchData.stageNumber}.mp4`
-                        }
-                        type="video/mp4"
-                      />
-                    </video>
-                  )}
+                  </div>
+
+                  {/* Replay Overlay */}
+                  <div className="absolute top-4 left-4 bg-black/80 px-4 py-2 rounded-xl border border-white/20 flex items-center gap-3 shadow-lg z-30">
+                    <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[10px] text-white font-black tracking-[0.3em] uppercase">BATTLE REPLAY</span>
+                  </div>
 
                   {/* Cyber Scanning Line */}
                   <motion.div
@@ -374,6 +395,25 @@ export function VictoryAnalyticsScreen() {
                     </div>
                   </div>
                 </GlassCard>
+
+                {/* KPI Cards */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                    <p className="text-white/30 text-[9px] font-black tracking-widest uppercase mb-1">Peak Impact</p>
+                    <p className="text-4xl font-black italic text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      {matchData.peakForce} <span className="text-sm font-normal text-white/20 uppercase not-italic tracking-widest">KG</span>
+                    </p>
+                    <Zap className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                    <p className="text-white/30 text-[9px] font-black tracking-widest uppercase mb-1">Duration</p>
+                    <p className="text-4xl font-black italic text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                      {formatTime(matchData.enduranceTime)}
+                    </p>
+                    <Clock className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                  </div>
+                </div>
 
                 </div>
 
