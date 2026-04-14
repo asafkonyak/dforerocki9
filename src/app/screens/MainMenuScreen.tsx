@@ -162,10 +162,10 @@ export function MainMenuScreen() {
       </motion.div>
 
       {/* Main Content - Vertically Centered */}
-      <div className="flex-1 flex items-center justify-center px-6 pb-6 min-h-0">
-        <div className="max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex items-center justify-center px-6 pb-16 min-h-0">
+        <div className="max-w-[1800px] w-full mx-auto">
           {/* Game Mode Cards - Horizontal Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16">
             {/* Merged Cinema Card (Slots 1 & 2) */}
             <motion.div
               className="lg:col-span-2"
@@ -173,7 +173,7 @@ export function MainMenuScreen() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
             >
-              <GlassCard className="p-6 relative overflow-hidden h-full min-h-[520px]">
+              <GlassCard className="p-10 relative overflow-hidden h-full min-h-[880px]">
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0">
                   <video
@@ -189,10 +189,10 @@ export function MainMenuScreen() {
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
                 </div>
                 
-                <div className="absolute bottom-12 left-12 right-12 z-20">
-                  <div className="flex flex-col gap-4">
-                    <p className="text-[#ffff00] text-3xl font-black italic tracking-widest uppercase [text-shadow:0_0_20px_#ffff0060]" style={{ fontFamily: "'Orbitron', sans-serif" }}>READY TO FIGHT?</p>
-                    <p className="text-white text-lg leading-relaxed uppercase tracking-[0.1em] max-w-2xl font-bold [text-shadow:0_2px_10px_rgba(0,0,0,0.8)]">Train against robots or challenge a real opponent</p>
+                <div className="absolute bottom-20 left-20 right-20 z-20">
+                  <div className="flex flex-col gap-8">
+                    <p className="text-[#ffff00] text-6xl font-black italic tracking-widest uppercase [text-shadow:0_0_40px_#ffff00a0]" style={{ fontFamily: "'Orbitron', sans-serif" }}>READY TO FIGHT?</p>
+                    <p className="text-white text-3xl leading-relaxed uppercase tracking-[0.1em] max-w-3xl font-bold [text-shadow:0_2px_20px_rgba(0,0,0,1)]">Train against robots or challenge a real opponent</p>
                   </div>
                 </div>
 
@@ -208,7 +208,7 @@ export function MainMenuScreen() {
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <GlassCard 
-                className="p-6 relative overflow-hidden h-full flex flex-col min-h-[520px] cursor-pointer group hover:scale-[1.02] transition-transform" 
+                className="p-10 relative overflow-hidden h-full flex flex-col min-h-[880px] cursor-pointer group hover:scale-[1.02] transition-transform" 
                 onClick={() => navigate('/matchmaking', { state: { gameType: '1_round' } })}
               >
                 {/* Video Background */}
@@ -219,14 +219,14 @@ export function MainMenuScreen() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />
                 </div>
 
-                <div className="relative z-10 flex flex-col items-center text-center gap-4 flex-1">
+                <div className="relative z-10 flex flex-col items-center text-center gap-8 flex-1">
                   <div>
-                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Online 1v1</h3>
+                    <h3 className="text-4xl text-white mb-6 font-bold tracking-tight drop-shadow-2xl" style={{ fontFamily: "'Orbitron', sans-serif" }}>Online 1v1</h3>
                   </div>
                   
-                  <div className="mt-auto w-full pt-6">
-                     <div className="px-6 py-4 bg-[#00f0ff]/10 border border-[#00f0ff]/30 rounded-xl group-hover:bg-[#00f0ff]/20 transition-colors text-center">
-                        <span className="text-sm text-[#00f0ff] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>FIND OPPONENT</span>
+                  <div className="mt-auto w-full pt-10">
+                     <div className="px-10 py-8 bg-[#00f0ff]/10 border border-[#00f0ff]/30 rounded-3xl group-hover:bg-[#00f0ff]/20 transition-colors text-center shadow-[0_0_30px_#00f0ff30]">
+                        <span className="text-2xl text-[#00f0ff] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>FIND OPPONENT</span>
                      </div>
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export function MainMenuScreen() {
               transition={{ delay: 0.3, duration: 0.5 }}
             >
               <GlassCard 
-                className="p-6 h-full relative overflow-hidden min-h-[520px] cursor-pointer group hover:scale-[1.02] transition-transform" 
+                className="p-10 h-full relative overflow-hidden min-h-[880px] cursor-pointer group hover:scale-[1.02] transition-transform" 
                 onClick={() => navigate('/practice')}
               >
                 {/* Video Background */}
@@ -253,15 +253,15 @@ export function MainMenuScreen() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />
                 </div>
 
-                <div className="relative z-10 flex flex-col items-center text-center gap-4 h-full">
+                <div className="relative z-10 flex flex-col items-center text-center gap-8 h-full">
                   <div>
-                    <h3 className="text-xl text-white mb-2 font-bold tracking-tight drop-shadow-lg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Training challenge</h3>
+                    <h3 className="text-4xl text-white mb-6 font-bold tracking-tight drop-shadow-2xl" style={{ fontFamily: "'Orbitron', sans-serif" }}>Training challenge</h3>
                   </div>
                   
                   {/* START TRAINING Button - Simplified */}
-                  <div className="mt-auto w-full pt-4">
-                    <div className="px-6 py-4 bg-[#ffff00]/10 border border-[#ffff00]/30 rounded-xl group-hover:bg-[#ffff00]/20 transition-colors text-center">
-                      <span className="text-sm text-[#ffff00] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>START TRAINING</span>
+                  <div className="mt-auto w-full pt-8">
+                    <div className="px-10 py-8 bg-[#ffff00]/10 border border-[#ffff00]/30 rounded-3xl group-hover:bg-[#ffff00]/20 transition-colors text-center shadow-[0_0_30px_#ffff0030]">
+                      <span className="text-2xl text-[#ffff00] font-black uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>START TRAINING</span>
                     </div>
                   </div>
                 </div>
