@@ -211,11 +211,9 @@ export function MainMenuScreen() {
                 className="p-10 relative overflow-hidden h-full flex flex-col min-h-[880px] cursor-pointer group hover:scale-[1.02] transition-transform" 
                 onClick={() => navigate('/matchmaking', { state: { gameType: '1_round' } })}
               >
-                {/* Video Background */}
+                {/* Image Background */}
                 <div className="absolute inset-0 z-0">
-                  <video autoPlay muted loop playsInline className="w-full h-full object-cover">
-                    <source src="/assets/1v1.mp4" type="video/mp4" />
-                  </video>
+                  <img src="/assets/1v1.png" alt="Online 1v1" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0515]/90 via-[#0a0515]/50 to-[#0a0515]/30" />
                 </div>
 

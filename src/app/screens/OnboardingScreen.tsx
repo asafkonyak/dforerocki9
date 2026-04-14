@@ -12,7 +12,7 @@ import { SUGGESTED_NAMES } from '../data/suggestedNames';
 import { COUNTRIES } from '../data/countries';
 import { CameraFeed } from '../components/CameraFeed';
 
-const CHARACTER_AVATARS = Array.from({ length: 24 }, (_, i) => `/assets/avatars/cyber_${i + 1}.png`);
+const CHARACTER_AVATARS = [25, 26, 27, 28, 29, 30, 31, 32, 34].map(id => `/assets/avatars/cyber_${id}.png`);
 
 interface AvatarOption {
   id: number;
@@ -98,8 +98,9 @@ export function OnboardingScreen() {
 
   useEffect(() => {
     // Pick the 8 split characters for avatars
+    const availableIds = [25, 26, 27, 28, 29, 30, 31, 32, 34];
     const pickedAvatars = CHARACTER_AVATARS.map((url, index) => ({
-      id: index + 1,
+      id: availableIds[index],
       url
     }));
     setAvatarOptions(pickedAvatars);
@@ -156,8 +157,9 @@ export function OnboardingScreen() {
 
           setPlayerName(finalName);
 
-          // Random Avatar (1-24)
-          const randomAvatarId = Math.floor(Math.random() * 24) + 1;
+          // Random Avatar (Realistic Set)
+          const availableIds = [25, 26, 27, 28, 29, 30, 31, 32, 34];
+          const randomAvatarId = availableIds[Math.floor(Math.random() * availableIds.length)];
           setSelectedAvatar(randomAvatarId);
         } catch (err) {
           console.error("Error generating random identity:", err);
