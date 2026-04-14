@@ -410,7 +410,6 @@ export function VictoryAnalyticsScreen() {
                   </motion.div>
                 )}
               </div>
-            </div>
           </GlassCard>
         </motion.div>
       </div>
