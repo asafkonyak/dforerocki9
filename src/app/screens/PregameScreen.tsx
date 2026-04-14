@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
+import { FastForward } from 'lucide-react';
 import { GlassCard } from '../components/GlassCard';
 // Removed Lightning import
 import { supabase } from '../../lib/supabase';
@@ -116,6 +117,10 @@ export function PregameScreen() {
     }, 500);
   };
 
+  const handleSkip = () => {
+    setShowReady(true);
+  };
+
   const [showReady, setShowReady] = useState(false);
 
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -143,6 +148,28 @@ export function PregameScreen() {
         
         {/* Ambient overlays removed per user request */}
       </div>
+
+      {/* Skip Button (Top Right) */}
+      <AnimatePresence>
+        {!showReady && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="absolute top-10 right-10 z-50"
+          >
+            <motion.button
+              onClick={handleSkip}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-3 px-8 py-4 bg-black/40 border border-[#ffff00]/30 rounded-2xl hover:bg-[#ffff00]/10 hover:border-[#ffff00] transition-all group backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,0,0.1)]"
+            >
+              <span className="text-[#ffff00]/60 text-sm font-black uppercase tracking-[0.3em] group-hover:text-[#ffff00] transition-colors" style={{ fontFamily: "'Orbitron', sans-serif" }}>Skip Rules</span>
+              <FastForward className="w-5 h-5 text-[#ffff00]/40 group-hover:text-[#ffff00] transition-colors" />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Background Layer 2: Removed as it's now integrated in Layer 1 */}
 
