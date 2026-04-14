@@ -53,7 +53,7 @@ export function PregameScreen() {
     const robots = [
       { name: 'MARCO', avatar: '/assets/robots/stage1.png', prefight: '/assets/robots/stage1_prefight.mp4' },
       { name: 'KAMILA', avatar: '/assets/robots/stage2.png', prefight: '/assets/robots/stage2_prefight.mp4' },
-      { name: 'JACK', avatar: '/assets/robots/stage3.png', prefight: '/assets/robots/stage1_prefight.mp4' },
+      { name: 'JACK', avatar: '/assets/robots/stage3.png', prefight: '/assets/robots/stage3_prefight.mp4' },
       { name: 'CRUSHER X-9000', avatar: '/assets/robots/stage4.jpg', prefight: '/assets/robots/stage1_prefight.mp4' },
       { name: 'ANNIHILATOR PRIME', avatar: '/assets/robots/stage5.png', prefight: '/assets/robots/stage5_prefight.mp4' }
     ];
