@@ -15,6 +15,7 @@ interface Player {
   lossCount: number;
   recentForm: ('W' | 'L')[];
   rank: number;
+  maxPeak: number;
 }
 
 interface FightResult {
@@ -131,6 +132,11 @@ function PodiumPlayer({ player, position, isCurrentUser }: { player: Player; pos
         <FormDots form={player.recentForm} />
       </div>
 
+      <div className="mb-2 bg-black/40 rounded-lg px-2 py-1 border border-[#00f0ff]/20">
+        <p className="text-[9px] text-[#00f0ff] uppercase tracking-widest text-center" style={{ fontFamily: "'Orbitron', sans-serif" }}>Peak Impact</p>
+        <p className="text-white text-xs font-black text-center" style={{ fontFamily: "'Orbitron', sans-serif" }}>{Number(player.maxPeak).toFixed(2)} <span className="text-[8px] text-white/40">KG</span></p>
+      </div>
+
       <motion.div
         className={`w-full ${config.podium} mt-3 rounded-t-lg relative overflow-hidden`}
         initial={{ height: 0 }}
@@ -209,7 +215,14 @@ function RankedRow({ player, index, isCurrentUser }: { player: Player; index: nu
             <FormDots form={player.recentForm} />
           </div>
           
-          <div className="flex items-center justify-end min-w-[110px]">
+          <div className="flex flex-col items-end min-w-[70px] border-l border-white/5 pl-4 mr-2">
+            <span className="text-white/40 text-[9px] uppercase tracking-widest leading-none mb-1">Peak</span>
+            <span className="text-white text-sm font-black leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+              {Number(player.maxPeak).toFixed(2)}<span className="text-[10px] text-white/40 ml-0.5">KG</span>
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-end min-w-[100px]">
             <span className="text-[#00f0ff] text-lg font-bold whitespace-nowrap" style={{ fontFamily: "'Orbitron', sans-serif" }}>
               {player.xp.toLocaleString()} XP
             </span>
@@ -418,7 +431,8 @@ export function LeaderboardScreen() {
               winCount: p.win_count || 0,
               lossCount: p.loss_count || 0,
               rank: index + 1,
-              recentForm: (p.last_results || '').split(',').filter(Boolean) as ('W' | 'L')[]
+              recentForm: (p.last_results || '').split(',').filter(Boolean) as ('W' | 'L')[],
+              maxPeak: p.max || 0
             }));
           setPlayers(mapped);
 
@@ -448,7 +462,8 @@ export function LeaderboardScreen() {
                   winCount: userStats.win_count || 0,
                   lossCount: userStats.loss_count || 0,
                   rank: (count || 0) + 1,
-                  recentForm: (userStats.last_results || '').split(',').filter(Boolean) as ('W' | 'L')[]
+                  recentForm: (userStats.last_results || '').split(',').filter(Boolean) as ('W' | 'L')[],
+                  maxPeak: userStats.max_peak_impact || userStats.max || 0
                 });
               }
             }
@@ -537,7 +552,7 @@ export function LeaderboardScreen() {
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 max-w-5xl mx-auto">
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#00f0ff]/30 to-transparent" />
           <span
             className="text-white/30 text-xs tracking-widest uppercase"
@@ -549,8 +564,8 @@ export function LeaderboardScreen() {
         </div>
 
         {/* Ranked List */}
-        <div className="space-y-2">
-          {rest.map((player, i) => (
+        <div className="space-y-2 max-w-5xl mx-auto">
+          {players.map((player, i) => (
             <RankedRow 
               key={player.id} 
               player={player} 

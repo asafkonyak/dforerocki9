@@ -35,6 +35,7 @@ export function SingleGameScreen() {
   const [isGameActive, setIsGameActive] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState<number | string | null>(null);
+  const opponentVideoRef = useRef<HTMLVideoElement>(null);
   const [showCountdown, setShowCountdown] = useState(false);
   const [isBlurred, setIsBlurred] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
@@ -251,6 +252,15 @@ export function SingleGameScreen() {
     }
   }, [isGameActive, stream]);
 
+  // Handle opponent video sync
+  useEffect(() => {
+    if (countdown === 'GO' || countdown === 'GO!' || isGameActive) {
+      if (opponentVideoRef.current) opponentVideoRef.current.play().catch(e => console.warn(e));
+    } else {
+      if (opponentVideoRef.current) opponentVideoRef.current.pause();
+    }
+  }, [countdown, isGameActive]);
+
   // Handle Intermission Timer
   useEffect(() => {
     if (intermissionTime !== null && intermissionTime > 0 && !winner) {
@@ -399,17 +409,14 @@ export function SingleGameScreen() {
 
     // Update Max Peak Impact
     try {
-      const { data: pData } = await supabase.from('players').select('max_peak_impact, max').eq('id', playerId).maybeSingle();
-      const currentMax = pData?.max_peak_impact || pData?.max || 0;
-      if (finalMaxForce > currentMax) {
-        // Try updating both commonly used names for max since we are adapting to the database automatically
-        await supabase.from('players').update({ max_peak_impact: finalMaxForce, max: finalMaxForce }).eq('id', playerId);
-      }
+      const peakMagnitude = Math.abs(finalMaxForce);
+      const { data: pData } = await supabase.from('players').select('max').eq('id', playerId).maybeSingle();
+      const currentMax = pData?.max || 0;
       
-      // Also strictly save it to local storage exactly as profile.max just in case that's exactly what was requested 
-      const localProfileMax = parseFloat(localStorage.getItem('profile.max') || '0');
-      if (finalMaxForce > localProfileMax) {
-        localStorage.setItem('profile.max', finalMaxForce.toString());
+      if (peakMagnitude > currentMax) {
+        await supabase.from('players').update({ max: peakMagnitude }).eq('id', playerId);
+        // Also strictly save it to local storage exactly as profile.max just in case that's exactly what was requested 
+        localStorage.setItem('profile.max', peakMagnitude.toString());
       }
     } catch (e) {
       console.error("Failed to update max peak impact", e);
@@ -808,7 +815,7 @@ export function SingleGameScreen() {
               {/* Rival Video Feed Box */}
               <div className="w-full flex-1 rounded-t-xl overflow-hidden border-b-2 border-[#ff006e]/30 relative bg-black transition-none">
                 {gameMode === 'gauntlet' ? (
-                  <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover transition-none" />
+                  <video ref={opponentVideoRef} src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} muted loop playsInline className="w-full h-full object-cover transition-none" />
                 ) : isRanked && videoDevices.length >= 2 ? (
                   <CameraFeed deviceId={videoDevices[1].deviceId} />
                 ) : !isPlayer1 ? (

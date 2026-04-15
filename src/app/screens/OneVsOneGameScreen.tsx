@@ -372,6 +372,20 @@ export function OneVsOneGameScreen() {
       await updatePlayerStats(opponentId, !isMeWinner);
     }
 
+    // Update Max Peak Impact
+    try {
+      const peakMagnitude = Math.abs(finalMaxForce);
+      const { data: pData } = await supabase.from('players').select('max').eq('id', playerId).maybeSingle();
+      const currentMax = pData?.max || 0;
+      
+      if (peakMagnitude > currentMax) {
+        await supabase.from('players').update({ max: peakMagnitude }).eq('id', playerId);
+        localStorage.setItem('profile.max', peakMagnitude.toString());
+      }
+    } catch (e) {
+      console.error("Failed to update 1v1 max peak impact", e);
+    }
+
     const earnedXp = 0;
     
     setTimeout(() => {
@@ -567,12 +581,20 @@ export function OneVsOneGameScreen() {
           </div>
         </div>
 
-        {/* Player Cards */}
-        <div className="absolute inset-0 pt-24 px-4 flex justify-between pointer-events-none z-0">
+        {/* Player Cards - Main Section */}
+        <div className="absolute top-0 inset-x-0 h-[70vh] flex gap-4 p-4 pointer-events-none z-0">
           {/* Player 1 - Left (Blue / Local) */}
-          <motion.div className="w-[48vw] max-w-[800px] pointer-events-auto" animate={{ scale: armPosition < 40 ? 1.05 : 1 }}>
-            <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 bg-black/60">
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-[#0a0515] shadow-[0_0_30px_rgba(0,240,255,0.3)]`}>
+          <motion.div 
+            className="flex-1 h-full pointer-events-auto"
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ 
+              x: 0, 
+              opacity: 1,
+              scale: armPosition < 40 ? 1.02 : 1 
+            }}
+          >
+            <GlassCard className="h-full p-2 border-2 border-[#00f0ff]/50 flex flex-col bg-black/60 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+              <div className="w-full flex-1 rounded-t-xl overflow-hidden border-b-2 border-[#00f0ff]/30 relative bg-[#0a0515] transition-all duration-300">
                 {profile?.avatar_url && (
                   <div className="absolute inset-0 z-0">
                     <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover opacity-60 grayscale brightness-50" />
@@ -588,15 +610,19 @@ export function OneVsOneGameScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 p-3 bg-black/80 rounded-b-xl mt-1">
                 <div className="relative">
-                  <AvatarDisplay avatar={player1.avatar} className="border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.6)]" size="md" />
+                  <AvatarDisplay 
+                    avatar={player1.avatar} 
+                    className="border border-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.4)]" 
+                    size="sm" 
+                  />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black italic text-[#00f0ff] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <h3 className="text-xl font-black italic text-[#00f0ff] tracking-widest leading-none uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {player1.name} (YOU)
                   </h3>
-                  <p className="text-[#00f0ff] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <p className="text-[#00f0ff]/70 text-[10px] font-bold mt-0.5 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {hand || 'RIGHT'} HAND
                   </p>
                 </div>
@@ -605,9 +631,17 @@ export function OneVsOneGameScreen() {
           </motion.div>
 
           {/* Player 2 - Right (Red / Opponent) */}
-          <motion.div className="w-[48vw] max-w-[800px] pointer-events-auto" animate={{ scale: armPosition > 60 ? 1.05 : 1 }}>
-            <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 bg-black/60">
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)]`}>
+          <motion.div 
+            className="flex-1 h-full pointer-events-auto"
+            initial={{ x: 100, opacity: 0 }}
+            animate={{ 
+              x: 0, 
+              opacity: 1,
+              scale: armPosition > 60 ? 1.02 : 1 
+            }}
+          >
+            <GlassCard className="h-full p-2 border-2 border-[#ff006e]/50 flex flex-col bg-black/60 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,110,0.3)]">
+              <div className="w-full flex-1 rounded-t-xl overflow-hidden border-b-2 border-[#ff006e]/30 relative bg-black transition-none">
                 <div className="w-full h-full relative">
                   <CameraFeed deviceId={player2CameraId || undefined} transparent={true} onStreamStarted={handleRivalStreamStarted} />
                 </div>
@@ -618,17 +652,21 @@ export function OneVsOneGameScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-4 w-full">
+              <div className="flex items-center justify-end gap-3 p-3 bg-black/80 w-full rounded-b-xl mt-1">
                 <div className="flex flex-col items-end text-right">
-                  <h3 className="text-2xl font-black italic text-[#ff006e] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <h3 className="text-xl font-black italic text-[#ff006e] tracking-widest leading-none uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {player2.name}
                   </h3>
-                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <p className="text-[#ff006e]/70 text-[10px] font-bold mt-0.5 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     RIVAL
                   </p>
                 </div>
                 <div className="relative">
-                  <AvatarDisplay avatar={player2.avatar} className="border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.6)]" size="md" />
+                  <AvatarDisplay 
+                    avatar={player2.avatar} 
+                    className="border border-[#ff006e] shadow-[0_0_10px_rgba(255,0,110,0.4)]" 
+                    size="sm" 
+                  />
                 </div>
               </div>
             </GlassCard>
