@@ -13,7 +13,7 @@ export function GauntletScreen() {
   const { sendMessage, lastMessage } = useSocket();
   const [showUnlockAnimation, setShowUnlockAnimation] = useState(false);
   const [pathProgress, setPathProgress] = useState(0);
-  const [gauntletProgress, setGauntletProgress] = useState(1);
+  const [gauntletProgress, setGauntletProgress] = useState(() => parseInt(localStorage.getItem('fighter_gauntlet_progress') || '1'));
   const [loading, setLoading] = useState(true);
   const [showRefereeVideo, setShowRefereeVideo] = useState(false);
   const [countdown, setCountdown] = useState<string | number | null>(null);
@@ -489,9 +489,7 @@ export function GauntletScreen() {
                   >
                     {isCleared && (
                       <motion.div
-                        className="relative cursor-pointer"
-                        whileHover={{ scale: 1.1 }}
-                        onClick={() => handleInitiateBattle(stage)}
+                        className="relative"
                       >
                         <motion.div
                           className="absolute inset-0 rounded-3xl bg-[#00f0ff]/20 blur-2xl"

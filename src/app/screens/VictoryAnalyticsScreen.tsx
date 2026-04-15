@@ -19,7 +19,11 @@ export function VictoryAnalyticsScreen() {
     peakForce: 68,
     avgForce: 45,
     enduranceTime: 45,
-    xpEarned: 500,
+    xpEarned: 1730,
+    baseXp: 500,
+    bonusXp: 1230,
+    forceBonusXp: 680,
+    timeBonusXp: 550,
     stageName: 'CRUSHER X-9000',
     stageNumber: 4,
     forceHistory: null,
@@ -29,10 +33,10 @@ export function VictoryAnalyticsScreen() {
   const isOneVsOne = matchData.gameMode === 'ranked' || matchData.mode === 'ranked';
 
   const formatTime = (totalSeconds: number) => {
-    if (!totalSeconds || isNaN(totalSeconds)) return "00.000";
+    if (!totalSeconds || isNaN(totalSeconds)) return "00.00";
     const secs = Math.floor(totalSeconds);
-    const ms = Math.floor((totalSeconds % 1) * 1000);
-    return `${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    const ms = Math.floor((totalSeconds % 1) * 100);
+    return `${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
   };
 
   useEffect(() => {
@@ -235,8 +239,8 @@ export function VictoryAnalyticsScreen() {
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-              {/* Left Side: Video Replay */}
-              <div className={`flex flex-col gap-4 ${isOneVsOne ? 'mt-10' : ''}`}>
+              {/* Left Side: Video Replay & XP Breakdown */}
+              <div className="flex flex-col flex-1 gap-6">
                 <div className={`w-full aspect-video rounded-2xl overflow-hidden border-4 ${isWin ? 'border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'border-[#ff0033] shadow-[0_0_20px_rgba(255,0,51,0.4)]'} bg-black relative`}>
                   <div className="absolute inset-0 grid grid-cols-2">
                     {/* Player Camera */}
@@ -322,11 +326,52 @@ export function VictoryAnalyticsScreen() {
                   />
                 </div>
 
+                {/* XP Rewards Breakdown - ONLY for Gauntlet */}
+                {!isOneVsOne && matchData.xpEarned > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="flex-1 flex flex-col justify-end"
+                  >
+                    <GlassCard className="p-6 border-2 border-[#00f0ff]/30 bg-gradient-to-br from-[#00f0ff]/5 to-transparent relative overflow-hidden group h-full">                     
+                      <h4 className="text-[#00f0ff] text-xs font-black tracking-[0.3em] uppercase mb-4 flex items-center gap-2">
+                        <Award className="w-4 h-4" />
+                        Experience Gained
+                      </h4>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Victory Base</span>
+                          <span className="text-white font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.baseXp || 500} XP</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-[#ffff00] font-bold uppercase tracking-widest text-[10px]">Force Bonus</span>
+                          <span className="text-[#ffff00] font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.forceBonusXp !== undefined ? matchData.forceBonusXp : (matchData.bonusXp || 0)} XP</span>
+                        </div>
+                        {matchData.timeBonusXp !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-[#00ff9d] font-bold uppercase tracking-widest text-[10px]">Time Bonus</span>
+                            <span className="text-[#00ff9d] font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.timeBonusXp} XP</span>
+                          </div>
+                        )}
+                        <div className="h-px bg-white/10 my-2" />
+                        <div className="flex justify-between items-end">
+                          <span className="text-white font-black uppercase tracking-[0.2em] text-xs">Total Earned</span>
+                          <span className="text-3xl font-black text-[#00f0ff] drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                            {matchData.xpEarned} <span className="text-xs opacity-50">XP</span>
+                          </span>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+                )}
+
 
               </div>
 
               {/* Right Side: Chart & Metrics */}
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col flex-1 gap-6">
                 <div className="flex items-center justify-between">
                   {!isOneVsOne && (
                     <h3 className="text-white text-xl font-black italic tracking-widest uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
@@ -347,8 +392,8 @@ export function VictoryAnalyticsScreen() {
                   <div className="relative h-full">
                     {/* Y-axis */}
                     <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] text-white/30 font-bold">
-                      <span>{maxForce}</span>
-                      <span>{Math.round(maxForce * 0.5)}</span>
+                      <span>{Number(maxForce).toFixed(2)}</span>
+                      <span>{Number(maxForce * 0.5).toFixed(2)}</span>
                       <span>0</span>
                     </div>
 
@@ -397,16 +442,16 @@ export function VictoryAnalyticsScreen() {
                 </GlassCard>
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                <div className="grid grid-cols-2 gap-6 flex-1 min-h-0">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group flex flex-col justify-end h-full">
                     <p className="text-white/30 text-[9px] font-black tracking-widest uppercase mb-1">Peak Impact</p>
                     <p className="text-4xl font-black italic text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                      {matchData.peakForce} <span className="text-sm font-normal text-white/20 uppercase not-italic tracking-widest">KG</span>
+                      {Number(matchData.peakForce).toFixed(2)} <span className="text-sm font-normal text-white/20 uppercase not-italic tracking-widest">KG</span>
                     </p>
                     <Zap className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} opacity-10 group-hover:opacity-20 transition-opacity`} />
                   </div>
 
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group flex flex-col justify-end h-full">
                     <p className="text-white/30 text-[9px] font-black tracking-widest uppercase mb-1">Duration</p>
                     <p className="text-4xl font-black italic text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                       {formatTime(matchData.enduranceTime)}
@@ -416,44 +461,6 @@ export function VictoryAnalyticsScreen() {
                 </div>
 
                 </div>
-
-                {/* XP Rewards Breakdown - ONLY for Gauntlet */}
-                {!isOneVsOne && matchData.xpEarned > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 }}
-                  >
-                    <GlassCard className="p-6 border-2 border-[#ffff00]/30 bg-gradient-to-br from-[#ffff00]/10 to-transparent relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Sparkles className="w-16 h-16 text-[#ffff00]" />
-                      </div>
-                      
-                      <h4 className="text-[#ffff00] text-xs font-black tracking-[0.3em] uppercase mb-4 flex items-center gap-2">
-                        <Award className="w-4 h-4" />
-                        Experience Gained
-                      </h4>
-
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Victory Base</span>
-                          <span className="text-white font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.baseXp || 500} XP</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-[#00f0ff] font-bold uppercase tracking-widest text-[10px]">Force Bonus (x10)</span>
-                          <span className="text-[#00f0ff] font-black" style={{ fontFamily: "'Orbitron', sans-serif" }}>+{matchData.bonusXp || 0} XP</span>
-                        </div>
-                        <div className="h-px bg-white/10 my-2" />
-                        <div className="flex justify-between items-end">
-                          <span className="text-white font-black uppercase tracking-[0.2em] text-xs">Total Earned</span>
-                          <span className="text-3xl font-black text-[#ffff00] drop-shadow-[0_0_15px_#ffff0088]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                            {matchData.xpEarned} <span className="text-xs opacity-50">XP</span>
-                          </span>
-                        </div>
-                      </div>
-                    </GlassCard>
-                  </motion.div>
-                )}
               </div>
           </GlassCard>
         </motion.div>

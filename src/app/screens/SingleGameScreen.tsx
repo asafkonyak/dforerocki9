@@ -44,7 +44,7 @@ export function SingleGameScreen() {
   const [resistanceValue, setResistanceValue] = useState(0); // Default KG, now initialized to 0
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
-  const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string } | null>(null);
+  const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string; max?: number } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const { socket, isConnected } = useSocket();
   
@@ -98,7 +98,8 @@ export function SingleGameScreen() {
             avatar_url: data.avatar_url || '👤',
             xp: data.xp || 0,
             rank: data.rank || 'Bronze',
-            preferred_hand: data.preferred_hand || 'right'
+            preferred_hand: data.preferred_hand || 'right',
+            max: parseFloat(localStorage.getItem('profile.max') || '0')
           });
         }
       } else {
@@ -312,12 +313,10 @@ export function SingleGameScreen() {
     const durationSeconds = startTime ? (endTime - startTime) / 1000 : 0;
 
     // Calculate forces
-    let finalMaxForce = Math.round(maxForceRef.current * 10) / 10;
+    let finalMaxForce = maxForceRef.current;
     if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
     
-    let avgForce = Math.round(
-      forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length * 10
-    ) / 10;
+    let avgForce = forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length;
 
     // Adjust for left handed
     let forceHistory = [...forceHistoryRef.current];
@@ -387,8 +386,34 @@ export function SingleGameScreen() {
     // 5. Add XP and Update Progress
     const isWin = isMeWinner;
     const baseXp = (gameMode === 'gauntlet' && isWin) ? 500 : 0;
-    const bonusXp = (gameMode === 'gauntlet' && isWin) ? Math.round(finalMaxForce * 10) : 0;
+    
+    // Force Bonus
+    const forceBonusXp = (gameMode === 'gauntlet' && isWin) ? Math.round(finalMaxForce * 10) : 0;
+    
+    // Duration Bonus: 1000 - (duration rounded to 2 decimals * 10) rounded up
+    const durationRounded = Math.round(durationSeconds * 100) / 100;
+    const timeBonusXp = (gameMode === 'gauntlet' && isWin) ? Math.max(0, Math.ceil(1000 - (durationRounded * 10))) : 0;
+    
+    const bonusXp = forceBonusXp + timeBonusXp;
     const totalEarnedXp = baseXp + bonusXp;
+
+    // Update Max Peak Impact
+    try {
+      const { data: pData } = await supabase.from('players').select('max_peak_impact, max').eq('id', playerId).maybeSingle();
+      const currentMax = pData?.max_peak_impact || pData?.max || 0;
+      if (finalMaxForce > currentMax) {
+        // Try updating both commonly used names for max since we are adapting to the database automatically
+        await supabase.from('players').update({ max_peak_impact: finalMaxForce, max: finalMaxForce }).eq('id', playerId);
+      }
+      
+      // Also strictly save it to local storage exactly as profile.max just in case that's exactly what was requested 
+      const localProfileMax = parseFloat(localStorage.getItem('profile.max') || '0');
+      if (finalMaxForce > localProfileMax) {
+        localStorage.setItem('profile.max', finalMaxForce.toString());
+      }
+    } catch (e) {
+      console.error("Failed to update max peak impact", e);
+    }
 
     if (isWin && totalEarnedXp > 0) {
       await supabase.rpc('increment_xp', { p_id: playerId, xp_amount: totalEarnedXp });
@@ -415,7 +440,9 @@ export function SingleGameScreen() {
           enduranceTime: durationSeconds,
           xpEarned: totalEarnedXp,
           baseXp,
-          bonusXp,
+          bonusXp, // Total bonus
+          forceBonusXp,
+          timeBonusXp,
           stageName: stageName || 'OPPONENT',
           stageNumber: stageNumber || 1,
           hand: isLeft ? 'left' : 'right',
@@ -713,18 +740,21 @@ export function SingleGameScreen() {
           </div>
         </div>
 
-        {/* Player Cards - Top Section */}
-        <div className="absolute inset-0 pt-24 px-4 flex justify-between pointer-events-none z-0">
+        {/* Player Cards - Main Section */}
+        <div className="absolute top-0 inset-x-0 h-[70vh] flex gap-4 p-4 pointer-events-none z-0">
           {/* Player 1 - Left */}
           <motion.div
-            className="w-[48vw] max-w-[800px] pointer-events-auto"
-            animate={{
-              scale: armPosition < 40 ? 1.05 : 1,
+            className="flex-1 h-full pointer-events-auto"
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ 
+              x: 0, 
+              opacity: 1,
+              scale: armPosition < 40 ? 1.02 : 1 
             }}
           >
-            <GlassCard className="p-3 border-2 border-[#00f0ff] shadow-[0_0_50px_rgba(0,240,255,0.4)] flex flex-col gap-3 bg-black/60">
+            <GlassCard className="h-full p-2 border-2 border-[#00f0ff]/50 flex flex-col bg-black/60 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.3)]">
               {/* Camera Feed Box */}
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#00f0ff]/30 relative bg-[#0a0515] shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-300`}>
+              <div className="w-full flex-1 rounded-t-xl overflow-hidden border-b-2 border-[#00f0ff]/30 relative bg-[#0a0515] transition-all duration-300">
                 {profile?.avatar_url && (
                   <div className="absolute inset-0 z-0">
                    <img 
@@ -744,19 +774,19 @@ export function SingleGameScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 p-3 bg-black/80 rounded-b-xl mt-1">
                 <div className="relative">
                   <AvatarDisplay
                     avatar={player1.avatar}
-                    className="border-2 border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.6)]"
-                    size="md"
+                    className="border border-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.4)]"
+                    size="sm"
                   />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black italic text-[#00f0ff] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <h3 className="text-xl font-black italic text-[#00f0ff] tracking-widest leading-none uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {player1.name} {isPlayer1 && '(YOU)'}
                   </h3>
-                  <p className="text-[#00f0ff] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <p className="text-[#00f0ff]/70 text-[10px] font-bold mt-0.5 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {hand || 'RIGHT'} HAND
                   </p>
                 </div>
@@ -766,14 +796,17 @@ export function SingleGameScreen() {
 
           {/* Player 2 - Right */}
           <motion.div
-            className="w-[48vw] max-w-[800px] pointer-events-auto"
-            animate={{
-              scale: armPosition > 60 ? 1.05 : 1,
+            className="flex-1 h-full pointer-events-auto"
+            initial={{ x: 100, opacity: 0 }}
+            animate={{ 
+              x: 0, 
+              opacity: 1,
+              scale: armPosition > 60 ? 1.02 : 1 
             }}
           >
-            <GlassCard className="p-3 border-2 border-[#ff006e] shadow-[0_0_50px_rgba(255,0,110,0.4)] flex flex-col gap-3 bg-black/60">
+            <GlassCard className="h-full p-2 border-2 border-[#ff006e]/50 flex flex-col bg-black/60 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(255,0,110,0.3)]">
               {/* Rival Video Feed Box */}
-              <div className={`w-full h-[450px] md:h-[600px] rounded-lg overflow-hidden border border-[#ff006e]/30 relative bg-black shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-none`}>
+              <div className="w-full flex-1 rounded-t-xl overflow-hidden border-b-2 border-[#ff006e]/30 relative bg-black transition-none">
                 {gameMode === 'gauntlet' ? (
                   <video src={stageNumber === 5 ? '/assets/robots/stage5_prefight.mp4' : `/assets/robots/stage${stageNumber}.mp4`} autoPlay muted loop playsInline className="w-full h-full object-cover transition-none" />
                 ) : isRanked && videoDevices.length >= 2 ? (
@@ -793,20 +826,20 @@ export function SingleGameScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-4 w-full">
+              <div className="flex items-center justify-end gap-3 p-3 bg-black/80 w-full rounded-b-xl mt-1">
                 <div className="flex flex-col items-end text-right">
-                  <h3 className="text-2xl font-black italic text-[#ff006e] tracking-widest leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <h3 className="text-xl font-black italic text-[#ff006e] tracking-widest leading-none uppercase" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     {!isPlayer1 && '(YOU) '} {player2.name} 
                   </h3>
-                  <p className="text-[#ff006e] text-xs font-bold mt-1 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                  <p className="text-[#ff006e]/70 text-[10px] font-bold mt-0.5 uppercase tracking-[0.2em]" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     LEVEL {stageNumber}
                   </p>
                 </div>
                 <div className="relative">
                   <AvatarDisplay
                     avatar={player2.avatar}
-                    className="border-2 border-[#ff006e] shadow-[0_0_20px_rgba(255,0,110,0.6)]"
-                    size="md"
+                    className="border border-[#ff006e] shadow-[0_0_10px_rgba(255,0,110,0.4)]"
+                    size="sm"
                   />
                 </div>
               </div>
@@ -859,7 +892,7 @@ export function SingleGameScreen() {
         </AnimatePresence>
 
         {/* Center - Arm Wrestling Battle Area */}
-        <div className="flex-1 flex items-end justify-center px-6 pb-32 min-h-0 relative z-10 pointer-events-none mt-40 md:mt-0">
+        <div className="flex-1 flex items-end justify-center px-4 pb-20 min-h-0 relative z-20 pointer-events-none mt-[10vh]">
           <div className="w-full max-w-4xl pointer-events-auto">
             <motion.div
               className="relative w-full max-w-[500px] h-[350px] mx-auto overflow-visible"
@@ -877,7 +910,7 @@ export function SingleGameScreen() {
               />
 
               {/* DATA UI - Digital counters */}
-              <div className="absolute -bottom-[80px] left-1/2 -translate-x-1/2 w-full flex justify-center gap-8 z-30">
+              <div className="absolute -bottom-[40px] left-1/2 -translate-x-1/2 w-full flex justify-center gap-8 z-30">
                 <motion.div
                   className="relative"
                   animate={{ scale: [1, 1.05, 1] }}
