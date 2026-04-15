@@ -309,21 +309,14 @@ export function OneVsOneGameScreen() {
     const endTime = Date.now();
     const durationSeconds = startTime ? (endTime - startTime) / 1000 : 0;
 
-    let finalMaxForce = Math.round(maxForceRef.current * 10) / 10;
+    // Calculate forces
+    const finalMaxForce = maxForceRef.current;
     if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
-
-    let avgForce = Math.round(
-      forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length * 10
-    ) / 10;
-
-    let forceHistory = [...forceHistoryRef.current];
-    const handUsed = hand || profile?.preferred_hand || 'right';
+    
+    const avgForce = forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length;
+    const forceHistory = [...forceHistoryRef.current];
+    const handUsed = location.state?.hand || profile?.preferred_hand || 'right';
     const isLeft = handUsed.toLowerCase() === 'left';
-    if (isLeft) {
-      finalMaxForce = -finalMaxForce;
-      avgForce = -avgForce;
-      forceHistory = forceHistory.map(f => ({ time: f.time, force: -f.force }));
-    }
 
     const scoreObj = {
       p1_rounds: finalWinner === 'player1' ? roundsWonPlayer + 1 : roundsWonPlayer,
@@ -430,11 +423,12 @@ export function OneVsOneGameScreen() {
           setResistanceValue(resultVal);
 
           if (isGameActive && startTime) {
-            maxForceRef.current = Math.max(maxForceRef.current, resultVal);
+            const magnitude = Math.abs(resultVal);
+            maxForceRef.current = Math.max(maxForceRef.current, magnitude);
             const now = Date.now();
             if (now - lastForceCaptureTimeRef.current >= 100) {
               const elapsedSeconds = (now - startTime) / 1000;
-              forceHistoryRef.current.push({ time: elapsedSeconds, force: resultVal });
+              forceHistoryRef.current.push({ time: elapsedSeconds, force: magnitude });
               lastForceCaptureTimeRef.current = now;
             }
           }

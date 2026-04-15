@@ -323,20 +323,13 @@ export function SingleGameScreen() {
     const durationSeconds = startTime ? (endTime - startTime) / 1000 : 0;
 
     // Calculate forces
-    let finalMaxForce = maxForceRef.current;
+    const finalMaxForce = maxForceRef.current;
     if (forceHistoryRef.current.length === 0) forceHistoryRef.current.push({ time: 0, force: 0 });
     
-    let avgForce = forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length;
-
-    // Adjust for left handed
-    let forceHistory = [...forceHistoryRef.current];
+    const avgForce = forceHistoryRef.current.reduce((acc, curr) => acc + curr.force, 0) / forceHistoryRef.current.length;
+    const forceHistory = [...forceHistoryRef.current];
     const handUsed = location.state?.hand || profile?.preferred_hand || 'right';
     const isLeft = handUsed.toLowerCase() === 'left';
-    if (isLeft) {
-      finalMaxForce = -finalMaxForce;
-      avgForce = -avgForce;
-      forceHistory = forceHistory.map(f => ({ time: f.time, force: -f.force }));
-    }
 
     // 3. Record the match
     const scoreObj = {
@@ -493,14 +486,15 @@ export function SingleGameScreen() {
           const resultVal = Number(serverData.result);
           setResistanceValue(resultVal);
 
-          // Track game statistics during active game
+          // Track game statistics during active game (using absolute magnitude for both hands)
           if (isGameActive && startTime) {
-            maxForceRef.current = Math.max(maxForceRef.current, resultVal);
+            const magnitude = Math.abs(resultVal);
+            maxForceRef.current = Math.max(maxForceRef.current, magnitude);
             
             const now = Date.now();
-            if (now - lastForceCaptureTimeRef.current >= 1000) {
-              const elapsedSeconds = Math.floor((now - startTime) / 1000);
-              forceHistoryRef.current.push({ time: elapsedSeconds, force: resultVal });
+            if (now - lastForceCaptureTimeRef.current >= 100) { // Higher resolution 100ms
+              const elapsedSeconds = (now - startTime) / 1000;
+              forceHistoryRef.current.push({ time: elapsedSeconds, force: magnitude });
               lastForceCaptureTimeRef.current = now;
             }
           }
