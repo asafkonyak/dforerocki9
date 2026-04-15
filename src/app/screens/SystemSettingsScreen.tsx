@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { GlassCard } from '../components/GlassCard';
-import { Camera, Settings, ChevronLeft, Save, Shield, Cpu, RefreshCw } from 'lucide-react';
+import { Camera, Settings, ChevronLeft, Save, Shield, Cpu, RefreshCw, Zap } from 'lucide-react';
 import { useCamera } from '../../contexts/CameraContext';
 import { CameraFeed } from '../components/CameraFeed';
 
@@ -10,6 +10,25 @@ export function SystemSettingsScreen() {
   const navigate = useNavigate();
   const { availableCameras, mainCameraId, player2CameraId, setMainCamera, setPlayer2Camera, refreshCameras } = useCamera();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [levelConfigs, setLevelConfigs] = useState(() => {
+    const saved = localStorage.getItem('fighter_level_configs');
+    if (saved) return JSON.parse(saved);
+    return {
+      1: { power: 7, xp: 500 },
+      2: { power: 10, xp: 750 },
+      3: { power: 12.5, xp: 1000 },
+      4: { power: 20, xp: 1250 },
+      5: { power: 25, xp: 1500 }
+    };
+  });
+
+  const handleLevelChange = (level: number, field: 'power' | 'xp', value: string) => {
+    const numVal = parseFloat(value) || 0;
+    setLevelConfigs((prev: any) => ({
+      ...prev,
+      [level]: { ...prev[level], [field]: numVal }
+    }));
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -18,6 +37,8 @@ export function SystemSettingsScreen() {
   };
 
   const handleSave = () => {
+    // Save level configs
+    localStorage.setItem('fighter_level_configs', JSON.stringify(levelConfigs));
     // Already saved to localStorage in the context but navigate back
     navigate('/cyber');
   };
@@ -179,6 +200,52 @@ export function SystemSettingsScreen() {
               </GlassCard>
             </motion.div>
           </div>
+
+          {/* PRACTICE CALIBRATION SETUP */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center gap-3 px-2">
+              <Zap className="w-6 h-6 text-[#ffff00]" />
+              <h2 className="text-2xl font-black italic text-white uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>Practice Node Calibration</h2>
+            </div>
+
+            <GlassCard className="p-8 border-2 border-[#ffff00]/20 bg-black/60 shadow-[0_0_50px_rgba(255,255,0,0.05)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                {[1, 2, 3, 4, 5].map((lvl) => (
+                  <div key={lvl} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-[#ffff00] tracking-widest uppercase">Level {lvl}</span>
+                    </div>
+                    
+                    <div className="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10 group hover:border-[#ffff00]/30 transition-all">
+                      <div>
+                        <label className="text-[8px] text-white/30 font-black tracking-widest uppercase block mb-1.5">Resistance (KG)</label>
+                        <input 
+                          type="number" 
+                          step="0.5"
+                          value={levelConfigs[lvl as keyof typeof levelConfigs]?.power || ''}
+                          onChange={(e) => handleLevelChange(lvl, 'power', e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:outline-none focus:border-[#ffff00]/50 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[8px] text-white/30 font-black tracking-widest uppercase block mb-1.5">Base Reward (XP)</label>
+                        <input 
+                          type="number" 
+                          value={levelConfigs[lvl as keyof typeof levelConfigs]?.xp || ''}
+                          onChange={(e) => handleLevelChange(lvl, 'xp', e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:outline-none focus:border-[#ffff00]/50 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          </motion.div>
 
           <motion.div 
             initial={{ opacity: 0, y: 50 }}

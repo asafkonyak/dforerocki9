@@ -8,6 +8,7 @@ import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useSocket } from '../../contexts/SocketContext';
 import { CameraFeed } from '../components/CameraFeed';
 import { useCamera } from '../../contexts/CameraContext';
+import { useGlobalAudio } from '../../contexts/AudioContext';
 import { Video, FastForward } from 'lucide-react';
 
 const RULES = [
@@ -27,12 +28,22 @@ export function OneVsOnePregameScreen() {
 
    const { sendMessage, isConnected } = useSocket();
    const { mainCameraId, player2CameraId } = useCamera();
+   const { setMatch1v1Muted, stopMatch1v1SFX } = useGlobalAudio();
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
   const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const rulesVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Sound management: Mute during rules
+  useEffect(() => {
+    setMatch1v1Muted(true);
+    return () => {
+      // Cleanup if navigated away
+      // We don't stop it here if we are going to handle it in handleReady or game start
+    };
+  }, [setMatch1v1Muted]);
 
   // Enumerate cameras on mount
   useEffect(() => {
@@ -94,6 +105,9 @@ export function OneVsOnePregameScreen() {
   }, [isConnected, playerHand, sendMessage]);
 
   const handleReady = () => {
+    // Unmute the 1v1 sound after pressing ready
+    setMatch1v1Muted(false);
+
     // Send ready_game command on Ready click
     sendMessage({
       ready_game: 0

@@ -388,7 +388,25 @@ export function SingleGameScreen() {
 
     // 5. Add XP and Update Progress
     const isWin = isMeWinner;
-    const baseXp = (gameMode === 'gauntlet' && isWin) ? 500 : 0;
+    
+    // Determine Base XP from configuration
+    let baseXp = (gameMode === 'gauntlet' && isWin) ? 500 : 0;
+    if (gameMode === 'gauntlet' && isWin && stageNumber) {
+      const saved = localStorage.getItem('fighter_level_configs');
+      if (saved) {
+        const configs = JSON.parse(saved);
+        if (configs[stageNumber]) {
+          baseXp = configs[stageNumber].xp;
+        }
+      } else {
+        // Hardcoded defaults if no config exists yet (Level 1: 500, Level 2: 750, Level 3: 1000)
+        if (stageNumber === 1) baseXp = 500;
+        else if (stageNumber === 2) baseXp = 750;
+        else if (stageNumber === 3) baseXp = 1000;
+        else if (stageNumber === 4) baseXp = 1250;
+        else if (stageNumber === 5) baseXp = 1500;
+      }
+    }
     
     // Force Bonus
     const forceBonusXp = (gameMode === 'gauntlet' && isWin) ? Math.round(finalMaxForce * 10) : 0;

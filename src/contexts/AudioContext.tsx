@@ -10,6 +10,9 @@ interface AudioContextType {
   playWinSound: () => void;
   stopWinSound: () => void;
   setDimmed: (dim: boolean) => void;
+  playMatch1v1SFX: () => void;
+  stopMatch1v1SFX: () => void;
+  setMatch1v1Muted: (isMuted: boolean) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -18,6 +21,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stageAudioRef = useRef<HTMLAudioElement | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
+  const match1v1AudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isDimmed, setIsDimmed] = useState(false);
 
@@ -41,9 +45,13 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (winAudioRef.current) {
         winAudioRef.current.pause();
       }
+      if (match1v1AudioRef.current) {
+        match1v1AudioRef.current.pause();
+      }
       audioRef.current = null;
       stageAudioRef.current = null;
       winAudioRef.current = null;
+      match1v1AudioRef.current = null;
     };
   }, []);
 
@@ -165,8 +173,44 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const playMatch1v1SFX = () => {
+    if (!match1v1AudioRef.current) {
+      const audio = new Audio('/assets/1V1.mp3');
+      audio.loop = true;
+      audio.volume = 0.8;
+      match1v1AudioRef.current = audio;
+    }
+    match1v1AudioRef.current.play().catch(err => console.error('Failed to play 1v1 sound:', err));
+  };
+
+  const stopMatch1v1SFX = () => {
+    if (match1v1AudioRef.current) {
+      match1v1AudioRef.current.pause();
+      match1v1AudioRef.current.currentTime = 0;
+    }
+  };
+
+  const setMatch1v1Muted = (isMuted: boolean) => {
+    if (match1v1AudioRef.current) {
+      match1v1AudioRef.current.muted = isMuted;
+    }
+  };
+
   return (
-    <AudioContext.Provider value={{ isPlaying, isDimmed, startIntroMusic, stopIntroMusic, playStageMusic, stopStageMusic, playWinSound, stopWinSound, setDimmed }}>
+    <AudioContext.Provider value={{ 
+      isPlaying, 
+      isDimmed, 
+      startIntroMusic, 
+      stopIntroMusic, 
+      playStageMusic, 
+      stopStageMusic, 
+      playWinSound, 
+      stopWinSound, 
+      setDimmed,
+      playMatch1v1SFX,
+      stopMatch1v1SFX,
+      setMatch1v1Muted
+    }}>
       {children}
     </AudioContext.Provider>
   );

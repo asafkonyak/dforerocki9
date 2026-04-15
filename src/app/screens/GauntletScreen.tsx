@@ -212,6 +212,13 @@ export function GauntletScreen() {
   };
 
   const getStagePower = (stage: number) => {
+    // Check for custom configuration first
+    const saved = localStorage.getItem('fighter_level_configs');
+    if (saved) {
+      const configs = JSON.parse(saved);
+      if (configs[stage]) return configs[stage].power;
+    }
+
     switch(stage) {
       case 1: return 7;
       case 2: return 10;

@@ -7,6 +7,7 @@ import { AvatarDisplay } from '../components/AvatarDisplay';
 import { useAudio } from '../../hooks/useAudio';
 import { Zap, CheckCircle } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
+import { useGlobalAudio } from '../../contexts/AudioContext';
 import { archiveStaleMatches } from '../../lib/matchmaking-utils';
 
 export function MatchmakingScreen() {
@@ -26,6 +27,7 @@ export function MatchmakingScreen() {
   const [timeLeft, setTimeLeft] = useState(300);
 
   const { socket, isConnected, isError: socketError } = useSocket();
+  const { playMatch1v1SFX, stopIntroMusic } = useGlobalAudio();
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
   const subscriptionRef = useRef<any>(null);
   const startMatchRef = useRef<(id: string, opponent: any) => void>(() => {});
@@ -67,6 +69,10 @@ export function MatchmakingScreen() {
   // Initial Data & Match Search with reliability fixes
   useEffect(() => {
     async function initMatchmaking() {
+      // Start 1v1 background sound
+      stopIntroMusic();
+      playMatch1v1SFX();
+      
       // 1. Proactive cleanup of STALE records before searching
       await archiveStaleMatches();
 
@@ -231,6 +237,7 @@ export function MatchmakingScreen() {
   }, [matchId, matchFound, isPlayer1]);
 
   const handleCancel = async () => {
+    stopMatch1v1SFX();
     if (matchId && !matchFound) {
       await supabase.from('matches').update({ status: 'abended' }).eq('id', matchId);
     }
