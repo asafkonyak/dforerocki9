@@ -369,7 +369,9 @@ export function OnboardingScreen() {
           ref={bgVideoRef}
           autoPlay
           loop
+          muted
           playsInline
+          preload="auto"
           className="w-full h-full object-cover"
         >
           <source src="/assets/referee_onboarding.mp4" type="video/mp4" />

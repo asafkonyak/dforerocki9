@@ -179,8 +179,10 @@ export function MainMenuScreen() {
                   <video
                     autoPlay
                     loop
+                    muted
                     playsInline
-                    className="w-full h-full object-cover"
+                    preload="auto"
+                    className="w-full h-full object-cover opacity-100 transition-opacity duration-1000"
                   >
                     <source src="/assets/referee_menu.mp4" type="video/mp4" />
                   </video>
