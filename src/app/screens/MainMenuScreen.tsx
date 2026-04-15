@@ -15,7 +15,7 @@ const PROGRESSION_LEVELS = 5;
 export function MainMenuScreen() {
   const navigate = useNavigate();
   const { isConnected, isError } = useSocket();
-  const { setDimmed } = useGlobalAudio();
+  const { setDimmed, startIntroMusic } = useGlobalAudio();
   const [playerData, setPlayerData] = useState<{
     id: string;
     username: string;
@@ -58,7 +58,8 @@ export function MainMenuScreen() {
 
     fetchPlayerData();
     
-    // Dim music while on main menu (referee_menu video)
+    // Auto-start intro music and dim it for the menu video
+    startIntroMusic();
     setDimmed(true);
 
     if (bossVideoRef.current) {

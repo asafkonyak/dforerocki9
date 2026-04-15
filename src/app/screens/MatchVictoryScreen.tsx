@@ -8,7 +8,7 @@ import { useGlobalAudio } from '../../contexts/AudioContext';
 export function MatchVictoryScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { playWinSound } = useGlobalAudio();
+  const { playWinSound, stopWinSound, startIntroMusic, stopMatch1v1SFX } = useGlobalAudio();
   const [animateCharts, setAnimateCharts] = useState(false);
 
   // Get data from navigation state or use defaults
@@ -25,13 +25,13 @@ export function MatchVictoryScreen() {
   const isWin = matchData.isWin ?? true;
 
   const formatTime = (totalSeconds: number) => {
-    if (!totalSeconds || isNaN(totalSeconds)) return "00.000";
-    const secs = Math.floor(totalSeconds);
-    const ms = Math.floor((totalSeconds % 1) * 1000);
-    return `${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    if (!totalSeconds || isNaN(totalSeconds)) return "00.00";
+    return totalSeconds.toFixed(2);
   };
 
   useEffect(() => {
+    // Stop the match-specific audio and play success fanfare
+    stopMatch1v1SFX();
     if (isWin) {
       playWinSound();
     }
@@ -265,7 +265,7 @@ export function MatchVictoryScreen() {
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
                     <p className="text-white/30 text-[9px] font-black tracking-widest uppercase mb-1">Peak Impact</p>
                     <p className="text-4xl font-black italic text-white" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                      {matchData.peakForce} <span className="text-sm font-normal text-white/20 uppercase not-italic tracking-widest">KG</span>
+                      {Number(matchData.peakForce).toFixed(2)} <span className="text-sm font-normal text-white/20 uppercase not-italic tracking-widest">KG</span>
                     </p>
                     <Zap className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 ${isWin ? 'text-[#00f0ff]' : 'text-[#ff0033]'} opacity-10 group-hover:opacity-20 transition-opacity`} />
                   </div>
@@ -293,7 +293,11 @@ export function MatchVictoryScreen() {
            transition={{ delay: 1 }}
         >
           <motion.button
-            onClick={() => navigate('/menu')}
+            onClick={() => {
+              stopWinSound();
+              startIntroMusic();
+              navigate('/menu');
+            }}
             className={`w-full py-6 rounded-2xl border-2 ${isWin ? 'border-[#00f0ff] bg-[#00f0ff]/10 shadow-[0_0_30px_rgba(0,240,255,0.3)]' : 'border-[#ff0033] bg-[#ff0033]/10 shadow-[0_0_30px_rgba(255,0,51,0.3)]'} 
                        text-white text-2xl font-black italic tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 group`}
             style={{ fontFamily: "'Orbitron', sans-serif" }}

@@ -28,7 +28,7 @@ export function OneVsOnePregameScreen() {
 
    const { sendMessage, isConnected } = useSocket();
    const { mainCameraId, player2CameraId } = useCamera();
-   const { setMatch1v1Muted, stopMatch1v1SFX } = useGlobalAudio();
+   const { setMatch1v1Muted, stopMatch1v1SFX, playMatch1v1SFX } = useGlobalAudio();
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
   const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number } | null>(null);
@@ -38,12 +38,13 @@ export function OneVsOnePregameScreen() {
 
   // Sound management: Mute during rules
   useEffect(() => {
+    playMatch1v1SFX();
     setMatch1v1Muted(true);
     return () => {
       // Cleanup if navigated away
       // We don't stop it here if we are going to handle it in handleReady or game start
     };
-  }, [setMatch1v1Muted]);
+  }, [setMatch1v1Muted, playMatch1v1SFX]);
 
   // Enumerate cameras on mount
   useEffect(() => {

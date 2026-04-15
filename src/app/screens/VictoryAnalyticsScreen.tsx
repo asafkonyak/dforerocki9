@@ -9,7 +9,7 @@ import QRCode from 'react-qr-code';
 export function VictoryAnalyticsScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { playWinSound } = useGlobalAudio();
+  const { playWinSound, stopWinSound, startIntroMusic } = useGlobalAudio();
   const [animateMetrics, setAnimateMetrics] = useState(false);
   const [animateCharts, setAnimateCharts] = useState(false);
 
@@ -479,6 +479,8 @@ export function VictoryAnalyticsScreen() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
+              stopWinSound();
+              startIntroMusic();
               navigate('/practice');
             }}
           >

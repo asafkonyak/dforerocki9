@@ -30,7 +30,7 @@ export function OneVsOneGameScreen() {
   const gameType = location.state?.gameType || '1_round';
   const hand = location.state?.hand || 'RIGHT';
 
-  const { playWinSound, setDimmed, stopMatch1v1SFX } = useGlobalAudio();
+  const { playWinSound, setDimmed, stopMatch1v1SFX, playMatch1v1SFX, setMatch1v1Muted } = useGlobalAudio();
   const { mainCameraId, player2CameraId } = useCamera();
   const { sendMessage, lastMessage } = useSocket();
   const [armPosition, setArmPosition] = useState(50);
@@ -50,10 +50,11 @@ export function OneVsOneGameScreen() {
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const { socket, isConnected } = useSocket();
 
-  // Stop the 1v1 matchmaking/pregame sound when entering the game
+  // Ensure 1v1 audio is playing during the match
   useEffect(() => {
-    stopMatch1v1SFX();
-  }, [stopMatch1v1SFX]);
+    playMatch1v1SFX();
+    setMatch1v1Muted(false);
+  }, [playMatch1v1SFX, setMatch1v1Muted]);
 
   // Video Recording State
   const [stream, setStream] = useState<MediaStream | null>(null);
