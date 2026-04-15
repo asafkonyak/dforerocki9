@@ -169,19 +169,23 @@ export function OnboardingScreen() {
     };
     prefillData();
 
-    // Stop background music and only play onboarding video at 100% volume
-    stopIntroMusic();
+    // Use dimmed intro music consistently with cyber and menu pages
+    prefillData();
+  }, [isEditing]);
+
+  useEffect(() => {
+    // Ensure intro music is playing and dimmed consistently with cyber and menu pages
+    startIntroMusic();
+    setDimmed(true);
+    
     if (bgVideoRef.current) {
       bgVideoRef.current.volume = 1.0;
     }
 
     return () => {
-      // Restore music when leaving (optional, usually /menu handles this)
-      startIntroMusic();
+      setDimmed(false);
     };
-  }, [isEditing, stopIntroMusic, startIntroMusic]);
-
-  // Auto-scroll to selected avatar
+  }, [startIntroMusic, setDimmed]);
   useEffect(() => {
     if (selectedAvatar && selectedAvatar > 0 && avatarScrollRef.current) {
       const container = avatarScrollRef.current;
@@ -369,7 +373,6 @@ export function OnboardingScreen() {
           ref={bgVideoRef}
           autoPlay
           loop
-          muted
           playsInline
           preload="auto"
           className="w-full h-full object-cover"

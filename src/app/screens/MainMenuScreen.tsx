@@ -60,6 +60,10 @@ export function MainMenuScreen() {
     
     // Dim music while on main menu (referee_menu video)
     setDimmed(true);
+
+    if (bossVideoRef.current) {
+      bossVideoRef.current.volume = 1.0;
+    }
     
     return () => {
       setDimmed(false);
@@ -177,9 +181,9 @@ export function MainMenuScreen() {
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0">
                   <video
+                    ref={bossVideoRef}
                     autoPlay
                     loop
-                    muted
                     playsInline
                     preload="auto"
                     className="w-full h-full object-cover opacity-100 transition-opacity duration-1000"

@@ -16,6 +16,11 @@ export function WelcomeScreen() {
     
     // Dim music while intro video is playing
     setDimmed(true);
+
+    // Set video volume to 100%
+    if (videoRef.current) {
+      videoRef.current.volume = 1.0;
+    }
     
     return () => {
       setDimmed(false);
