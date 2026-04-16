@@ -25,6 +25,7 @@ export function GameScreen() {
   const gameMode = location.state?.mode || 'normal';
   const stageNumber = location.state?.stageNumber;
   const stageName = location.state?.stageName;
+  const hand = location.state?.hand || 'right';
 
   const [armPosition, setArmPosition] = useState(50);
   const [player1Power, setPlayer1Power] = useState(100);
@@ -248,12 +249,19 @@ export function GameScreen() {
       
       if (socket && socket.readyState === WebSocket.OPEN) {
         const myPlayerId = profile?.id || localStorage.getItem('fighter_player_id') || 'GUEST';
-        const playerHand = (profile?.preferred_hand || 'right').toUpperCase();
+        const finalHand = (hand || 'right').toLowerCase();
+
+        console.log(`[Hand Flow] Training Game Reset - Hand: ${finalHand.toUpperCase()}`);
+
         socket.send(JSON.stringify({
-          cmd: {
-            INIT: 0,
-            PLAYER_ID: myPlayerId,
-            HAND: playerHand
+          set_game: {
+            mode: 'single_player',
+            hand: finalHand,
+            player_id: myPlayerId,
+            args: {
+              force: 0,
+              count_down: 0
+            }
           }
         }));
       }

@@ -281,11 +281,14 @@ export function SingleGameScreen() {
       
       if (socket && socket.readyState === WebSocket.OPEN) {
         const myPlayerId = profile?.id || localStorage.getItem('fighter_player_id') || 'GUEST';
-        const playerHand = (profile?.preferred_hand || 'right').toUpperCase();
+        const finalHand = (hand || 'right').toLowerCase();
+
+        console.log(`[Hand Flow] Single Game Reset - Hand: ${finalHand.toUpperCase()}`);
+
         socket.send(JSON.stringify({
           set_game: {
             mode: 'single_player',
-            hand: playerHand.toLowerCase(),
+            hand: finalHand,
             player_id: myPlayerId,
             args: {
               force: 0,

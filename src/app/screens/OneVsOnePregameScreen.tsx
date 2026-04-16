@@ -24,14 +24,13 @@ export function OneVsOnePregameScreen() {
   const isPlayer1 = location.state?.isPlayer1;
   const opponent = location.state?.opponent;
   const gameType = location.state?.gameType || '1_round';
-  const playerHand = location.state?.hand || 'RIGHT';
 
    const { sendMessage, isConnected } = useSocket();
    const { mainCameraId, player2CameraId } = useCamera();
    const { setMatch1v1Muted, stopMatch1v1SFX, playMatch1v1SFX } = useGlobalAudio();
 
   const [phase, setPhase] = useState<'wait' | 'action'>('wait');
-  const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number } | null>(null);
+  const [profile, setProfile] = useState<{ username: string; avatar_url: string; xp: number; preferred_hand?: string } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const rulesVideoRef = useRef<HTMLVideoElement>(null);
@@ -79,22 +78,30 @@ export function OneVsOnePregameScreen() {
       }
 
       if (playerId) {
-        const { data } = await supabase.from('players').select('username, avatar_url, xp').eq('id', playerId).maybeSingle();
+        const { data } = await supabase.from('players').select('username, avatar_url, xp, preferred_hand').eq('id', playerId).maybeSingle();
         if (data) setProfile(data);
       }
     }
     fetchProfile();
   }, []);
 
+  const playerHand = location.state?.hand || profile?.preferred_hand || 'right';
+
   // Socket initialization on mount
   useEffect(() => {
     if (isConnected) {
+      if (!location.state?.hand && !profile) return; // Wait for profile if location state is missing
+
       const myPlayerId = localStorage.getItem('fighter_player_id') || 'GUEST';
+      const lowercaseHand = playerHand.toLowerCase();
+      
+      console.log(`[Hand Flow] 1v1 Initialization - Hand: ${lowercaseHand.toUpperCase()}`);
 
       sendMessage({
         set_game: {
           mode: "multiplayer",
-          hand: (playerHand || 'RIGHT').toLowerCase(),
+          hand: lowercaseHand,
+
           player_id: myPlayerId,
           args: {
             force: 0, // Multiplayer uses hardware resistance or 0

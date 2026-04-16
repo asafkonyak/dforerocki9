@@ -28,7 +28,7 @@ export function OneVsOneGameScreen() {
   const isPlayer1 = location.state?.isPlayer1 ?? true;
   const opponent = location.state?.opponent;
   const gameType = location.state?.gameType || '1_round';
-  const hand = location.state?.hand || 'RIGHT';
+  const hand = location.state?.hand || profile?.preferred_hand || 'right';
 
   const { playWinSound, setDimmed, stopMatch1v1SFX, playMatch1v1SFX, setMatch1v1Muted } = useGlobalAudio();
   const { mainCameraId, player2CameraId } = useCamera();
@@ -289,12 +289,19 @@ export function OneVsOneGameScreen() {
 
       if (socket && socket.readyState === WebSocket.OPEN) {
         const myPlayerId = profile?.id || localStorage.getItem('fighter_player_id') || 'GUEST';
-        const playerHand = (profile?.preferred_hand || 'right').toUpperCase();
+        const finalHand = (hand || 'right').toLowerCase();
+        
+        console.log(`[Hand Flow] Round Reset - Sending Hand: ${finalHand.toUpperCase()}`);
+
         socket.send(JSON.stringify({
-          cmd: {
-            INIT: 0,
-            PLAYER_ID: myPlayerId,
-            HAND: playerHand
+          set_game: {
+            mode: 'multiplayer',
+            hand: finalHand,
+            player_id: myPlayerId,
+            args: {
+              force: 0,
+              count_down: 0
+            }
           }
         }));
       }

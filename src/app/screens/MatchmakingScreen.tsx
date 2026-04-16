@@ -27,7 +27,7 @@ export function MatchmakingScreen() {
   const [timeLeft, setTimeLeft] = useState(300);
 
   const { socket, isConnected, isError: socketError } = useSocket();
-  const { playMatch1v1SFX, stopIntroMusic } = useGlobalAudio();
+  const { playMatch1v1SFX, stopMatch1v1SFX, stopIntroMusic } = useGlobalAudio();
   const { play: playMatchFound } = useAudio({ src: '/sounds/match_found.mp3', volume: 0.8 });
   const subscriptionRef = useRef<any>(null);
   const startMatchRef = useRef<(id: string, opponent: any) => void>(() => {});
@@ -58,13 +58,14 @@ export function MatchmakingScreen() {
             mode: 'ranked', 
             opponent: opponentData, 
             isPlayer1, 
-            gameType 
+            gameType,
+            hand: userData?.preferred_hand || 'right'
           }
         });
       }, 2500); // 2.5s for the success animation
       return () => clearTimeout(timer);
     }
-  }, [matchFound, matchId, opponentData, isPlayer1, gameType, navigate]);
+  }, [matchFound, matchId, opponentData, isPlayer1, gameType, navigate, userData]);
 
   // Initial Data & Match Search with reliability fixes
   useEffect(() => {
