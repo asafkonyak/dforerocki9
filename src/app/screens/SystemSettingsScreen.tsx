@@ -21,6 +21,10 @@ export function SystemSettingsScreen() {
       5: { power: 25, xp: 1500 }
     };
   });
+  const [autoSaveReplays, setAutoSaveReplays] = useState(() => {
+    const saved = localStorage.getItem('fighter_auto_save_replays');
+    return saved === null ? true : saved === 'true';
+  });
 
   const handleLevelChange = (level: number, field: 'power' | 'xp', value: string) => {
     const numVal = parseFloat(value) || 0;
@@ -39,6 +43,7 @@ export function SystemSettingsScreen() {
   const handleSave = () => {
     // Save level configs
     localStorage.setItem('fighter_level_configs', JSON.stringify(levelConfigs));
+    localStorage.setItem('fighter_auto_save_replays', autoSaveReplays.toString());
     // Already saved to localStorage in the context but navigate back
     navigate('/cyber');
   };
@@ -246,6 +251,39 @@ export function SystemSettingsScreen() {
               </div>
             </GlassCard>
           </motion.div>
+ 
+          {/* GAME FEATURE TOGGLES */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center gap-3 px-2">
+              <RefreshCw className="w-6 h-6 text-[#00f0ff]" />
+              <h2 className="text-2xl font-black italic text-white uppercase tracking-widest" style={{ fontFamily: "'Orbitron', sans-serif" }}>Feature Configuration</h2>
+            </div>
+ 
+            <GlassCard className="p-8 border-2 border-[#00f0ff]/20 bg-black/60 shadow-[0_0_50px_rgba(0,240,255,0.05)]">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-white italic tracking-wider uppercase">Auto-save Replays</h3>
+                  <p className="text-white/40 text-[10px] font-bold tracking-widest uppercase">Automatically download match replays to local storage</p>
+                </div>
+                
+                <button 
+                  onClick={() => setAutoSaveReplays(!autoSaveReplays)}
+                  className={`w-16 h-8 rounded-full relative transition-all duration-300 ${autoSaveReplays ? 'bg-[#00f0ff]' : 'bg-white/10'}`}
+                >
+                  <motion.div 
+                    className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-lg"
+                    animate={{ x: autoSaveReplays ? 32 : 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </button>
+              </div>
+            </GlassCard>
+          </motion.div>
+
 
           <motion.div 
             initial={{ opacity: 0, y: 50 }}

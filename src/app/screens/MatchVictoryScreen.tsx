@@ -48,6 +48,23 @@ export function MatchVictoryScreen() {
   }, []);
 
   useEffect(() => {
+    // Automatic Download Logic
+    const autoSaveEnabled = localStorage.getItem('fighter_auto_save_replays') !== 'false';
+    if (autoSaveEnabled && matchData.videoUrl && matchData.videoUrl.startsWith('blob:')) {
+      const username = matchData.username || 'Player';
+      const timestamp = new Date().toISOString().replace(/T/, '_').replace(/[:.]/g, '-').slice(0, 16);
+      const filename = `${username}_${timestamp}.webm`;
+      
+      console.log('[Victory] Automatically saving replay:', filename);
+      
+      const a = document.createElement('a');
+      a.href = matchData.videoUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
     const chartsTimer = setTimeout(() => setAnimateCharts(true), 1000);
     return () => clearTimeout(chartsTimer);
   }, []);

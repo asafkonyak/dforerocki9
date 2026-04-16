@@ -410,7 +410,8 @@ export function OneVsOneGameScreen() {
           forceHistory: forceHistory,
           opponent: opponentInfo,
           videoUrl: videoUrlRef.current,
-          rivalVideoUrl: rivalVideoUrlRef.current
+          rivalVideoUrl: rivalVideoUrlRef.current,
+          username: profile?.username || 'Player'
         }
       });
     }, 3000);

@@ -468,6 +468,7 @@ export function SingleGameScreen() {
           stageNumber: stageNumber || 1,
           hand: isLeft ? 'left' : 'right',
           forceHistory: forceHistory,
+          username: profile?.username || 'Player',
           mode: gameMode,
           opponent: opponentInfo,
           videoUrl: videoUrlRef.current // Use the ref for the most current URL
