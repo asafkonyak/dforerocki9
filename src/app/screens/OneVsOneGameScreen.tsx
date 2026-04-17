@@ -23,16 +23,10 @@ export function OneVsOneGameScreen() {
   const forceHistoryRef = useRef<{ time: number, force: number }[]>([]);
   const lastForceCaptureTimeRef = useRef<number>(0);
 
-  // Get game state from navigation
-  const matchId = location.state?.matchId;
-  const isPlayer1 = location.state?.isPlayer1 ?? true;
-  const opponent = location.state?.opponent;
-  const gameType = location.state?.gameType || '1_round';
-  const hand = location.state?.hand || profile?.preferred_hand || 'right';
-
   const { playWinSound, setDimmed, stopMatch1v1SFX, playMatch1v1SFX, setMatch1v1Muted } = useGlobalAudio();
   const { mainCameraId, player2CameraId } = useCamera();
-  const { sendMessage, lastMessage } = useSocket();
+  const { sendMessage, lastMessage, socket, isConnected } = useSocket();
+
   const [armPosition, setArmPosition] = useState(50);
   const [player1Power, setPlayer1Power] = useState(100);
   const [player2Power, setPlayer2Power] = useState(100);
@@ -48,7 +42,13 @@ export function OneVsOneGameScreen() {
   const [resistanceValue, setResistanceValue] = useState(0);
   const [profile, setProfile] = useState<{ id?: string; username: string; avatar_url: string; xp: number; rank: string; preferred_hand?: string } | null>(null);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const { socket, isConnected } = useSocket();
+
+  // Get game state from navigation
+  const matchId = location.state?.matchId;
+  const isPlayer1 = location.state?.isPlayer1 ?? true;
+  const opponent = location.state?.opponent;
+  const gameType = location.state?.gameType || '1_round';
+  const hand = location.state?.hand || profile?.preferred_hand || 'right';
 
   // Ensure 1v1 audio is playing during the match
   useEffect(() => {
